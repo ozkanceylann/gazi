@@ -1,15 +1,15 @@
 {
-  "brand": "queen",
-  "brandName": "QUEEN",
+  "brand": "gazi",
+  "brandName": "Gazi",
   "logo": "logo.png",
   "favicon": "favicon.png",
 
-  "table": "queen_siparisler",
+  "table": "gazi_siparisler",
 
   "webhooks": {
-    "kargola": "https://n8n.ozkanceylan.uk/webhook/kargola_queen",
-    "barkod": "https://n8n.ozkanceylan.uk/webhook/barkod_queen",
-    "iptal": "https://n8n.ozkanceylan.uk/webhook/kargo_iptal_queen",
-    "sehir_ilce": "https://n8n.ozkanceylan.uk/webhook/sehir_ilce_kodu_sor_queen"
+    "kargola": "https://n8n.ozkanceylan.uk/webhook/kargola_gazi",
+    "barkod": "https://n8n.ozkanceylan.uk/webhook/barkod_gazi",
+    "iptal": "https://n8n.ozkanceylan.uk/webhook/kargo_iptal_gazi",
+    "sehir_ilce": "https://n8n.ozkanceylan.uk/webhook/sehir_ilce_kodu_sor_gazi"
   }
 }
