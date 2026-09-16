@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Etiket Yazdır</title>
+
+<style>
+/* ==============================
+   40x60 mm – TEK SAYFA GARANTİ
+============================== */
+@page {
+  size: 60mm 40mm;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 60mm;
+  height: 40mm;
+  margin: 0;
+  padding: 2.5mm;
+  font-family: Arial, sans-serif;
+  font-size: 9px;          /* 🔥 küçültüldü */
+  line-height: 1.25;
+  color: #000;
+
+  overflow: hidden;        /* 🔥 TAŞMA YOK */
+  page-break-inside: avoid;
+}
+
+/* TÜM İÇERİK */
+#wrap {
+  width: 100%;
+  height: 100%;
+  page-break-inside: avoid;
+}
+
+/* Satırlar */
+.row {
+  margin-bottom: 1.2mm;    /* 🔥 boşluk azaltıldı */
+  word-break: break-word;
+}
+
+/* Vurgular */
+.bold { font-weight: 700; }
+.small { font-size: 8px; }
+
+/* Ayırıcı */
+.sep {
+  border-top: 1px dashed #000;
+  margin: 1.5mm 0;
+}
+</style>
+</head>
+
+<body>
+
+<div id="wrap">
+
+  <!-- MÜŞTERİ -->
+  <div class="row bold" id="musteri"></div>
+  <div class="row" id="telefon"></div>
+
+  <!-- ADRES -->
+  <div class="row small" id="adres"></div>
+
+  <div class="sep"></div>
+
+  <!-- ÜRÜN -->
+  <div class="row" id="urun"></div>
+
+  <div class="sep"></div>
+
+  <!-- ÖDEME -->
+  <div class="row small" id="odeme"></div>
+  <div class="row bold" id="tutar"></div>
+
+</div>
+
+<script>
+const data = JSON.parse(localStorage.getItem("print_order") || {});
+
+/* MÜŞTERİ */
+document.getElementById("musteri").innerText =
+  data.ad_soyad || "";
+
+/* TELEFON */
+document.getElementById("telefon").innerText =
+  data.musteri_tel ? "Tel: " + data.musteri_tel : "";
+
+/* ADRES + ŞEHİR / İLÇE */
+let fullAddress = data.adres || "";
+if (data.ilce || data.sehir) {
+  const cityLine = [data.ilce, data.sehir].filter(Boolean).join(" / ");
+  fullAddress = fullAddress
+    ? fullAddress + " - " + cityLine
+    : cityLine;
+}
+document.getElementById("adres").innerText =
+  fullAddress ? "Adres: " + fullAddress : "";
+
+/* ÜRÜN */
+document.getElementById("urun").innerText =
+  data.urun_bilgisi || "";
+
+/* ÖDEME */
+document.getElementById("odeme").innerText =
+  data.odeme_sekli ? "Ödeme: " + data.odeme_sekli : "";
+
+/* TUTAR */
+document.getElementById("tutar").innerText =
+  data.toplam_tutar ? "Tutar: " + data.toplam_tutar + " TL" : "";
+
+/* YAZDIR */
+setTimeout(() => {
+  window.print();
+  setTimeout(() => window.close(), 300);
+}, 150);
+</script>
+
+</body>
+</html>

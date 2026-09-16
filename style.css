@@ -1,0 +1,767 @@
+
+
+/* ==============================
+   GENEL
+============================== */
+:root{
+  --bg:#eef2f3;
+  --text:#222;
+  --brand:#3c8d0d;
+  --brand-2:#0d6efd;
+  --sidebar:#12263a;
+  --sidebar-2:#1f3a52;
+  --muted:#6c757d;
+  --danger:#d9534f;
+  --warning:#ffc107;
+  --table-head:#e9eff4;
+  --table-border:#d9e2ec;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; padding:0;
+  font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+  background:var(--bg); color:var(--text);
+}
+
+/* ==============================
+   SIDEBAR & MOBİL MENÜ
+============================== */
+.sidebar{
+  width:220px; height:100vh;
+  position:fixed; left:0; top:0; z-index:999;
+  background:var(--sidebar); color:#fff;
+  padding:25px 15px; display:flex; flex-direction:column;
+  box-shadow:3px 0 12px rgba(0,0,0,.25);
+}
+.sidebar-header{ text-align:center; padding:10px 0 20px }
+.sidebar-logo{ width:130px; height:auto; display:block; margin:0 auto 8px }
+.sidebar-title{ font-size:18px; font-weight:700; line-height:1.2 }
+
+.menu{ list-style:none; padding:0; margin:35px 0 0 }
+.menu li{
+  background:var(--sidebar-2); padding:8px 10px; margin-bottom:12px;
+  text-align:center; border-radius:8px; cursor:pointer; font-size:13px;
+  transition:.2s
+}
+.menu li:hover{ background:#24445f }
+.menu li.active{ background:var(--brand)!important; font-weight:700 }
+
+.btn-danger{
+  width:100%; margin-top:auto; padding:10px; font-size:13px;
+  background:var(--danger); color:#fff; border:none; border-radius:8px; cursor:pointer
+}
+.btn-danger:hover{ background:#c9302c }
+
+.mobile-menu-btn{
+  display:none; position:fixed; top:15px; left:15px;
+  z-index:10000; background:#12263a; color:#fff;
+  padding:10px 14px; font-size:22px; border-radius:6px; cursor:pointer
+}
+
+/* ==============================
+   ANA İÇERİK & ÜST BAR
+============================== */
+.content-area{ margin-left:220px; padding:25px; transition:.3s }
+.top-bar{ display:flex; gap:10px; margin-bottom:20px }
+.top-bar input{
+  flex:1; padding:12px; font-size:15px; border-radius:8px; border:1px solid #ccc; background:#fff
+}
+.btn-search,.btn-clear{
+  border:none; border-radius:8px; color:#fff; cursor:pointer; padding:12px 18px
+}
+.btn-search{ background:var(--brand) }
+.btn-clear{ background:var(--muted) }
+
+/* ==============================
+   TABLO
+============================== */
+.table-wrapper{
+  width:100%;
+  overflow-x:auto;
+}
+
+.orders-table{
+  width:100%;
+  min-width:700px;
+  border-collapse:collapse;
+  background:#fff;
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);
+}
+
+/* TABLO BAŞLIKLARI — TÜM SEKMEDE AYNI */
+.orders-table th{
+  background:var(--table-head);
+  color:#123;
+  padding:10px !important;
+  font-size:12px !important;
+  text-align:left;
+  border-bottom:1px solid var(--table-border);
+  white-space:nowrap;
+  height:30px !important;         
+  line-height:16px !important;
+}
+
+/* TABLO HÜCRELERİ — TÜM SEKMEDE AYNI */
+.orders-table td{
+  padding:10px !important;
+  font-size:12px !important;
+  border-bottom:1px solid #f0f0f0;
+  white-space:nowrap;
+  height:30px !important;         
+  line-height:16px !important;
+}
+
+/* ============================================
+   SATIR YÜKSEKLİĞİNİ BOZAN ÖĞELERİ DÜZELTME
+============================================ */
+
+/* Sorgula / Aç butonu — daha küçük */
+.btn-open{
+  height:22px !important;
+  padding:0 10px !important;
+  font-size:11px !important;
+  line-height:1 !important;
+
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+
+  background:var(--brand-2) !important;
+  color:#fff !important;
+  border:none !important;
+  border-radius:6px !important;
+
+  white-space:nowrap;
+}
+
+/* Error chip — RENKLER GERİ YÜKLENDİ ve satırı şişirmez */
+.error-chip{
+  height:24px !important;
+  padding:0 8px !important;
+  gap:6px !important;
+
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+
+  background:#fcebea !important;      /* renk geri geldi */
+  color:#9b1c1c !important;
+  border:1px solid #f5c6cb !important;
+  border-radius:8px !important;
+  max-width:240px !important;
+  cursor:pointer;
+}
+
+.error-chip__label{
+  font-weight:700;
+  font-size:11px !important;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  line-height:1 !important;
+  color:#9b1c1c !important;
+}
+
+.error-chip__text{
+  font-size:12px !important;
+  line-height:1 !important;
+  color:#9b1c1c !important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Load more */
+.btn-load-more{
+  margin:20px auto;
+  display:block;
+  padding:12px 20px;
+  background:var(--brand-2);
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+.btn-load-more:hover{
+  filter:brightness(.95);
+}
+.orders-table tr:hover td {
+  background:#d8e9d8 !important;
+}
+
+
+/* ==============================
+   MODAL
+============================== */
+.modal{
+  display:none; position:fixed; inset:0;
+  z-index:500;
+  background:rgba(0,0,0,.45); backdrop-filter:blur(2px)
+}
+
+/* === Sipariş Detayı Modal / DAR ve UZUN Tasarım === */
+.modal-content {
+  width: 550px !important;          /* DAR modal (eski kare görünüm kalkar) */
+  max-height: 92vh !important;      /* ekranın %92’sine kadar yükseklik */
+  min-height: 700px !important;     /* daha uzun görünmesi için minimum boy */
+  
+  overflow-y: auto !important;      /* içerik taşarsa kaydırma */
+  background: #fff;
+  
+  margin: 40px auto;
+  padding: 28px;
+  border-radius: 18px;
+
+  box-shadow: 0 12px 40px rgba(0,0,0,.25);
+
+  transform: scale(0.96);           /* hafif küçült → premium görünüm */
+  transform-origin: top center;
+}
+
+
+@keyframes fadeIn{ from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:none} }
+.modal h2{ margin:0 0 10px; color:var(--brand); font-size:22px }
+.close{ float:right; font-size:26px; cursor:pointer; color:#666 }
+
+.modal-btns{ margin-top:18px; display:flex; gap:10px; flex-wrap:wrap }
+.modal-btns button{ min-width:120px }
+
+/* BUTTONS - YENİ DÜZENLİ QUEEN STİLİ */
+.btn-primary,
+.btn-secondary,
+.btn-warning,
+.btn-waiting,
+.btn-close,
+.btn-danger {
+  padding:12px 16px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:14px;
+  height:44px;             /* tüm butonlar eşitlendi */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* renkler */
+.btn-primary{ background:var(--brand); color:#fff }
+.btn-secondary{ background:var(--brand-2); color:#fff }
+.btn-warning{ background:var(--warning); color:#000 }
+.btn-waiting{ background:var(--muted); color:#fff }
+.btn-close{ background:#ccc; color:#000 }
+.btn-danger{ background:var(--danger); color:#fff !important }
+
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-warning:hover,
+.btn-danger:hover,
+.btn-waiting:hover,
+.btn-close:hover{ opacity:.9 }
+
+/* Mini buton (Şehir/İlçe SOR) */
+.btn-mini{
+  display:inline-block; padding:4px 8px; font-size:12px;
+  border:none; border-radius:6px; background:var(--brand-2); color:#fff; margin-left:6px
+}
+
+/* Form alanları */
+textarea{
+  width:100%; height:90px; border-radius:8px; padding:12px; border:1px solid #ccc; font-size:14px
+}
+
+input, select{
+  width:100%;
+  padding:11px 12px;
+  border-radius:10px;
+  border:1px solid #d9e2ec;
+  font-size:14px;
+  background:#fff;
+}
+
+/* Düzenleme grid */
+.edit-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:14px
+}
+.edit-grid .full-row{
+  grid-column:1 / -1
+}
+
+.edit-card{
+  background:#f9fbfd;
+  border:1px solid #d9e2ec;
+  border-radius:16px;
+  padding:18px;
+  box-shadow:0 8px 30px rgba(0,0,0,.08);
+}
+
+.edit-card__header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.eyebrow{
+  margin:0;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  color:var(--muted);
+}
+
+.title{
+  margin:2px 0 0;
+  font-size:20px;
+  font-weight:700;
+}
+
+.pill{
+  padding:8px 12px;
+  background:rgba(60,141,13,.1);
+  color:var(--brand);
+  border:1px solid rgba(60,141,13,.2);
+  border-radius:999px;
+  font-weight:600;
+  white-space:nowrap;
+}
+
+.form-field label{
+  display:block;
+  margin-bottom:6px;
+  font-size:13px;
+  font-weight:600;
+  color:#123;
+}
+
+.input-ghost{
+  background:#f8fafc;
+  color:#1f3a52;
+  font-weight:700;
+}
+
+/* ==============================
+   ALERT & TOAST
+============================== */
+.alert-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center; z-index:600
+}
+.alert-card{
+  width:min(520px,92vw); background:#fff; border-radius:14px; padding:22px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25); animation:pop .18s ease
+}
+.error-detail-card .alert-text{ margin-top:6px; }
+.error-detail-text{
+  width:100%;
+  min-height:160px;
+  border-radius:10px;
+  padding:12px;
+  border:1px solid #d9e2ec;
+  background:#f8fafc;
+  font-family:"SFMono-Regular",Consolas,Monaco,monospace;
+  white-space:pre-wrap;
+  resize:vertical;
+}
+.alert-title{ font-size:18px; font-weight:700; margin:0 0 8px; color:#12263a }
+.alert-text{ font-size:14px; color:#333; line-height:1.5 }
+.alert-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:16px }
+
+.btn-ghost{
+  background:#eef2f3; border:none; padding:10px 14px;
+  border-radius:8px; cursor:pointer; height:42px;
+}
+.btn-brand{
+  background:var(--brand); color:#fff; border:none;
+  padding:10px 14px; border-radius:8px;
+  cursor:pointer; height:42px;
+}
+
+@keyframes pop{ from{ transform:scale(.98); opacity:.6 } to{ transform:scale(1); opacity:1 } }
+
+.toast{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:24px; background:#12263a; color:#fff; padding:12px 16px;
+  border-radius:10px; font-size:14px; z-index:700;
+  box-shadow:0 6px 18px rgba(0,0,0,.25)
+}
+
+/* ==============================
+   LOGIN SAYFASI
+============================== */
+body.login-page{
+  height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#0b2e63,#1a3d7c)
+}
+.login-box{
+  width:90%; max-width:380px; background:#fff; padding:35px; border-radius:16px;
+  box-shadow:0 10px 35px rgba(0,0,0,.35); animation:fadeInLogin .3s ease; text-align:center
+}
+@keyframes fadeInLogin{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+.login-box .logo{ width:140px; margin:0 auto 20px }
+.login-box h2{ color:#1a3d7c; margin:0 0 20px; font-size:22px; font-weight:700 }
+.login-box .form-group{ margin-bottom:16px; text-align:left }
+.login-box label{ font-size:14px; font-weight:600; color:#1a3d7c }
+.login-box input{
+  width:100%; padding:12px; font-size:14px; border-radius:10px; border:1px solid #b8c6d9;
+  margin-top:6px; background:#f7f9fc
+}
+.login-box input:focus{
+  outline:none; border-color:#1a3d7c; background:#fff; box-shadow:0 0 0 2px rgba(23,78,166,.2)
+}
+.btn-login{
+  width:100%; padding:12px; font-size:15px; border:none; border-radius:10px;
+  background:#1a3d7c; color:#fff; cursor:pointer; margin-top:10px; transition:.2s
+}
+.btn-login:hover{ background:#153468 }
+.error{ margin-top:12px; color:#e74c3c; font-size:14px; display:none }
+
+/* ==============================
+   RAPOR SAYFASI EKLERİ
+============================== */
+canvas{ max-width:100% }
+@media (min-width:900px){
+  .content-area{ margin-left:220px!important }
+}
+
+/* ==============================
+   MOBİL
+============================== */
+@media(max-width:900px){
+  .sidebar{
+    left:-300px!important; transition:left .3s ease; z-index:999
+  }
+  .sidebar.open{ left:0!important }
+  .mobile-menu-btn{ display:block }
+  .content-area{ margin-left:0!important; padding-top:70px }
+  .edit-grid{ grid-template-columns:1fr } /* form tek kolon */
+}
+
+
+#actionButtons {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+#actionButtons button {
+  flex: 1;        /* Hepsi eşit genişlik */
+  min-width: 0;   /* Taşmayı önler */
+}
+
+/* Kapat butonu özel davranmasın → ESKİ KURAL SİLİNECEK */
+#actionButtons .btn-close {
+  flex-basis: auto !important;
+  order: unset !important;
+}
+
+
+/* İptal Et butonu mutlaka üst satırda */
+#actionButtons .btn-danger {
+  order: 1;
+}
+
+
+/* =========================================
+   YENİ BELIDO LOGIN TASARIMI (Örnekteki ile aynı)
+========================================= */
+body.login-page {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #062d20; /* koyu yeşil zemin */
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.login-card {
+  width: 92%;
+  max-width: 480px;
+  background: linear-gradient(180deg, #ffe08a, #d9b35b);
+  padding: 40px 45px;
+  border-radius: 22px;
+  text-align: center;
+  box-shadow: 0 12px 45px rgba(0,0,0,.35);
+}
+
+.login-card img.logo {
+  width: 160px;
+  margin-bottom: 20px;
+}
+
+.login-card h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 28px;
+  color: #123;
+}
+
+.login-card .form-group {
+  text-align: left;
+  margin-bottom: 18px;
+}
+
+.login-card label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.login-card input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  margin-top: 6px;
+  background: #fff;
+  font-size: 14px;
+}
+
+.btn-login {
+  width: 100%;
+  padding: 13px;
+  background: #0c271b;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: .2s;
+}
+
+.btn-login:hover {
+  background: #081e15;
+}
+
+.login-error {
+  color: #a60000;
+  font-size: 14px;
+  margin-top: 12px;
+  display: none;
+}
+
+/* ================================================
+   SİPARİŞ DETAYI – PREMIUM GRUPLU TASARIM
+=================================================== */
+
+.modal-content {
+  background: linear-gradient(to bottom right, #ffffff, #f4f7fb);
+  border: 1px solid #dfe6ee;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.20);
+  padding: 28px;
+  border-radius: 20px;
+
+  width: 520px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+
+  transform: scale(0.97);
+  animation: fadeIn .25s ease-out;
+}
+
+#orderDetails {
+  font-size: 13px;
+  line-height: 1.35;
+  color: #123;
+}
+
+/* Grup kutuları */
+.detail-group {
+  background: #f9fbfd;
+  border: 1px solid #e0e6ed;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.06);
+}
+
+.detail-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #0d2451;
+}
+
+.detail-item {
+  font-size: 13px;
+  margin: 5px 0;
+}
+
+.detail-item b {
+  color: #183153;
+}
+
+/* Başlık */
+.modal h2 {
+  font-size: 20px;
+  letter-spacing: 0.5px;
+  margin-bottom: 18px;
+  color: var(--brand);
+}
+
+/* Close X */
+.close {
+  font-size: 24px;
+  color: #666;
+  transition: .2s;
+}
+.close:hover {
+  color: #000;
+}
+
+/* ============================================================
+   iOS CAM – RENKLERİ KORUYAN BUTON SİSTEMİ (FINAL)
+============================================================ */
+
+/* --- BAR TAMAMEN ŞEFFAF (sadece butonlar görünecek) --- */
+#actionButtons,
+#editButtons,
+#restoreButtons {
+  position: sticky;
+  bottom: 0;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 14px 10px !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: flex;
+  gap: 10px;
+  z-index: 50;
+}
+
+/* --- BUTON RENKLERİNİ BOZMAYAN CAM EFEKTİ --- */
+#actionButtons button,
+#editButtons button,
+#restoreButtons button {
+  position: relative;
+  overflow: hidden;
+
+  /* kendi rengini kullanacak → cam efekti üst katman olacak */
+  background: var(--btn-color, currentColor) !important;
+
+  padding: 12px 16px !important;
+  border: none !important;
+  border-radius: 14px !important;
+
+  color: inherit !important;
+  font-weight: 600;
+
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  transition: .2s ease;
+}
+
+/* CAM PARLAMA KATMANI */
+#actionButtons button::after,
+#editButtons button::after,
+#restoreButtons button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+
+  /* iOS glass highlight */
+  background:
+    radial-gradient(100% 55% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%),
+    linear-gradient(to bottom, rgba(255,255,255,.10), rgba(255,255,255,.03));
+}
+
+/* HOVER */
+#actionButtons button:hover,
+#editButtons button:hover,
+#restoreButtons button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+}
+
+/* --- BUTON RENKLERİNİ TEKRAR TANIMLIYORUZ (OVERRIDE) --- */
+#actionButtons .btn-primary,
+#editButtons .btn-primary,
+#restoreButtons .btn-primary { --btn-color: var(--brand); color:#fff !important; }
+
+#actionButtons .btn-secondary,
+#editButtons .btn-secondary,
+#restoreButtons .btn-secondary { --btn-color: var(--brand-2); color:#fff !important; }
+
+#actionButtons .btn-warning,
+#editButtons .btn-warning,
+#restoreButtons .btn-warning { --btn-color: var(--warning); color:#000 !important; }
+
+#actionButtons .btn-waiting,
+#editButtons .btn-waiting,
+#restoreButtons .btn-waiting { --btn-color: var(--muted); color:#fff !important; }
+
+#actionButtons .btn-close,
+#editButtons .btn-close,
+#restoreButtons .btn-close { --btn-color: #ccc; color:#000 !important; }
+
+#actionButtons .btn-danger,
+#editButtons .btn-danger,
+#restoreButtons .btn-danger { --btn-color: var(--danger); color:#fff !important; }
+
+/* Satırın üzerine gelince yazı imleci (text cursor) çıkmasını tamamen engeller */
+.orders-table tr {
+  cursor: default !important;
+}
+
+.orders-table td, 
+.orders-table th {
+  cursor: default !important;
+}
+/* Order listesi – ürün adı limiti */
+.order-product-limit {
+  max-width: 640px;       /* gerekirse 200-260 arası oynat */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: middle;
+}
+/* Tarih pill */
+.pill-date {
+  background: rgba(13,110,253,0.12);
+  color: #2d7d27;
+  border: 1px solid rgba(2, 45, 6, 0.25);
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+/* =========================
+   SİPARİŞ NOTU – DETAY
+========================= */
+.note-card {
+  background: linear-gradient(135deg, #fff7e6, #fffaf0);
+  border: 1px solid rgba(255, 193, 7, 0.35);
+  border-left: 5px solid #ffc107;
+
+  padding: 12px 14px;
+  border-radius: 10px;
+
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5c4700;
+
+  max-height: 110px;          /* 🔒 çok uzamasın */
+  overflow-y: auto;
+}
+
+.note-text {
+  white-space: pre-wrap;      /* alt satırlar korunsun */
+}
+
+/* Not yoksa */
+.note-empty {
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}

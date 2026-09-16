@@ -1,0 +1,15 @@
+{
+  "brand": "queen",
+  "brandName": "QUEEN",
+  "logo": "logo.png",
+  "favicon": "favicon.png",
+
+  "table": "queen_siparisler",
+
+  "webhooks": {
+    "kargola": "https://n8n.ozkanceylan.uk/webhook/kargola_queen",
+    "barkod": "https://n8n.ozkanceylan.uk/webhook/barkod_queen",
+    "iptal": "https://n8n.ozkanceylan.uk/webhook/kargo_iptal_queen",
+    "sehir_ilce": "https://n8n.ozkanceylan.uk/webhook/sehir_ilce_kodu_sor_queen"
+  }
+}

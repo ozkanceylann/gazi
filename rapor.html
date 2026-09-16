@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raporlar</title>
+
+  <!-- CONFIG -->
+  <script src="config.js"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- SUPABASE & CHARTS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    .report-card{
+      background:#fff;padding:20px;border-radius:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.12);flex:1;min-width:220px
+    }
+    .report-card h3{margin:0;font-size:16px}
+    .report-card .value{margin-top:8px;font-size:24px;font-weight:700}
+    .toolbar{
+      background:#fff;padding:16px;border-radius:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.12);
+      margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;
+      align-items:center
+    }
+    select, input[type="date"]{
+      padding:10px;border:1px solid #ccc;border-radius:8px
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-menu-btn" onclick="toggleMenu()">☰</div>
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img id="brandLogo" class="sidebar-logo" alt="Logo">
+      <div id="brandTitle" class="sidebar-title"></div>
+    </div>
+
+    <ul class="menu">
+      <li onclick="window.location='index.html'">Bekleyen</li>
+      <li onclick="window.location='index.html'">Hazırlandı</li>
+      <li onclick="window.location='index.html'">Kargolandı</li>
+      <li onclick="window.location='index.html'">Tamamlananlar</li>
+      <li onclick="window.location='index.html'">Sorunlu</li>
+      <li onclick="window.location='index.html'">İptal</li>
+      <li class="active">Raporlar</li>
+    </ul>
+
+    <button class="btn-danger" onclick="window.location='login.html'">Çıkış Yap</button>
+  </aside>
+
+  <div class="content-area">
+
+    <h2 style="margin-bottom:14px;">📊 Raporlama Ekranı</h2>
+
+    <!-- FİLTRE ARAÇLARI -->
+    <div class="toolbar">
+      <label><b>Başlangıç:</b></label><input type="date" id="startDate"/>
+      <label><b>Bitiş:</b></label><input type="date" id="endDate"/>
+
+      <label><b>Durum:</b></label>
+      <select id="statusSel">
+        <option value="">Hepsi</option>
+        <option>Bekliyor</option>
+        <option>Hazırlandı</option>
+        <option>Kargolandı</option>
+        <option>Tamamlandı</option>
+        <option>Sorunlu</option>
+        <option>İptal</option>
+      </select>
+
+      <button class="btn-primary" onclick="loadReport()">Raporla</button>
+      <button class="btn-secondary" onclick="exportExcel()">Excel İndir</button>
+      <button class="btn-close" onclick="window.location='index.html'">Geri</button>
+    </div>
+
+    <div id="summaryCards" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;"></div>
+
+    <div style="background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);margin-bottom:20px;">
+      <h3>📈 Günlük Sipariş</h3>
+      <canvas id="dailyChart" style="max-height:300px;"></canvas>
+    </div>
+
+    <div style="background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);margin-bottom:20px;">
+      <h3>📞 Sipariş Alan</h3>
+      <canvas id="salesByTel" style="max-height:300px;"></canvas>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>İsim</th>
+            <th>Tutar</th>
+            <th>Durum</th>
+            <th>Tarih</th>
+            <th>Sipariş Alan</th>
+          </tr>
+        </thead>
+        <tbody id="reportTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+
+
+<!-- ===================== -->
+<!--   RAPOR SCRIPTİ       -->
+<!-- ===================== -->
+<script>
+(async ()=>{
+  await window.waitConfig();
+
+  document.getElementById("brandLogo").src = CONFIG.logo;
+  document.getElementById("brandTitle").innerHTML = CONFIG.brandName + "<br/>Sipariş Sistemi";
+
+  const TABLE = CONFIG.table;
+  const db = supabase.createClient(
+    "https://jarsxtpqzqzhlshpmgot.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcnN4dHBxenF6aGxzaHBtZ290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODExMTcsImV4cCI6MjA3Nzg1NzExN30.98oYONSkb8XSDrfGW2FxhFmt2BLB5ZRo3Ho50GhZYgE"
+  );
+
+  let chart1=null, chart2=null;
+  let lastRows=[];
+
+
+  /* ==============================
+        RAPOR YÜKLEME
+  ============================== */
+  async function loadReport(){
+    const s = startDate.value;
+    const e = endDate.value;
+    const st = statusSel.value;
+
+    let q = db.from(TABLE).select("*");
+
+    if(s) q = q.gte("tarih", s);
+    if(e) q = q.lte("tarih", e + " 23:59:59");
+    if(st) q = q.eq("kargo_durumu", st);
+
+    q = q.order("tarih",{ascending:false});
+
+    const { data, error } = await q;
+    if(error){ alert("Rapor hatası: " + error.message); return; }
+
+    lastRows = data || [];
+    renderReport(lastRows);
+  }
+
+
+  /* ==============================
+        TABLO + ÖZET + GRAFİK
+  ============================== */
+  function renderReport(rows){
+    const table = document.getElementById("reportTable");
+    const summary = document.getElementById("summaryCards");
+    table.innerHTML=""; summary.innerHTML="";
+
+    if(!rows.length){
+      table.innerHTML = `<tr><td colspan="6">Kayıt yok</td></tr>`;
+      buildCharts([]);
+      return;
+    }
+
+    let toplam=0, adet=rows.length, kargolanan=0;
+    rows.forEach(r=>{
+      toplam += Number(r.toplam_tutar||0);
+      if(r.kargo_durumu==="Kargolandı") kargolanan++;
+      table.innerHTML += `
+        <tr>
+          <td>${r.siparis_no}</td>
+          <td>${r.ad_soyad}</td>
+          <td>${r.toplam_tutar} TL</td>
+          <td>${r.kargo_durumu}</td>
+          <td>${(r.tarih||"").substring(0,10)}</td>
+          <td>${r.siparis_alan||""}</td>
+        </tr>`;
+    });
+
+    summary.innerHTML = `
+      <div class="report-card"><h3>Toplam Sipariş</h3><div class="value">${adet}</div></div>
+      <div class="report-card"><h3>Toplam Tutar</h3><div class="value">${toplam} TL</div></div>
+      <div class="report-card"><h3>Kargolanan</h3><div class="value">${kargolanan}</div></div>
+    `;
+
+    buildCharts(rows);
+  }
+
+
+  /* ==============================
+        GRAFİKLER
+  ============================== */
+  function buildCharts(rows){
+    const daily={};
+    rows.forEach(r=>{
+      const d=(r.tarih||"").substring(0,10);
+      daily[d]=(daily[d]||0)+1;
+    });
+
+    const labels1=Object.keys(daily);
+    const values1=Object.values(daily);
+
+    if(chart1) chart1.destroy();
+    chart1 = new Chart(document.getElementById("dailyChart"),{
+      type:"line",
+      data:{
+        labels:labels1,
+        datasets:[{ label:"Günlük Sipariş", data:values1, borderWidth:3 }]
+      }
+    });
+
+    const byTel={};
+    rows.forEach(r=>{
+      const key=r.siparis_alan||"Bilinmiyor";
+      byTel[key]=(byTel[key]||0)+1;
+    });
+
+    const labels2=Object.keys(byTel);
+    const values2=Object.values(byTel);
+
+    if(chart2) chart2.destroy();
+    chart2 = new Chart(document.getElementById("salesByTel"),{
+      type:"bar",
+      data:{
+        labels:labels2,
+        datasets:[{ label:"Sipariş Sayısı", data:values2, borderWidth:2 }]
+      }
+    });
+  }
+
+
+  /* ==============================
+        EXCEL EXPORT
+  ============================== */
+  function exportExcel(){
+    if(!lastRows.length){ alert("Dışa aktarılacak veri yok"); return; }
+
+    const headers = ["No","İsim","Tutar","Durum","Tarih","Sipariş Alan"];
+
+    const rows = lastRows.map(r=>[
+      r.siparis_no, r.ad_soyad, r.toplam_tutar,
+      r.kargo_durumu, (r.tarih||"").substring(0,19),
+      r.siparis_alan||""
+    ]);
+
+    const tableHtml = `
+      <table>
+        <thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${rows.map(row=>`<tr>${row.map(cell=>`<td>${String(cell??"")}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    `;
+
+    const blob = new Blob(["\ufeff" + tableHtml], { type:"application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rapor.xls";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+
+  /* ==============================
+       GLOBAL EXPORT
+  ============================== */
+  window.loadReport = loadReport;
+  window.exportExcel = exportExcel;
+
+  /* BAŞLANGIÇTA OTOMATİK RAPOR YÜKLE */
+  loadReport();
+
+})();
+
+function toggleMenu(){
+  document.querySelector(".sidebar").classList.toggle("open");
+}
+
+document.addEventListener("click", e=>{
+  const sidebar = document.querySelector(".sidebar");
+  const btn = document.querySelector(".mobile-menu-btn");
+  if(!sidebar.classList.contains("open")) return;
+  if(sidebar.contains(e.target) || btn.contains(e.target)) return;
+  sidebar.classList.remove("open");
+});
+</script>
+
+</body>
+</html>

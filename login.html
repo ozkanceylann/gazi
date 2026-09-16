@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giriş Yap</title>
+  <script src="config.js"></script>
+  <style>
+    body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:"Segoe UI",sans-serif;background:linear-gradient(135deg,#0b2e63,#1a3d7c)}
+    .login-box{width:90%;max-width:380px;background:#fff;padding:35px;border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35);text-align:center}
+    .logo{width:140px;margin:0 auto 20px}
+    h2{color:#1a3d7c;margin:0 0 20px;font-size:22px;font-weight:700}
+    .form-group{margin-bottom:16px;text-align:left}
+    label{font-size:14px;font-weight:600;color:#1a3d7c}
+    input{width:100%;padding:12px;border-radius:10px;border:1px solid #b8c6d9;margin-top:6px;background:#f7f9fc}
+    .btn-login{width:100%;padding:12px;border:none;border-radius:10px;background:#1a3d7c;color:#fff;cursor:pointer;margin-top:10px}
+    .error{margin-top:12px;color:#e74c3c;display:none}
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <img id="brandLogo" class="logo" alt="Logo">
+    <h2 id="brandTitle"></h2>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input id="email" type="email" placeholder="Email adresiniz">
+    </div>
+    <div class="form-group">
+      <label>Şifre</label>
+      <input id="password" type="password" placeholder="Şifreniz">
+    </div>
+
+    <button class="btn-login" onclick="login()">Giriş Yap</button>
+    <div id="errorBox" class="error"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    (async()=>{
+      await window.waitConfig();
+      document.getElementById("brandLogo").src = CONFIG.logo;
+      document.getElementById("brandTitle").innerText = CONFIG.brandName + " Sipariş Takip Sistemi";
+    })();
+
+    const db = supabase.createClient(
+      "https://jarsxtpqzqzhlshpmgot.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcnN4dHBxenF6aGxzaHBtZ290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODExMTcsImV4cCI6MjA3Nzg1NzExN30.98oYONSkb8XSDrfGW2FxhFmt2BLB5ZRo3Ho50GhZYgE"
+    );
+
+    async function login(){
+      await window.waitConfig();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorBox = document.getElementById("errorBox"); errorBox.style.display="none";
+
+      const { data, error } = await db.auth.signInWithPassword({ email, password });
+      if(error){ errorBox.textContent="Hatalı email veya şifre!"; errorBox.style.display="block"; return; }
+
+      const meta = (data.user.user_metadata ?? data.user.raw_user_meta_data) || {};
+      if(!meta.firma || meta.firma.toLowerCase() !== CONFIG.brand.toLowerCase()){
+        errorBox.textContent = "Bu panele sadece " + CONFIG.brandName + " kullanıcıları girebilir!";
+        errorBox.style.display="block";
+        await db.auth.signOut();
+        return;
+      }
+
+      localStorage.setItem("firma", meta.firma.toLowerCase());
+      localStorage.setItem("rol", meta.rol || "");
+      localStorage.setItem("session", JSON.stringify(data.session));
+      location.href="index.html";
+    }
+    window.login = login;
+  </script>
+    <!-- SAYFA İÇERİĞİ -->
+
+  <!-- 🔁 SERVICE WORKER AUTO UPDATE -->
+  <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/service-worker.js").then(reg => {
+
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "activated") {
+            if (navigator.serviceWorker.controller) {
+              console.log("🔄 Yeni sürüm aktif → yenileniyor");
+              location.reload();
+            }
+          }
+        });
+      });
+
+    });
+  }
+  </script>
+</body>
+</html>
+
+</body>
+</html>

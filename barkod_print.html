@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Barkod Yazdır</title>
+
+  <style>
+    /* 100x100 mm etiket, kenarsız */
+    @page {
+      size: 100mm 100mm;
+      margin: 0;
+    }
+
+    html, body {
+      width: 100mm;
+      height: 100mm;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+
+    /* Etikete tam oturacak şekilde */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* IMG doğrudan etikete otursun (yüksek DPI destekli) */
+    #barcode {
+      width: 100mm;
+      height: 100mm;
+      object-fit: contain; /* crop’lu kareyi bozmadan yerleştirir */
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+  </style>
+</head>
+<body>
+
+  <img id="barcode" alt="Barkod" />
+
+  <script>
+    /* ============================================================
+       window.showBarcode(base64Png)
+       - 203dpi referansıyla 100x100mm ≈ 800x800 px kare crop
+       - Görüntüyü merkeze alır, etikete tam basar
+       - Baskıdan sonra otomatik kapatır
+    ============================================================ */
+    window.showBarcode = function (base64) {
+      const img = new Image();
+      img.src = "data:image/png;base64," + base64;
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          // 100x100 mm ~ 800x800 px @ ~203 dpi (tercih edilen referans)
+          const cropSize = 800;
+
+          // Kaynak görselden ortalanmış kare crop alınır
+          const srcW = img.width, srcH = img.height;
+          const size = Math.min(srcW, srcH);                 // kısa kenara göre kare
+          const side = Math.min(size, cropSize);             // 800'den küçükse küçült
+          const x = Math.floor((srcW - side) / 2);
+          const y = Math.floor((srcH - side) / 2);
+
+          canvas.width  = cropSize;
+          canvas.height = cropSize;
+
+          // Kaynağı (x,y,side,side) kare olarak alıp 800x800'e ölçekle
+          ctx.drawImage(img, x, y, side, side, 0, 0, cropSize, cropSize);
+
+          // Çıktıyı <img>’ye bas
+          document.getElementById("barcode").src = canvas.toDataURL("image/png");
+
+          // Kısa bir beklemeden sonra yazdır + pencereyi kapat
+          setTimeout(() => {
+            window.print();
+            setTimeout(() => window.close(), 500);
+          }, 200);
+        } catch (e) {
+          // Her ihtimale karşı orijinal PNG’yi direkt basmayı dene
+          document.getElementById("barcode").src = "data:image/png;base64," + base64;
+          setTimeout(() => {
+            window.print();
+            setTimeout(() => window.close(), 500);
+          }, 200);
+        }
+      };
+
+      img.onerror = () => {
+        alert("Barkod resmi yüklenemedi.");
+        window.close();
+      };
+    };
+  </script>
+
+</body>
+</html>
