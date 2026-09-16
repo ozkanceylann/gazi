@@ -1,4 +1,3 @@
-# queen
+# gazi
 
-## Siteyi Yayına Alma ("Nasıl yükleyeceğim?")
-
+## 
