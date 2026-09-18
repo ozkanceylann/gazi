@@ -275,8 +275,33 @@
   window.loadReport = loadReport;
   window.exportExcel = exportExcel;
 
-  /* BAŞLANGIÇTA OTOMATİK RAPOR YÜKLE */
-  loadReport();
+/* ==============================
+   BAŞLANGIÇTA BU AYIN RAPORU
+============================== */
+
+function formatDate(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+
+  return `${y}-${m}-${d}`;
+}
+
+const today = new Date();
+
+// Bu ayın 1. günü
+const firstDay = new Date(
+  today.getFullYear(),
+  today.getMonth(),
+  1
+);
+
+// Tarih kutularını otomatik doldur
+document.getElementById("startDate").value = formatDate(firstDay);
+document.getElementById("endDate").value = formatDate(today);
+
+// Bu ayın raporunu otomatik getir
+loadReport();
 
 })();
 
