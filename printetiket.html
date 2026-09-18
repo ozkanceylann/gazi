@@ -5,11 +5,13 @@
 <title>Etiket Yazdır</title>
 
 <style>
+
 /* ==============================
-   40x60 mm – TEK SAYFA GARANTİ
+   60 x 40 MM ETİKET
 ============================== */
+
 @page {
-  size: 100mm 100mm;
+  size: 60mm 40mm;
   margin: 0;
 }
 
@@ -17,42 +19,103 @@
   box-sizing: border-box;
 }
 
-html, body {
-  width: 100mm;
-  height: 100mm;
+html {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 60mm;
   margin: 0;
   padding: 2.5mm;
+
   font-family: Arial, sans-serif;
-  font-size: 9px;          /* 🔥 küçültüldü */
-  line-height: 1.25;
+  font-size: 9px;
+  line-height: 1.2;
+
   color: #000;
-
-  overflow: hidden;        /* 🔥 TAŞMA YOK */
-  page-break-inside: avoid;
+  overflow: hidden;
 }
 
-/* TÜM İÇERİK */
+/* ANA ALAN */
 #wrap {
-  width: 100%;
-  height: 100%;
+  width: 55mm;
+  margin: 0;
+  padding: 0;
+
   page-break-inside: avoid;
+  break-inside: avoid;
 }
 
-/* Satırlar */
+/* SATIRLAR */
 .row {
-  margin-bottom: 1.2mm;    /* 🔥 boşluk azaltıldı */
+  margin: 0 0 1mm 0;
+  padding: 0;
+
   word-break: break-word;
+  overflow-wrap: break-word;
 }
 
-/* Vurgular */
-.bold { font-weight: 700; }
-.small { font-size: 8px; }
+/* VURGULAR */
+.bold {
+  font-weight: 700;
+}
 
-/* Ayırıcı */
+.small {
+  font-size: 8px;
+}
+
+/* AYIRICI */
 .sep {
   border-top: 1px dashed #000;
-  margin: 1.5mm 0;
+  height: 0;
+  margin: 1.2mm 0;
+  padding: 0;
 }
+
+/* ==============================
+   YAZDIRMA
+============================== */
+
+@media print {
+
+  @page {
+    size: 60mm 40mm;
+    margin: 0;
+  }
+
+  html {
+    width: 60mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    width: 60mm;
+    margin: 0;
+    padding: 2.5mm;
+
+    overflow: hidden;
+
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+  }
+
+  #wrap {
+    width: 55mm;
+    margin: 0;
+    padding: 0;
+
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
 </style>
 </head>
 
@@ -62,63 +125,139 @@ html, body {
 
   <!-- MÜŞTERİ -->
   <div class="row bold" id="musteri"></div>
+
+  <!-- TELEFON -->
   <div class="row" id="telefon"></div>
 
   <!-- ADRES -->
   <div class="row small" id="adres"></div>
 
+  <!-- AYIRICI -->
   <div class="sep"></div>
 
   <!-- ÜRÜN -->
   <div class="row" id="urun"></div>
 
+  <!-- AYIRICI -->
   <div class="sep"></div>
 
   <!-- ÖDEME -->
   <div class="row small" id="odeme"></div>
+
+  <!-- TUTAR -->
   <div class="row bold" id="tutar"></div>
 
 </div>
 
-<script>
-const data = JSON.parse(localStorage.getItem("print_order") || {});
 
-/* MÜŞTERİ */
+<script>
+
+/* =================================
+   SİPARİŞ VERİSİNİ AL
+================================= */
+
+let data = {};
+
+try {
+  data = JSON.parse(
+    localStorage.getItem("print_order") || "{}"
+  );
+} catch (e) {
+  data = {};
+}
+
+
+/* =================================
+   MÜŞTERİ
+================================= */
+
 document.getElementById("musteri").innerText =
   data.ad_soyad || "";
 
-/* TELEFON */
-document.getElementById("telefon").innerText =
-  data.musteri_tel ? "Tel: " + data.musteri_tel : "";
 
-/* ADRES + ŞEHİR / İLÇE */
+/* =================================
+   TELEFON
+================================= */
+
+document.getElementById("telefon").innerText =
+  data.musteri_tel
+    ? "Tel: " + data.musteri_tel
+    : "";
+
+
+/* =================================
+   ADRES
+================================= */
+
 let fullAddress = data.adres || "";
+
 if (data.ilce || data.sehir) {
-  const cityLine = [data.ilce, data.sehir].filter(Boolean).join(" / ");
+
+  const cityLine =
+    [data.ilce, data.sehir]
+      .filter(Boolean)
+      .join(" / ");
+
   fullAddress = fullAddress
     ? fullAddress + " - " + cityLine
     : cityLine;
 }
-document.getElementById("adres").innerText =
-  fullAddress ? "Adres: " + fullAddress : "";
 
-/* ÜRÜN */
+document.getElementById("adres").innerText =
+  fullAddress
+    ? "Adres: " + fullAddress
+    : "";
+
+
+/* =================================
+   ÜRÜN
+================================= */
+
 document.getElementById("urun").innerText =
   data.urun_bilgisi || "";
 
-/* ÖDEME */
+
+/* =================================
+   ÖDEME
+================================= */
+
 document.getElementById("odeme").innerText =
-  data.odeme_sekli ? "Ödeme: " + data.odeme_sekli : "";
+  data.odeme_sekli
+    ? "Ödeme: " + data.odeme_sekli
+    : "";
 
-/* TUTAR */
+
+/* =================================
+   TUTAR
+================================= */
+
 document.getElementById("tutar").innerText =
-  data.toplam_tutar ? "Tutar: " + data.toplam_tutar + " TL" : "";
+  data.toplam_tutar
+    ? "Tutar: " + data.toplam_tutar + " TL"
+    : "";
 
-/* YAZDIR */
-setTimeout(() => {
-  window.print();
-  setTimeout(() => window.close(), 300);
-}, 150);
+
+/* =================================
+   YAZDIR
+================================= */
+
+/*
+   window.close() KULLANILMIYOR.
+   Bazı Chrome + etiket yazıcısı
+   kombinasyonlarında boş ikinci
+   sayfaya sebep olabiliyor.
+*/
+
+window.addEventListener("load", function () {
+
+  setTimeout(function () {
+
+    window.print();
+
+  }, 300);
+
+});
+
 </script>
 
 </body>
