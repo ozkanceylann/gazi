@@ -947,43 +947,50 @@ function cancelEdit(){
 /* ============================================================
    DURUMLAR
 ============================================================ */
+let waitingBusy = false;
+
 async function setWaiting(){
+  if (waitingBusy) return;
+  waitingBusy = true;
+
   const siparisNo = selectedOrder?.siparis_no;
 
   if(!siparisNo){
+    waitingBusy = false;
     return toast("Sipariş numarası bulunamadı.");
   }
 
-  const { error } = await db.from(TABLE)
+  // Önce panel/veritabanı durumunu değiştir
+  const { error } = await db
+    .from(TABLE)
     .update({ kargo_durumu: "Bekliyor" })
     .eq("siparis_no", siparisNo);
 
   if(error){
-    console.error("Bekliyor durumuna alma hatası:", error);
+    waitingBusy = false;
+    console.error(error);
     return toast("Sipariş güncellenemedi.");
   }
 
-  // WhatsApp'taki 📦 reaksiyonunu Bekliyor ifadesine çevir
-  try{
-    const { error: reactionError } =
-      await db.functions.invoke("whatsapp-reaction", {
-        body: {
-          siparis_no: siparisNo,
-          emoji: "⏳"
-        }
-      });
-
-    if(reactionError){
-      console.error("WhatsApp reaksiyon hatası:", reactionError);
-    }
-  }catch(e){
-    console.error("WhatsApp reaksiyon hatası:", e);
-  }
-
+  // Kullanıcıya ANINDA sonucu göster
   toast("Sipariş Bekliyor ⏳");
   closeModal();
+  loadOrders(true);
 
-  setTimeout(() => loadOrders(true), 1000);
+  // WhatsApp işlemini arkada yap.
+  // Panel bunun bitmesini BEKLEMİYOR.
+  db.functions.invoke("whatsapp-reaction", {
+    body: {
+      siparis_no: siparisNo,
+      emoji: "⏳"
+    }
+  }).then(({ error }) => {
+    if(error) console.error("WhatsApp reaksiyon hatası:", error);
+  }).catch(err => {
+    console.error("WhatsApp reaksiyon hatası:", err);
+  }).finally(() => {
+    waitingBusy = false;
+  });
 }
 
 async function markPrepared(){
