@@ -959,18 +959,75 @@ async function setWaiting(){
 }
 
 async function markPrepared(){
-  await db.from(TABLE)
-    .update({ kargo_durumu:"Hazırlandı" })
-    .eq("siparis_no", selectedOrder.siparis_no);
 
-  openPrintChooser(); // ✅ artık seçim soruyor
+  const siparisNo = selectedOrder?.siparis_no;
 
-  toast("Sipariş Hazırlandı");
+  if(!siparisNo){
+    toast("Sipariş numarası bulunamadı.");
+    return;
+  }
+
+  // 1️⃣ Siparişi Hazırlandı yap
+  const { error } = await db
+    .from(TABLE)
+    .update({
+      kargo_durumu: "Hazırlandı"
+    })
+    .eq("siparis_no", siparisNo);
+
+  if(error){
+    console.error(error);
+    toast("Sipariş hazırlanamadı.");
+    return;
+  }
+
+
+  // 2️⃣ WhatsApp mesajına 📦 reaksiyonu gönder
+  try {
+
+    const { data, error: reactionError } =
+      await db.functions.invoke("whatsapp-reaction", {
+
+        body: {
+          siparis_no: siparisNo,
+          emoji: "📦"
+        }
+
+      });
+
+    if(reactionError){
+      console.error(
+        "WhatsApp reaksiyon hatası:",
+        reactionError
+      );
+    } else {
+      console.log(
+        "WhatsApp reaksiyonu gönderildi:",
+        data
+      );
+    }
+
+  } catch(err) {
+
+    console.error(
+      "WhatsApp reaction hatası:",
+      err
+    );
+
+  }
+
+
+  // 3️⃣ Mevcut yazdırma işlemi
+  openPrintChooser();
+
+
+  // 4️⃣ Bildirim
+  toast("Sipariş Hazırlandı 📦");
+
   closeModal();
 
   setTimeout(() => loadOrders(true), 1000);
 }
-
 
 async function sendToCargo(){
 
