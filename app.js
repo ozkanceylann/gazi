@@ -960,6 +960,8 @@ async function setWaiting(){
 
 async function markPrepared(){
 
+  alert("YENİ HAZIRLA KODU ÇALIŞTI");
+
   const siparisNo = selectedOrder?.siparis_no;
 
   if(!siparisNo){
