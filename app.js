@@ -997,18 +997,19 @@ async function markPrepared(){
 
       });
 
-    if(reactionError){
-      console.error(
-        "WhatsApp reaksiyon hatası:",
-        reactionError
-      );
-    } else {
-      console.log(
-        "WhatsApp reaksiyonu gönderildi:",
-        data
-      );
-    }
+if(reactionError){
+  console.error("WhatsApp reaksiyon hatası:", reactionError);
 
+  alert(
+    "REACTION HATA:\n" +
+    JSON.stringify(reactionError, null, 2)
+  );
+} else {
+  alert(
+    "REACTION CEVAP:\n" +
+    JSON.stringify(data, null, 2)
+  );
+}
   } catch(err) {
 
     console.error(
