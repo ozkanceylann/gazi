@@ -1047,7 +1047,7 @@ async function markPrepared(){
 
 async function sendToCargo(){
 
-  /* — Queen Tarzı UYARI PENCERESİ — */
+  /* — KARGOLA ONAY PENCERESİ — */
   const ok = await confirmModal({
     title: "Kargoya Gönder",
     text: `Bu sipariş KARGOLANDI olarak işaretlenecek ve DHL'e iletilecektir.
@@ -1058,44 +1058,161 @@ Bu işlem normal şartlarda geri alınamaz ve iptal durumunda kargo firması ek 
 
   if(!ok) return;
 
-  const key = selectedOrder.siparis_no;
-  if(busy.kargola.has(key)) return toast("Bu sipariş zaten işleniyor.");
-  busy.kargola.add(key);
+  const siparisNo = selectedOrder?.siparis_no;
 
-try{
-const res = await fetch(WH_KARGOLA, {
-  method:"POST",
-  headers:{ "Content-Type":"application/json" },
-  body: JSON.stringify(selectedOrder)
-});
-
-const data = await res.json();
-
-// Artık data içindeki bilgileri gösterebilirsin
-console.log("N8N cevabı:", data);
-
-
-  let payload = {};
-  try { payload = await res.json(); } catch {}
-
-  // Kısa bildirim
-  toast(payload?.message || "Kargoya gönderildi.");
-
-  // PNG geldiyse göster
-  if (payload?.png) {
-    showApiResult(`<img src="${payload.png}" style="max-width:360px;border:1px solid #ccc;border-radius:8px">`);
-  }
-  // ZPL/JSON geldiyse metin olarak göster
-  else if (payload?.apiResult || payload?.zpl || payload?.result) {
-    showApiResult(payload.apiResult || payload.zpl || payload.result);
+  if(!siparisNo){
+    return toast("Sipariş numarası bulunamadı.");
   }
 
-  setTimeout(()=>loadOrders(true), 1000);
-}catch(e){
-  toast("Gönderim hatası");
-}finally{
-  setTimeout(()=>busy.kargola.delete(key), 20000);
-}
+  // ÇİFT TIKLAMAYI ENGELLE
+  if(busy.kargola.has(siparisNo)){
+    return toast("Bu sipariş zaten işleniyor.");
+  }
+
+  busy.kargola.add(siparisNo);
+
+  try {
+
+    /* =========================================================
+       MEVCUT DHL / N8N KARGOLAMA WEBHOOK
+    ========================================================= */
+
+    const res = await fetch(WH_KARGOLA, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(selectedOrder)
+    });
+
+    // Response sadece BİR KEZ okunuyor
+    let payload = {};
+
+    try {
+      payload = await res.json();
+    } catch(err) {
+      console.warn("Kargo cevabı JSON değil:", err);
+    }
+
+    console.log("N8N cevabı:", payload);
+
+
+    /* =========================================================
+       WEBHOOK BAŞARISIZSA WHATSAPP REAKSİYONU GÖNDERME
+    ========================================================= */
+
+    if(!res.ok){
+      console.error("Kargolama webhook hatası:", res.status, payload);
+
+      toast(
+        payload?.message ||
+        "Kargoya gönderilirken hata oluştu."
+      );
+
+      return;
+    }
+
+
+    /* =========================================================
+       WHATSAPP REAKSİYONU
+       📦 → 🚚
+       Kargolamayı YAVAŞLATMAZ
+    ========================================================= */
+
+    db.functions.invoke("whatsapp-reaction", {
+      body: {
+        siparis_no: siparisNo,
+        emoji: "🚚"
+      }
+    })
+    .then(({ error }) => {
+
+      if(error){
+        console.error(
+          "WhatsApp 🚚 reaksiyon hatası:",
+          error
+        );
+      }
+
+    })
+    .catch(err => {
+
+      console.error(
+        "WhatsApp 🚚 reaksiyon hatası:",
+        err
+      );
+
+    });
+
+
+    /* =========================================================
+       KULLANICIYA SONUÇ
+    ========================================================= */
+
+    toast(
+      payload?.message ||
+      "Sipariş kargoya gönderildi 🚚"
+    );
+
+
+    /* =========================================================
+       PNG GELİRSE GÖSTER
+    ========================================================= */
+
+    if(payload?.png){
+
+      showApiResult(
+        `<img src="${payload.png}"
+        style="max-width:360px;
+        border:1px solid #ccc;
+        border-radius:8px">`
+      );
+
+    }
+
+    /* =========================================================
+       ZPL / API RESULT GELİRSE GÖSTER
+    ========================================================= */
+
+    else if(
+      payload?.apiResult ||
+      payload?.zpl ||
+      payload?.result
+    ){
+
+      showApiResult(
+        payload.apiResult ||
+        payload.zpl ||
+        payload.result
+      );
+
+    }
+
+
+    /* =========================================================
+       LİSTEYİ YENİLE
+    ========================================================= */
+
+    setTimeout(() => {
+      loadOrders(true);
+    }, 1000);
+
+
+  } catch(e){
+
+    console.error("Kargolama hatası:", e);
+
+    toast("Gönderim hatası");
+
+  } finally {
+
+    // Aynı siparişin yanlışlıkla peş peşe
+    // kargolanmasını engelle
+    setTimeout(() => {
+      busy.kargola.delete(siparisNo);
+    }, 20000);
+
+  }
 
 }
 
