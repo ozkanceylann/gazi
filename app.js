@@ -948,11 +948,39 @@ function cancelEdit(){
    DURUMLAR
 ============================================================ */
 async function setWaiting(){
-  await db.from(TABLE)
-    .update({ kargo_durumu: "Bekliyor" })
-    .eq("siparis_no", selectedOrder.siparis_no);
+  const siparisNo = selectedOrder?.siparis_no;
 
-  toast("Sipariş Bekliyor olarak güncellendi");
+  if(!siparisNo){
+    return toast("Sipariş numarası bulunamadı.");
+  }
+
+  const { error } = await db.from(TABLE)
+    .update({ kargo_durumu: "Bekliyor" })
+    .eq("siparis_no", siparisNo);
+
+  if(error){
+    console.error("Bekliyor durumuna alma hatası:", error);
+    return toast("Sipariş güncellenemedi.");
+  }
+
+  // WhatsApp'taki 📦 reaksiyonunu Bekliyor ifadesine çevir
+  try{
+    const { error: reactionError } =
+      await db.functions.invoke("whatsapp-reaction", {
+        body: {
+          siparis_no: siparisNo,
+          emoji: "⏳"
+        }
+      });
+
+    if(reactionError){
+      console.error("WhatsApp reaksiyon hatası:", reactionError);
+    }
+  }catch(e){
+    console.error("WhatsApp reaksiyon hatası:", e);
+  }
+
+  toast("Sipariş Bekliyor ⏳");
   closeModal();
 
   setTimeout(() => loadOrders(true), 1000);
