@@ -470,15 +470,6 @@ function renderCargoTracking(order){
   return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu)}</p>${link}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
 }
 
-async function openCargoSettings(){
-  const root=document.getElementById("alertRoot");if(root.querySelector(".cargo-settings-backdrop"))return;
-  const wrap=document.createElement("div");wrap.className="alert-backdrop cargo-settings-backdrop";
-  wrap.innerHTML=`<section class="alert-card cargo-settings-card" role="dialog" aria-modal="true" aria-labelledby="cargoSettingsTitle"><div class="cargo-settings-heading"><h2 id="cargoSettingsTitle">Kargo Ayarları</h2><button class="btn-ghost" id="cargoSettingsClose" type="button">✕</button></div><p>Gazi kargo hesabı n8n üzerinden yönetilir.</p><p id="cargoSettingsStatus" role="status">Bağlantı durumu yükleniyor…</p><button class="btn-primary" id="cargoSettingsConnect" type="button" disabled>Bağlantıyı Kontrol Et</button><button class="btn-ghost" id="cargoSettingsDone" type="button">Kapat · Esc</button></section>`;
-  root.appendChild(wrap);const find=id=>wrap.querySelector("#"+id),status=find("cargoSettingsStatus"),button=find("cargoSettingsConnect");
-  wrap.dismiss=()=>wrap.remove();find("cargoSettingsClose").onclick=wrap.dismiss;find("cargoSettingsDone").onclick=wrap.dismiss;
-  button.onclick=async()=>{button.disabled=true;status.textContent="DHL bağlantısı kontrol ediliyor…";try{const result=await cargoRequest(CONFIG.webhooks.baglan,{operation:"baglan"});if(wrap.isConnected)status.textContent="DHL bağlantısı hazır. Token geçerlilik: "+result.jwtExpireDate;}catch(error){status.textContent=error.message;}finally{button.disabled=false;}};
-  status.textContent="DHL test bağlantısı kullanılıyor. Hesap bilgileri n8n’de tutulur.";button.disabled=false;
-}
 
 function printEtiket(){
   localStorage.setItem("print_order", JSON.stringify(selectedOrder));
@@ -1587,7 +1578,6 @@ Object.assign(window, {
   printBarcode,
   connectCargo,
   refreshCargoMovements,
-  openCargoSettings,
 
   enterEditMode,
   saveEdit,
