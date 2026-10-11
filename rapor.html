@@ -120,7 +120,14 @@
   await window.waitConfig();
 
   document.getElementById("brandLogo").src = CONFIG.logo;
-  document.getElementById("brandTitle").innerHTML = CONFIG.brandName + "<br/>Sipariş Sistemi";
+  const brandTitle = document.getElementById("brandTitle");
+      const brandName = document.createElement("span");
+      brandName.className = "brand-name";
+      brandName.textContent = CONFIG.brandName.charAt(0).toLocaleUpperCase("tr-TR") + CONFIG.brandName.slice(1);
+      const brandCaption = document.createElement("span");
+      brandCaption.className = "brand-caption";
+      brandCaption.textContent = "Sipariş Sistemi";
+      brandTitle.replaceChildren(brandName, brandCaption);
 
   const TABLE = CONFIG.table;
   const db = supabase.createClient(
