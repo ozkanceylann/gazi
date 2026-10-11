@@ -90,6 +90,13 @@ body {
   width: 50.5mm;
 }
 .row { white-space: pre-wrap; }
+.separator-before {
+  width: 100%;
+  max-width: 50.5mm;
+  border-top: 1px dashed #000;
+  padding-top: 0.5mm;
+}
+.row:empty { display: none; }
 
 /* ==============================
    YAZDIRMA
@@ -155,13 +162,13 @@ body {
 
 
   <!-- ÜRÜN -->
-  <div class="row" id="urun"></div>
+  <div class="row separator-before" id="urun"></div>
 
   <!-- AYIRICI -->
 
 
   <!-- ÖDEME -->
-  <div class="row small" id="odeme"></div>
+  <div class="row small separator-before" id="odeme"></div>
 
   <!-- TUTAR -->
   <div class="row bold" id="tutar"></div>
@@ -271,11 +278,18 @@ window.addEventListener("load", function () {
 
   setTimeout(function () {
 
-    // Keep text at a readable, fixed size and paginate only actual content.
+    // Fit using native font sizes; never scale the whole printed label.
     const wrap = document.getElementById("wrap");
     const rows = Array.from(wrap.querySelectorAll(".row"))
       .filter(row => row.textContent.trim());
     const availableHeight = 34.5 * 96 / 25.4;
+    let fontSize = 12;
+    wrap.style.fontSize = fontSize + "px";
+    while (wrap.getBoundingClientRect().height > availableHeight && fontSize > 8) {
+      fontSize -= 0.25;
+      wrap.style.fontSize = fontSize + "px";
+    }
+    // Extremely long orders continue instead of becoming unreadably small.
     wrap.remove();
     let content;
     function newLabel() {
@@ -283,6 +297,7 @@ window.addEventListener("load", function () {
       page.className = "label-page";
       content = document.createElement("div");
       content.className = "label-content";
+      content.style.fontSize = fontSize + "px";
       page.appendChild(content);
       document.body.appendChild(page);
     }
