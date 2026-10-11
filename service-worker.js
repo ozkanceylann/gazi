@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = new Date().toISOString().slice(0, 10); // örn: 2025-12-15
+const VERSION = "20261011-label-v2"; // örn: 2025-12-15
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -56,6 +56,14 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   // POST / API request’lerini cacheleme
   if (event.request.method !== "GET") return;
+
+  const url = new URL(event.request.url);
+  if (url.origin === self.location.origin &&
+      (/\/printetiket(?:-v2)?\.html$/.test(url.pathname) ||
+       url.pathname.endsWith("/app.js"))) {
+    event.respondWith(fetch(event.request, { cache: "no-store" }));
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)
