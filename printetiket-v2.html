@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Etiket Yazdır</title>
+
+<style>
+
+/* ==============================
+   58 x 40 MM ETİKET
+============================== */
+
+@page {
+  size: 58mm 40mm;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  position: relative;
+  width: 58mm;
+  margin: 0;
+  padding: 0;
+
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+
+  color: #000;
+  overflow: visible;
+}
+
+/* ANA ALAN */
+#wrap {
+  position: absolute;
+  top: 2.5mm;
+  left: 5mm;
+  width: 50.5mm;
+  margin: 0;
+  padding: 0;
+
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* SATIRLAR */
+.row {
+  margin: 0 0 0.6mm 0;
+  padding: 0;
+
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* VURGULAR */
+.bold {
+  font-weight: 700;
+}
+
+.small {
+  font-size: 1em;
+}
+
+/* Her bölüm bir dolu etikettir. Son etiketin ardından sayfa kırılmaz. */
+.label-page {
+  position: relative;
+  width: 58mm;
+  height: 39.5mm;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+}
+.label-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+.label-content {
+  position: absolute;
+  top: 2.5mm;
+  left: 5mm;
+  width: 50.5mm;
+}
+.row { white-space: pre-wrap; }
+
+/* ==============================
+   YAZDIRMA
+============================== */
+
+@media print {
+
+  @page {
+    size: 58mm 40mm;
+    margin: 0;
+  }
+
+  html {
+    width: 58mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    width: 58mm;
+    height: auto;
+    margin: 0;
+    padding: 0;
+
+    overflow: visible;
+
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+  }
+
+  #wrap {
+    width: 50.5mm;
+    margin: 0;
+    padding: 0;
+
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="wrap">
+
+  <!-- MÜŞTERİ -->
+  <div class="row bold" id="musteri"></div>
+
+  <!-- TELEFON -->
+  <div class="row" id="telefon"></div>
+
+  <!-- ADRES -->
+  <div class="row small" id="adres"></div>
+
+  <!-- AYIRICI -->
+
+
+  <!-- ÜRÜN -->
+  <div class="row" id="urun"></div>
+
+  <!-- AYIRICI -->
+
+
+  <!-- ÖDEME -->
+  <div class="row small" id="odeme"></div>
+
+  <!-- TUTAR -->
+  <div class="row bold" id="tutar"></div>
+
+</div>
+
+
+<script>
+
+/* =================================
+   SİPARİŞ VERİSİNİ AL
+================================= */
+
+let data = {};
+
+try {
+  data = JSON.parse(
+    localStorage.getItem("print_order") || "{}"
+  );
+} catch (e) {
+  data = {};
+}
+
+
+/* =================================
+   MÜŞTERİ
+================================= */
+
+document.getElementById("musteri").innerText =
+  data.ad_soyad || "";
+
+
+/* =================================
+   TELEFON
+================================= */
+
+document.getElementById("telefon").innerText =
+  data.musteri_tel
+    ? "Tel: " + data.musteri_tel
+    : "";
+
+
+/* =================================
+   ADRES
+================================= */
+
+let fullAddress = data.adres || "";
+
+if (data.ilce || data.sehir) {
+
+  const cityLine =
+    [data.ilce, data.sehir]
+      .filter(Boolean)
+      .join(" / ");
+
+  fullAddress = fullAddress
+    ? fullAddress + " - " + cityLine
+    : cityLine;
+}
+
+document.getElementById("adres").innerText =
+  fullAddress
+    ? "Adres: " + fullAddress
+    : "";
+
+
+/* =================================
+   ÜRÜN
+================================= */
+
+document.getElementById("urun").innerText =
+  data.urun_bilgisi || "";
+
+
+/* =================================
+   ÖDEME
+================================= */
+
+document.getElementById("odeme").innerText =
+  data.odeme_sekli
+    ? "Ödeme: " + data.odeme_sekli
+    : "";
+
+
+/* =================================
+   TUTAR
+================================= */
+
+document.getElementById("tutar").innerText =
+  data.toplam_tutar
+    ? "Tutar: " + data.toplam_tutar + " TL"
+    : "";
+
+
+/* =================================
+   YAZDIR
+================================= */
+
+/*
+   window.close() KULLANILMIYOR.
+   Bazı Chrome + etiket yazıcısı
+   kombinasyonlarında boş ikinci
+   sayfaya sebep olabiliyor.
+*/
+
+window.addEventListener("load", function () {
+
+  setTimeout(function () {
+
+    // Keep text at a readable, fixed size and paginate only actual content.
+    const wrap = document.getElementById("wrap");
+    const rows = Array.from(wrap.querySelectorAll(".row"))
+      .filter(row => row.textContent.trim());
+    const availableHeight = 34.5 * 96 / 25.4;
+    wrap.remove();
+    let content;
+    function newLabel() {
+      const page = document.createElement("section");
+      page.className = "label-page";
+      content = document.createElement("div");
+      content.className = "label-content";
+      page.appendChild(content);
+      document.body.appendChild(page);
+    }
+    if (!rows.length) return;
+    newLabel();
+    for (const source of rows) {
+      let row = source.cloneNode(false);
+      row.removeAttribute("id");
+      content.appendChild(row);
+      for (const character of source.textContent) {
+        const previous = row.textContent;
+        row.textContent = previous + character;
+        if (content.getBoundingClientRect().height > availableHeight) {
+          row.textContent = previous;
+          if (!previous) row.remove();
+          newLabel();
+          row = source.cloneNode(false);
+          row.removeAttribute("id");
+          row.textContent = character;
+          content.appendChild(row);
+        }
+      }
+    }
+    document.querySelectorAll(".label-page").forEach(page => {
+      if (!page.textContent.trim()) page.remove();
+    });
+    window.print();
+
+  }, 300);
+
+});
+
+</script>
+
+</body>
+</html>
