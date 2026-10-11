@@ -67,6 +67,7 @@ function renderTableHeader(){
     <th>Tutar</th>
     <th>Not</th>
     <th>Sipariş Alan</th>
+    <th>Hazırla</th>
   `
   : `
     <th>S.No</th>
@@ -267,6 +268,7 @@ tr.innerHTML = isPendingTab
     <td>${o.toplam_tutar} TL</td>
     <td>${noteChip}</td>
     <td>${escapeHtml(o.siparis_alan ?? "-")}</td>
+    <td><button class="btn-open" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button></td>
   `
   : `
     <td>${o.siparis_no}</td>
@@ -1022,6 +1024,35 @@ async function setWaiting(){
   });
 }
 
+const preparingOrders = new Set();
+async function prepareFromList(siparisNo, button){
+  if(preparingOrders.has(siparisNo)) return;
+  const printWindow = window.open("", "_blank");
+  if(!printWindow) return toast("Yazdırma ekranı için açılır pencerelere izin verin.");
+  printWindow.document.body.textContent="Sipariş hazırlanıyor…";
+  preparingOrders.add(siparisNo);
+  button.disabled=true;
+  try {
+    const {data:order,error:readError}=await db.from(TABLE).select("*").eq("siparis_no",siparisNo).single();
+    if(readError) throw readError;
+    const count=Number(order.kargo_adet);
+    if(!Number.isSafeInteger(count)||count<1||count>100) throw new Error("Siparişin kargo adedini düzeltin.");
+    const {data:updated,error}=await db.from(TABLE).update({kargo_durumu:"Hazırlandı"}).eq("siparis_no",siparisNo).eq("kargo_durumu","Bekliyor").select("siparis_no");
+    if(error) throw error;
+    if(!updated?.length) throw new Error("Sipariş artık Bekleyen durumunda değil.");
+    const {error:reactionError}=await db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"📦"}});
+    if(reactionError) toast("Hazırlandı; WhatsApp emojisi gönderilemedi.",6000);
+    localStorage.setItem("prepare_print_"+siparisNo,JSON.stringify(order));
+    if(!printWindow.closed) printWindow.location.replace("printetiket-v2.html?v=20261011-prepared-label&order="+encodeURIComponent(siparisNo));
+    toast("Sipariş hazırlandı. "+count+" paket barkodu açıldı.");
+    await loadOrders(true);
+  } catch(error){
+    if(!printWindow.closed) printWindow.close();
+    toast(error.message||"Sipariş hazırlanamadı.",6000);
+  } finally {preparingOrders.delete(siparisNo);button.disabled=false;}
+}
+window.prepareFromList=prepareFromList;
+
 async function markPrepared(){
 
   const siparisNo = selectedOrder?.siparis_no;
@@ -1074,175 +1105,44 @@ async function markPrepared(){
   setTimeout(() => loadOrders(true), 1000);
 }
 
+function openCargoPdf(w, base64){
+  if(!base64?.startsWith("JVBER")) throw new Error("Geçerli etiket PDF'si alınamadı.");
+  const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+  const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+  if(w.closed){URL.revokeObjectURL(url);throw new Error("Etiket penceresi kapatıldı. Barkod Kes ile tekrar açabilirsiniz.");}
+  w.document.body.innerHTML='<iframe title="Paket Etiketleri" style="border:0;width:100%;height:100vh" src="'+url+'#view=FitH"></iframe>';
+  w.document.body.style.cssText="margin:0";
+  w.addEventListener("unload",()=>URL.revokeObjectURL(url),{once:true});
+}
 async function sendToCargo(){
-
-  /* — KARGOLA ONAY PENCERESİ — */
-  const ok = await confirmModal({
-    title: "Kargoya Gönder",
-    text: `Bu sipariş KARGOLANDI olarak işaretlenecek ve DHL'e iletilecektir.
-Bu işlem normal şartlarda geri alınamaz ve iptal durumunda kargo firması ek ücret talep edebilir.`,
-    confirmText: "Evet, Kargola",
-    cancelText: "Vazgeç"
-  });
-
+  const siparisNo=selectedOrder?.siparis_no;
+  if(!siparisNo) return toast("Önce sipariş seçin.");
+  if(busy.kargola.has(siparisNo)) return toast("Kargolama sürüyor.");
+  const ok=await confirmModal({title:"Siparişi Kargola",text:"Sipariş DHL canlı hesabında kargolanacak. Her paketin kargo etiketi hazırlanıp açılacak. Devam edilsin mi?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
   if(!ok) return;
-
-  const siparisNo = selectedOrder?.siparis_no;
-
-  if(!siparisNo){
-    return toast("Sipariş numarası bulunamadı.");
-  }
-
-  // ÇİFT TIKLAMAYI ENGELLE
-  if(busy.kargola.has(siparisNo)){
-    return toast("Bu sipariş zaten işleniyor.");
-  }
-
+  const w=window.open("","_blank");
+  if(!w) return toast("Etiket ekranı için açılır pencerelere izin verin.");
+  w.document.body.textContent="Kargolanıyor; paket etiketleri hazırlanıyor…";
   busy.kargola.add(siparisNo);
-
-  try {
-
-    /* =========================================================
-       MEVCUT DHL / N8N KARGOLAMA WEBHOOK
-    ========================================================= */
-
-    const res = await fetch(WH_KARGOLA, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(selectedOrder)
-    });
-
-    // Response sadece BİR KEZ okunuyor
-    let payload = {};
-
-    try {
-      payload = await res.json();
-    } catch(err) {
-      console.warn("Kargo cevabı JSON değil:", err);
-    }
-
-    console.log("N8N cevabı:", payload);
-
-
-    /* =========================================================
-       WEBHOOK BAŞARISIZSA WHATSAPP REAKSİYONU GÖNDERME
-    ========================================================= */
-
-    if(!res.ok){
-      console.error("Kargolama webhook hatası:", res.status, payload);
-
-      toast(
-        payload?.message ||
-        "Kargoya gönderilirken hata oluştu."
-      );
-
-      return;
-    }
-
-
-    /* =========================================================
-       WHATSAPP REAKSİYONU
-       📦 → 🚚
-       Kargolamayı YAVAŞLATMAZ
-    ========================================================= */
-
-    db.functions.invoke("whatsapp-reaction", {
-      body: {
-        siparis_no: siparisNo,
-        emoji: "🚚"
-      }
-    })
-    .then(({ error }) => {
-
-      if(error){
-        console.error(
-          "WhatsApp 🚚 reaksiyon hatası:",
-          error
-        );
-      }
-
-    })
-    .catch(err => {
-
-      console.error(
-        "WhatsApp 🚚 reaksiyon hatası:",
-        err
-      );
-
-    });
-
-
-    /* =========================================================
-       KULLANICIYA SONUÇ
-    ========================================================= */
-
-    toast(
-      payload?.message ||
-      "Sipariş kargoya gönderildi 🚚"
-    );
-
-
-    /* =========================================================
-       PNG GELİRSE GÖSTER
-    ========================================================= */
-
-    if(payload?.png){
-
-      showApiResult(
-        `<img src="${payload.png}"
-        style="max-width:360px;
-        border:1px solid #ccc;
-        border-radius:8px">`
-      );
-
-    }
-
-    /* =========================================================
-       ZPL / API RESULT GELİRSE GÖSTER
-    ========================================================= */
-
-    else if(
-      payload?.apiResult ||
-      payload?.zpl ||
-      payload?.result
-    ){
-
-      showApiResult(
-        payload.apiResult ||
-        payload.zpl ||
-        payload.result
-      );
-
-    }
-
-
-    /* =========================================================
-       LİSTEYİ YENİLE
-    ========================================================= */
-
-    setTimeout(() => {
-      loadOrders(true);
-    }, 1000);
-
-
-  } catch(e){
-
-    console.error("Kargolama hatası:", e);
-
-    toast("Gönderim hatası");
-
-  } finally {
-
-    // Aynı siparişin yanlışlıkla peş peşe
-    // kargolanmasını engelle
-    setTimeout(() => {
-      busy.kargola.delete(siparisNo);
-    }, 20000);
-
-  }
-
+  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),150000);
+  try{
+    const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",siparisNo).single();
+    if(error) throw error;
+    if(order.kargo_api_yanit){let saved;try{saved=JSON.parse(order.kargo_api_yanit);}catch{}if(saved?.environment==="test")throw new Error("Bu sipariş test ortamında kargolandı. Canlı gönderi için ayrı sipariş kullanın.");}
+    if(order.zpl_base64){openCargoPdf(w,order.zpl_base64);return;}
+    if(order.kargo_takip_kodu) throw new Error("Gönderi zaten mevcut. Yeni kargo oluşturmadan etiket dönüşümünü tamamlamak gerekiyor.");
+    const res=await fetch(WH_KARGOLA,{method:"POST",body:new URLSearchParams({payload:JSON.stringify({...order,test_mode:false})}),signal:controller.signal});
+    const text=await res.text();let payload;
+    try{payload=JSON.parse(text);}catch{throw new Error("n8n etiket yanıtı alınamadı. Çalıştırma sonucunu kontrol edin.");}
+    if(!res.ok||payload.success!==true||payload.environment!=="production")throw new Error(res.status===404?"Canlı kargolama bağlantısı bulunamadı.":payload.message||"Kargolama başarısız.");
+    openCargoPdf(w,payload.pdf_base64);
+    db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"🚚"}}).then(({error})=>{if(error)toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000);}).catch(()=>toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000));
+    toast("Kargolandı. Paket etiketleri yazdırmaya hazır.",6000);
+    await loadOrders(true);
+  }catch(error){
+    if(!w.closed) w.close();
+    toast(error.name==="AbortError"?"İstek zaman aşımına uğradı. Tekrar göndermeden sipariş ve n8n sonucunu kontrol edin.":error.message,8000);
+  }finally{clearTimeout(timeout);busy.kargola.delete(siparisNo);}
 }
 
 async function printBarcode() {

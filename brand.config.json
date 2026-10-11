@@ -3,13 +3,12 @@
   "brandName": "gazi",
   "logo": "logo.png",
   "favicon": "favicon.png",
-
   "table": "gazi_siparisler",
-
   "webhooks": {
-    "kargola": "https://n8n.ozkanceylan.uk/webhook/kargola_gazi",
+    "kargola": "https://n8n.ozkanceylan.uk/webhook/kargola_gazi_canli",
     "barkod": "https://n8n.ozkanceylan.uk/webhook/barkod_gazi",
     "iptal": "https://n8n.ozkanceylan.uk/webhook/kargo_iptal_gazi",
     "sehir_ilce": "https://n8n.ozkanceylan.uk/webhook/sehir_ilce_kodu_sor_gazi"
-  }
+  },
+  "cargoTest": false
 }

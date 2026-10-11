@@ -186,7 +186,7 @@ let data = {};
 
 try {
   data = JSON.parse(
-    localStorage.getItem("print_order") || "{}"
+    (new URLSearchParams(location.search).has("order") ? localStorage.getItem("prepare_print_" + new URLSearchParams(location.search).get("order")) : localStorage.getItem("print_order")) || "{}"
   );
 } catch (e) {
   data = {};
@@ -289,41 +289,27 @@ window.addEventListener("load", function () {
       fontSize -= 0.25;
       wrap.style.fontSize = fontSize + "px";
     }
-    // Extremely long orders continue instead of becoming unreadably small.
-    wrap.remove();
-    let content;
-    function newLabel() {
-      const page = document.createElement("section");
-      page.className = "label-page";
-      content = document.createElement("div");
-      content.className = "label-content";
-      content.style.fontSize = fontSize + "px";
-      page.appendChild(content);
-      document.body.appendChild(page);
-    }
-    if (!rows.length) return;
-    newLabel();
-    for (const source of rows) {
-      let row = source.cloneNode(false);
-      row.removeAttribute("id");
-      content.appendChild(row);
-      for (const character of source.textContent) {
-        const previous = row.textContent;
-        row.textContent = previous + character;
-        if (content.getBoundingClientRect().height > availableHeight) {
-          row.textContent = previous;
-          if (!previous) row.remove();
-          newLabel();
-          row = source.cloneNode(false);
-          row.removeAttribute("id");
-          row.textContent = character;
-          content.appendChild(row);
-        }
+    const automatic = new URLSearchParams(location.search).has("order");
+    if (automatic) {
+      const count = Number(data.kargo_adet);
+      if (!Number.isSafeInteger(count) || count < 1 || count > 100) {
+        alert("Kargo adedi geçersiz."); return;
       }
+      // Each package gets one complete copy of the established order label.
+      wrap.remove();
+      for (let i = 0; i < count; i++) {
+        const page = document.createElement("section");
+        page.className = "label-page";
+        const content = wrap.cloneNode(true);
+        content.removeAttribute("id");
+        content.className = "label-content";
+        content.querySelectorAll("[id]").forEach(node => node.removeAttribute("id"));
+        page.appendChild(content);
+        document.body.appendChild(page);
+      }
+    } else {
+      wrap.style.position = "relative";
     }
-    document.querySelectorAll(".label-page").forEach(page => {
-      if (!page.textContent.trim()) page.remove();
-    });
     window.print();
 
   }, 300);
