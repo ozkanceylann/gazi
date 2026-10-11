@@ -36,7 +36,7 @@ window.waitConfig = () => window.configPromise;
 
 window.requireSession = async function(db) {
   const {data, error} = await db.auth.getUser();
-  if (error || !data?.user) {
+  if (error || !data?.user || String(data.user.app_metadata?.firma || "").trim().toLowerCase() !== CONFIG.brand.toLowerCase()) {
     location.replace("login.html");
     throw new Error("Oturum bulunamadı");
   }
