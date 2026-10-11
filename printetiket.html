@@ -27,17 +27,16 @@ html {
 body {
   position: relative;
   width: 58mm;
-  height: 39.5mm;
   margin: 0;
   padding: 0;
 
   font-family: Arial, sans-serif;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.15;
 
   color: #000;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ANA ALAN */
@@ -68,16 +67,29 @@ body {
 }
 
 .small {
-  font-size: 0.9em;
+  font-size: 1em;
 }
 
-/* AYIRICI */
-.sep {
-  border-top: 1px dashed #000;
-  height: 0;
-  margin: 0.8mm 0;
-  padding: 0;
+/* Her bölüm bir dolu etikettir. Son etiketin ardından sayfa kırılmaz. */
+.label-page {
+  position: relative;
+  width: 58mm;
+  height: 39.5mm;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
 }
+.label-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+.label-content {
+  position: absolute;
+  top: 2.5mm;
+  left: 5mm;
+  width: 50.5mm;
+}
+.row { white-space: pre-wrap; }
 
 /* ==============================
    YAZDIRMA
@@ -98,11 +110,11 @@ body {
 
   body {
     width: 58mm;
-    height: 39.5mm;
+    height: auto;
     margin: 0;
     padding: 0;
 
-    overflow: hidden;
+    overflow: visible;
 
     page-break-after: avoid !important;
     page-break-before: avoid !important;
@@ -140,13 +152,13 @@ body {
   <div class="row small" id="adres"></div>
 
   <!-- AYIRICI -->
-  <div class="sep"></div>
+
 
   <!-- ÜRÜN -->
   <div class="row" id="urun"></div>
 
   <!-- AYIRICI -->
-  <div class="sep"></div>
+
 
   <!-- ÖDEME -->
   <div class="row small" id="odeme"></div>
@@ -259,18 +271,40 @@ window.addEventListener("load", function () {
 
   setTimeout(function () {
 
-    // Resize the text itself; do not transform the label into scaled artwork.
+    // Keep text at a readable, fixed size and paginate only actual content.
     const wrap = document.getElementById("wrap");
+    const rows = Array.from(wrap.querySelectorAll(".row"))
+      .filter(row => row.textContent.trim());
     const availableHeight = 34.5 * 96 / 25.4;
-    const availableWidth = 50.5 * 96 / 25.4;
-    let fontSize = 10;
-    wrap.style.fontSize = fontSize + "px";
-    while (
-      (wrap.scrollHeight > availableHeight || wrap.scrollWidth > availableWidth) &&
-      fontSize > 1
-    ) {
-      fontSize -= 0.25;
-      wrap.style.fontSize = fontSize + "px";
+    wrap.remove();
+    let content;
+    function newLabel() {
+      const page = document.createElement("section");
+      page.className = "label-page";
+      content = document.createElement("div");
+      content.className = "label-content";
+      page.appendChild(content);
+      document.body.appendChild(page);
+    }
+    if (!rows.length) return;
+    newLabel();
+    for (const source of rows) {
+      let row = source.cloneNode(false);
+      row.removeAttribute("id");
+      content.appendChild(row);
+      for (const character of source.textContent) {
+        const previous = row.textContent;
+        row.textContent = previous + character;
+        if (content.getBoundingClientRect().height > availableHeight) {
+          row.textContent = previous;
+          if (!previous) row.remove();
+          newLabel();
+          row = source.cloneNode(false);
+          row.removeAttribute("id");
+          row.textContent = character;
+          content.appendChild(row);
+        }
+      }
     }
     window.print();
 
