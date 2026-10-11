@@ -44,9 +44,9 @@ body {
 #wrap {
   position: absolute;
   top: 2.5mm;
-  left: 2.5mm;
+  left: 5mm;
   transform-origin: top left;
-  width: 55mm;
+  width: 52.5mm;
   margin: 0;
   padding: 0;
 
@@ -110,7 +110,7 @@ body {
   }
 
   #wrap {
-    width: 55mm;
+    width: 52.5mm;
     margin: 0;
     padding: 0;
 
@@ -263,7 +263,7 @@ window.addEventListener("load", function () {
     // Keep every line inside the printable area instead of creating a second page.
     const wrap = document.getElementById("wrap");
     const availableHeight = 34.5 * 96 / 25.4;
-    const availableWidth = 55 * 96 / 25.4;
+    const availableWidth = 52.5 * 96 / 25.4;
     wrap.style.transform = "none";
     const scale = Math.min(
       1,
