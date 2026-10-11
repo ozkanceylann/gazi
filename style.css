@@ -931,3 +931,24 @@ body.login-page {
 @media(prefers-reduced-motion:reduce) {
  .orders-page *, .orders-page *::after { animation:none!important; transition:none!important; }
 }
+
+/* Daha kompakt üst alan ve rapor detayları */
+.orders-page .content-area { padding:18px 24px; }
+.orders-page .page-header { margin-bottom:12px; gap:12px; }
+.orders-page .page-eyebrow { margin-bottom:4px; font-size:10px; }
+.orders-page .page-header h1 { color:var(--sidebar); font-size:24px; }
+.orders-page #listSummary { margin-top:5px; }
+.orders-page .top-bar { padding:8px; }
+.orders-page .top-bar input { padding:10px 12px; }
+.orders-page .search-hint { margin-bottom:12px; }
+.orders-page .report-customer { border:0; background:transparent; color:var(--brand); font:inherit; font-weight:600; padding:0; text-align:left; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.orders-page .toolbar { box-shadow:none; border:1px solid #dce5df; gap:12px; }
+.orders-page .toolbar input,.orders-page .toolbar select { width:auto; }
+.report-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.report-detail-grid .full-row { grid-column:1/-1; }
+.report-detail-grid .detail-group { margin:0; padding:12px; box-shadow:none; }
+.report-detail-grid .detail-item { overflow-wrap:anywhere; white-space:pre-wrap; }
+#orderModal .modal-content { overflow:hidden!important; }
+#reportStatus { color:#697b71; font-size:13px; margin:8px 0 14px; }
+@media(max-width:900px) { .orders-page .content-area { padding:68px 14px 20px; } }
+@media(max-width:520px) { .report-detail-grid { grid-template-columns:1fr; } .orders-page .toolbar input,.orders-page .toolbar select { width:100%; } }
