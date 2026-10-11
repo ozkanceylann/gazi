@@ -587,7 +587,9 @@ document.getElementById("orderDetails").innerHTML = `
     <div class="detail-item"><b>Ödeme:</b> ${d.odeme_sekli}</div>
   </div>
 
-<div class="detail-group">
+</div>
+
+<div class="detail-group detail-note" style="grid-column:1 / -1;">
   <div class="detail-title">📝 Not</div>
 
   ${
@@ -603,7 +605,6 @@ document.getElementById("orderDetails").innerHTML = `
   }
 </div>
 
-</div>
 
 </div>
 `;
