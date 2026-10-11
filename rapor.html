@@ -9,7 +9,7 @@
   <script src="config.js"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=20261011-dashboard-2" />
 
   <!-- SUPABASE & CHARTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -33,8 +33,8 @@
     }
   </style>
 </head>
-<body>
-  <div class="mobile-menu-btn" onclick="toggleMenu()">☰</div>
+<body class="orders-page">
+  <button class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Menüyü aç veya kapat">☰</button>
 
   <aside class="sidebar">
     <div class="sidebar-header">
@@ -43,21 +43,21 @@
     </div>
 
     <ul class="menu">
-      <li onclick="window.location='index.html'">Bekleyen</li>
-      <li onclick="window.location='index.html'">Hazırlandı</li>
-      <li onclick="window.location='index.html'">Kargolandı</li>
-      <li onclick="window.location='index.html'">Tamamlananlar</li>
-      <li onclick="window.location='index.html'">Sorunlu</li>
-      <li onclick="window.location='index.html'">İptal</li>
+      <li onclick="window.location='index.html?tab=bekleyen'">Bekleyen</li>
+      <li onclick="window.location='index.html?tab=hazirlandi'">Hazırlandı</li>
+      <li onclick="window.location='index.html?tab=kargolandi'">Kargolandı</li>
+      <li onclick="window.location='index.html?tab=tamamlandi'">Tamamlananlar</li>
+      <li onclick="window.location='index.html?tab=sorunlu'">Sorunlu</li>
+      <li onclick="window.location='index.html?tab=iptal'">İptal</li>
       <li class="active">Raporlar</li>
     </ul>
 
-    <button class="btn-danger" onclick="window.location='login.html'">Çıkış Yap</button>
+    <button class="btn-danger" onclick="reportLogout()">Çıkış Yap</button>
   </aside>
 
   <div class="content-area">
 
-    <h2 style="margin-bottom:14px;">📊 Raporlama Ekranı</h2>
+    <header class="page-header"><div><p class="page-eyebrow">SİPARİŞ YÖNETİMİ</p><h1>Raporlar</h1></div></header><p id="reportStatus" role="status" aria-live="polite"></p>
 
     <!-- FİLTRE ARAÇLARI -->
     <div class="toolbar">
@@ -111,6 +111,7 @@
 
 
 
+<div id="orderModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="reportDetailTitle"><div class="modal-content"><h2 id="reportDetailTitle">Sipariş Detayı</h2><div id="orderDetails"></div><div class="modal-btns"><button id="reportDetailClose" class="btn-close" onclick="closeReportDetail()">Kapat</button></div></div></div>
 <!-- ===================== -->
 <!--   RAPOR SCRIPTİ       -->
 <!-- ===================== -->
@@ -127,31 +128,98 @@
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcnN4dHBxenF6aGxzaHBtZ290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODExMTcsImV4cCI6MjA3Nzg1NzExN30.98oYONSkb8XSDrfGW2FxhFmt2BLB5ZRo3Ho50GhZYgE"
   );
 
+  await window.requireSession(db);
   let chart1=null, chart2=null;
+  let reportRequest = 0;
   let lastRows=[];
+
+  function escapeReport(value) { return String(value??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c])); }
+  function parseAmount(value) {
+    let text=String(value??"").replace(/[^0-9,.-]/g,"");
+    if(text.includes(","))text=text.replace(/\./g,"").replace(",",".");
+    else if(/^\d{1,3}(\.\d{3})+$/.test(text))text=text.replace(/\./g,"");
+    const amount=Number(text); return Number.isFinite(amount)?amount:0;
+  }
+  let detailTrigger=null;
+  function closeReportDetail(){
+    document.getElementById("orderModal").style.display="none";
+    detailTrigger?.focus();
+  }
+  function openReportDetail(orderNo,trigger) {
+    const order=lastRows.find(row=>Number(row.siparis_no)===Number(orderNo));
+    if(!order)return;
+    detailTrigger=trigger;
+    const root=document.getElementById("orderDetails");root.replaceChildren();
+    const grid=document.createElement("div");grid.className="report-detail-grid";
+    const groups=[
+      ["Müşteri ve İletişim",[["İsim","ad_soyad"],["Müşteri No","musteri_no"],["Telefon","musteri_tel"]]],
+      ["Sipariş Bilgileri",[["Sipariş No","siparis_no"],["Sipariş Alan","siparis_alan"],["Sipariş Telefonu","siparis_tel"],["Tarih","tarih"],["Durum","kargo_durumu"]]],
+      ["Adres",[["Adres","adres"],["Şehir","sehir"],["İlçe","ilce"]]],
+      ["Ürün ve Ödeme",[["Ürün","urun_bilgisi"],["Kargo Adedi","kargo_adet"],["KG","kargo_kg"],["Tutar","toplam_tutar"],["Ödeme","odeme_sekli"],["Kargo Kodu","kargo_takip_kodu"]]],
+      ["Not",[["","notlar"]]]
+    ];
+    for(const [title,fields] of groups){
+      const group=document.createElement("section");group.className="detail-group"+(title==="Not"?" full-row":"");
+      const heading=document.createElement("div");heading.className="detail-title";heading.textContent=title;group.append(heading);
+      for(const [label,key] of fields) {
+        const row=document.createElement("div");row.className="detail-item";
+        const b=document.createElement("b");b.textContent=label?label+": ":"";
+        row.append(b,document.createTextNode(String(order[key]??"—")));group.append(row);
+      }
+      grid.append(group);
+    }
+    root.append(grid);document.getElementById("orderModal").style.display="flex";
+    document.getElementById("reportDetailClose").focus();
+  }
+  document.getElementById("reportTable").addEventListener("click",event=>{
+    const button=event.target.closest("[data-order]");if(button)openReportDetail(button.dataset.order,button);
+  });
+  window.closeReportDetail=closeReportDetail;
+  document.getElementById("orderModal").addEventListener("click",event=>{if(event.target.id==="orderModal")closeReportDetail();});
+  document.addEventListener("keydown",event=>{if(event.key==="Escape")closeReportDetail();});
+  window.reportLogout=async ()=>{
+    const {error}=await db.auth.signOut({scope:"local"});
+    if(error){document.getElementById("reportStatus").textContent="Çıkış yapılamadı. Yeniden deneyin.";return;}
+    ["session","firma","rol","print_order"].forEach(key=>localStorage.removeItem(key));
+    location.href="login.html";
+  };
+
 
 
   /* ==============================
         RAPOR YÜKLEME
   ============================== */
+
   async function loadReport(){
-    const s = startDate.value;
-    const e = endDate.value;
-    const st = statusSel.value;
-
-    let q = db.from(TABLE).select("*");
-
-    if(s) q = q.gte("tarih", s);
-    if(e) q = q.lte("tarih", e + " 23:59:59");
-    if(st) q = q.eq("kargo_durumu", st);
-
-    q = q.order("tarih",{ascending:false});
-
-    const { data, error } = await q;
-    if(error){ alert("Rapor hatası: " + error.message); return; }
-
-    lastRows = data || [];
-    renderReport(lastRows);
+    const request = ++reportRequest;
+    const s = document.getElementById("startDate").value;
+    const e = document.getElementById("endDate").value;
+    const st = document.getElementById("statusSel").value;
+    const status = document.getElementById("reportStatus");
+    if (s && e && s > e) { status.textContent = "Başlangıç tarihi bitişten sonra olamaz."; return; }
+    status.textContent = "Rapor hazırlanıyor…";
+    lastRows = []; renderReport([]);
+    try {
+      const rows = [], size = 500;
+      for (let offset = 0;;offset += size) {
+        let q = db.from(TABLE).select("*");
+        if(s) q=q.gte("tarih", s);
+        if(e) {
+          const next = new Date(e+"T12:00:00"); next.setDate(next.getDate()+1);
+          q=q.lt("tarih",formatDate(next));
+        }
+        if(st==="Tamamlandı") q=q.or("shipmentStatusCode.eq.5,isDelivered.eq.true");
+        else if(st==="Sorunlu") q=q.in("shipmentStatusCode",[6,7]).eq("isDelivered",false);
+        else if(st) q=q.eq("kargo_durumu",st);
+        const {data,error}=await q.order("tarih",{ascending:false}).order("siparis_no",{ascending:false}).range(offset,offset+size-1);
+        if(request!==reportRequest)return;
+        if(error)throw error;
+        rows.push(...(data||[]));
+        if(!data || data.length<size)break;
+      }
+      lastRows=rows; renderReport(rows);
+      status.textContent=rows.length+" sipariş · Müşteri adına tıklayarak ayrıntıları açın.";
+    } catch(error) { if(request!==reportRequest)return; console.error(error); status.textContent="Rapor yüklenemedi. Yeniden deneyin."; }
   }
 
 
@@ -171,22 +239,22 @@
 
     let toplam=0, adet=rows.length, kargolanan=0;
     rows.forEach(r=>{
-      toplam += Number(r.toplam_tutar||0);
+      toplam += parseAmount(r.toplam_tutar);
       if(r.kargo_durumu==="Kargolandı") kargolanan++;
       table.innerHTML += `
         <tr>
           <td>${r.siparis_no}</td>
-          <td>${r.ad_soyad}</td>
-          <td>${r.toplam_tutar} TL</td>
-          <td>${r.kargo_durumu}</td>
+          <td><button class="report-customer" data-order="${Number(r.siparis_no)}">${escapeReport(r.ad_soyad)}</button></td>
+          <td>${escapeReport(r.toplam_tutar)} TL</td>
+          <td>${escapeReport(r.kargo_durumu)}</td>
           <td>${(r.tarih||"").substring(0,10)}</td>
-          <td>${r.siparis_alan||""}</td>
+          <td>${escapeReport(r.siparis_alan||"")}</td>
         </tr>`;
     });
 
     summary.innerHTML = `
       <div class="report-card"><h3>Toplam Sipariş</h3><div class="value">${adet}</div></div>
-      <div class="report-card"><h3>Toplam Tutar</h3><div class="value">${toplam} TL</div></div>
+      <div class="report-card"><h3>Toplam Tutar</h3><div class="value">${toplam.toLocaleString("tr-TR")} TL</div></div>
       <div class="report-card"><h3>Kargolanan</h3><div class="value">${kargolanan}</div></div>
     `;
 
@@ -204,8 +272,8 @@
       daily[d]=(daily[d]||0)+1;
     });
 
-    const labels1=Object.keys(daily);
-    const values1=Object.values(daily);
+    const labels1=Object.keys(daily).sort();
+    const values1=labels1.map(day=>daily[day]);
 
     if(chart1) chart1.destroy();
     chart1 = new Chart(document.getElementById("dailyChart"),{
@@ -254,7 +322,7 @@
       <table>
         <thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
         <tbody>
-          ${rows.map(row=>`<tr>${row.map(cell=>`<td>${String(cell??"")}</td>`).join("")}</tr>`).join("")}
+          ${rows.map(row=>`<tr>${row.map(cell=>`<td>${escapeReport(cell)}</td>`).join("")}</tr>`).join("")}
         </tbody>
       </table>
     `;
@@ -265,7 +333,7 @@
     a.href = url;
     a.download = "rapor.xls";
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
 
