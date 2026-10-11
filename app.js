@@ -1428,37 +1428,47 @@ async function restoreOrder(){
 /* ============================================================
    ARAMA
 ============================================================ */
+function buildOrderSearchFilter(input) {
+  const raw = input.trim();
+  // Quote PostgREST values so commas/parentheses cannot change the filter.
+  const pattern = value => '"' + '%' + value
+    .replace(/\\/g, "\\\\")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_")
+    .replace(/"/g, '\\"') + '%' + '"';
+  const text = pattern(raw);
+  const filters = ["ad_soyad", "adres", "kargo_takip_kodu"]
+    .map(column => column + ".ilike." + text);
+  const digits = raw.replace(/\\D/g, "");
+  const phoneInput = /^[+\\d\\s().-]+$/.test(raw) && digits.length >= 3;
+  const phone = phoneInput
+    ? '"' + '%' + (digits.length >= 10 ? digits.slice(-10) : digits).split("").join("%") + '%' + '"'
+    : text;
+  filters.push("siparis_tel.ilike." + phone, "musteri_tel.ilike." + phone);
+  if (/^\\d+$/.test(raw)) {
+    const value = Number(raw);
+    if (Number.isSafeInteger(value) && value <= 2147483647)
+      filters.push("siparis_no.eq." + value);
+    if (Number.isSafeInteger(value) && value <= 32767)
+      filters.push("musteri_no.eq." + value);
+  }
+  return filters.join(",");
+}
+
 async function searchOrders() {
-  const qRaw = document.getElementById("searchInput").value.trim();
-  if (!qRaw) return loadOrders(true);
-
-  // TÜRKÇE KARAKTER TEMİZLİĞİ + LOWERCASE
-  const q = qRaw
-    .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // aksan temizleme: ö→o, ç→c
-
-  // Supabase V2 için OR query TEK SATIR olmalı!
-  const orQuery = [
-    `siparis_no.eq.${qRaw}`,         // sipariş no sayı olduğu için raw kullanılacak
-    `ad_soyad.ilike.%${q}%`,
-    `siparis_tel.ilike.%${q}%`,
-    `musteri_tel.ilike.%${q}%`,
-    `adres.ilike.%${q}%`,
-    `kargo_takip_kodu.ilike.%${q}%`
-  ].join(",");
-
-  const { data, error } = await db
-    .from(TABLE)
-    .select("*")
-    .or(orQuery);
-
-  if (error) {
+  const raw = document.getElementById("searchInput").value.trim();
+  if (!raw) return loadOrders(true);
+  try {
+    const { data, error } = await db.from(TABLE).select("*")
+      .or(buildOrderSearchFilter(raw))
+      .order("siparis_no", { ascending: false });
+    if (error) throw error;
+    renderTableHeader();
+    renderTable(data, { append: false, hasMore: false });
+  } catch (error) {
     console.error("Arama Hatası:", error);
     toast("Arama yapılırken bir hata oluştu!");
-    return;
   }
-
-  renderTable(data, { append: false, hasMore: false });
 }
 
 
@@ -1541,17 +1551,12 @@ function printSiparis(order){
    ENNTER İLE ARA 
 ============================================================ */
 
-// ENTER ile arama
-document.addEventListener("DOMContentLoaded", () => {
-  const input = document.getElementById("searchInput");
-  if (!input) return;
-
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();   // Sayfanın yenilenmesini engeller
-      searchOrders();       // 🔥 Aramayı tetikler
-    }
-  });
+// Delegation also works when config loading finishes after DOMContentLoaded.
+document.addEventListener("keydown", (event) => {
+  if (event.target?.id === "searchInput" && event.key === "Enter" && !event.isComposing) {
+    event.preventDefault();
+    searchOrders();
+  }
 });
 
 /* ============================================================
