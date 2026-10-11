@@ -11,6 +11,7 @@ const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcnN4dHBxenF6aGxzaHBtZ290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODExMTcsImV4cCI6MjA3Nzg1NzExN30.98oYONSkb8XSDrfGW2FxhFmt2BLB5ZRo3Ho50GhZYgE";
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+await window.requireSession(db);
 
 /* ============================================================
    REFERANS VERİLER (ŞEHİR / İLÇE)
@@ -123,8 +124,10 @@ function confirmModal({title, text, confirmText="Onayla", cancelText="Vazgeç"})
   });
 }
 
-function logout(){
-  localStorage.clear();
+async function logout(){
+  const { error } = await db.auth.signOut({ scope: "local" });
+  if (error) return toast("Çıkış yapılamadı. Yeniden deneyin.");
+  ["session", "firma", "rol", "print_order"].forEach(key => localStorage.removeItem(key));
   location.href = "login.html";
 }
 
@@ -152,7 +155,9 @@ function formatDateTimeTR(iso) {
 /* ============================================================
    LİSTELEME
 ============================================================ */
+let listRequest = 0;
 async function loadOrders(reset=false){
+  const request = ++listRequest;
   const tbody = document.getElementById("ordersBody");
   if(reset){
     currentPage = 1;
@@ -178,6 +183,7 @@ async function loadOrders(reset=false){
        .range(start, end);
 
   const { data, error, count } = await q;
+  if (request !== listRequest) return;
   if(error){
     tbody.innerHTML = `<tr><td colspan="${getColumnCount()}">HATA: ${error.message}</td></tr>`;
     toggleLoadMore(false);
@@ -227,7 +233,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
     ? `<button class="btn-open" onclick="event.stopPropagation(); openTrackingUrl('${o.kargo_takip_url ?? ""}')">Sorgula</button>`
     : `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
 
-const errorPreview = isPreparedTab
+const errorPreview = isPreparedTab && o.gonder_hata_bilgisi
   ? `<button class="error-chip"
         data-error="${escapeHtml(o.gonder_hata_bilgisi ?? "")}"
         onclick="event.stopPropagation(); showErrorDetail(this.dataset.error)">
@@ -238,14 +244,14 @@ const errorPreview = isPreparedTab
 
 
 // Not chip'i (Hata chip'i ile aynı class)
-const noteChip = `
+const noteChip = o.notlar ? `
   <button class="error-chip"
       data-note="${escapeHtml(o.notlar ?? "")}"
       onclick="event.stopPropagation(); showNoteDetail(this.dataset.note)">
       <span class="error-chip__label">Not</span>
       <span class="error-chip__text">${escapeHtml(shortenNote(o.notlar, 20))}</span>
   </button>
-`;
+` : "—";
 
 tr.innerHTML = isPendingTab
   ? `
@@ -305,6 +311,8 @@ tbody.appendChild(tr);
 
 function parseProduct(v){
   if(!v) return "-";
+  if(Array.isArray(v)) return v.join(", ");
+  v = String(v);
   try{
     if(v.startsWith("[") && v.endsWith("]")) return JSON.parse(v).join(", ");
   }catch{}
@@ -440,13 +448,7 @@ async function deleteCanceledOrder() {
 
   if (!ok) return;
 
-  await db.from(TABLE)
-    .update({ 
-      kargo_durumu: "Silindi",
-      iptal_nedeni: null,
-      iptal_tarihi: new Date().toISOString()
-    })
-    .eq("siparis_no", selectedOrder.siparis_no);
+  if (!await updateSelectedOrder({kargo_durumu:"Silindi", iptal_nedeni:null, iptal_tarihi:new Date().toISOString()})) return;
 
   toast("Sipariş silindi");
   closeModal();
@@ -549,15 +551,15 @@ document.getElementById("orderDetails").innerHTML = `
 <div class="detail-column detail-column-customer">
   <div class="detail-group">
     <div class="detail-title">📞Müşteri İletişim</div>    
-    <div class="detail-item"><b>İsim:</b> ${d.ad_soyad}</div>
-    <div class="detail-item"><b>Müşteri Tel:</b> ${d.musteri_tel}</div>
+    <div class="detail-item"><b>İsim:</b> ${escapeHtml(d.ad_soyad ?? "—")}</div>
+    <div class="detail-item"><b>Müşteri Tel:</b> ${escapeHtml(d.musteri_tel ?? "—")}</div>
   </div>
 
   <div class="detail-group">
     <div class="detail-title">📍 Adres Bilgileri</div>
-    <div class="detail-item"><b>Adres:</b> ${d.adres}</div>
+    <div class="detail-item"><b>Adres:</b> ${escapeHtml(d.adres ?? "—")}</div>
     <div class="detail-item">
-      <b>Şehir / İlçe:</b> ${d.sehir} / ${d.ilce}
+      <b>Şehir / İlçe:</b> ${escapeHtml(d.sehir ?? "—")} / ${escapeHtml(d.ilce ?? "—")}
       <button class="btn-mini" onclick="queryCityDistrictCodes()">Sor</button>
     </div>
     <div class="detail-item">
@@ -572,7 +574,7 @@ document.getElementById("orderDetails").innerHTML = `
   <div class="detail-group">
     <div class="detail-item"><b>No:</b> ${d.siparis_no}</div>
     <div class="detail-item"><b>Sipariş Alan:</b> ${d.siparis_alan ?? "-"}</div>
-    <div class="detail-item"><b>Sipariş Alan Tel:</b> ${d.siparis_tel}</div>    
+    <div class="detail-item"><b>Sipariş Alan Tel:</b> ${escapeHtml(d.siparis_tel ?? "—")}</div>    
     <div class="detail-item" style="margin-top:6px;">
   <span class="pill pill-date">
     📅 ${formatDateTimeTR(d.tarih)}
@@ -583,11 +585,11 @@ document.getElementById("orderDetails").innerHTML = `
 
   <div class="detail-group">
     <div class="detail-title">📦 Ürün Bilgisi</div>
-    <div class="detail-item"><b>Ürün:</b> ${parseProduct(d.urun_bilgisi)}</div>
+    <div class="detail-item"><b>Ürün:</b> ${escapeHtml(parseProduct(d.urun_bilgisi))}</div>
     <div class="detail-item"><b>Adet:</b> ${d.kargo_adet ?? "-"}</div>
     <div class="detail-item"><b>KG:</b> ${d.kargo_kg ?? "-"}</div>
-    <div class="detail-item"><b>Tutar:</b> ${d.toplam_tutar} TL</div>
-    <div class="detail-item"><b>Ödeme:</b> ${d.odeme_sekli}</div>
+    <div class="detail-item"><b>Tutar:</b> ${escapeHtml(d.toplam_tutar ?? "—")} TL</div>
+    <div class="detail-item"><b>Ödeme:</b> ${escapeHtml(d.odeme_sekli ?? "—")}</div>
   </div>
 
 </div>
@@ -945,10 +947,24 @@ async function saveEdit(){
     urun_bilgisi: urun_bilgisi.value, toplam_tutar: toplam_tutar.value,
     odeme_sekli: odeme_sekli.value, notlar: notlar.value
   };
-  await db.from(TABLE).update(updated).eq("siparis_no", selectedOrder.siparis_no);
+  if (!await updateSelectedOrder(updated)) return;
   toast("Kaydedildi");
   closeModal();
   loadOrders(true);
+}
+
+async function updateSelectedOrder(values) {
+  if (!selectedOrder?.siparis_no) { toast("Önce sipariş seçin."); return false; }
+  try {
+    const { data, error } = await db.from(TABLE).update(values)
+      .eq("siparis_no", selectedOrder.siparis_no).select("siparis_no").single();
+    if (error || !data) throw error || new Error("Kayıt güncellenemedi");
+    return true;
+  } catch (error) {
+    console.error("Güncelleme hatası:", error);
+    toast("İşlem tamamlanamadı. Değişiklikler kaydedilmedi.");
+    return false;
+  }
 }
 
 function cancelEdit(){
@@ -1392,11 +1408,11 @@ async function confirmCancel() {
   }
 
   // — DB Güncelle —
-  await db.from(TABLE).update({
+  if (!await updateSelectedOrder({
     kargo_durumu: "İptal",
     iptal_nedeni: reason,
     iptal_tarihi: new Date().toISOString()
-  }).eq("siparis_no", selectedOrder.siparis_no);
+  })) return;
 
   toast("Sipariş iptal edildi");
   closeModal();
@@ -1416,11 +1432,11 @@ async function restoreOrder(){
 
   if(!ok) return;
 
-  await db.from(TABLE).update({
+  if (!await updateSelectedOrder({
     kargo_durumu:"Bekliyor",
     iptal_nedeni:null,
     iptal_tarihi:null
-  }).eq("siparis_no", selectedOrder.siparis_no);
+  })) return;
 
   toast("Sipariş geri alındı");
   closeModal();
@@ -1454,6 +1470,7 @@ function buildOrderSearchFilter(input) {
 }
 
 async function searchOrders() {
+  const request = ++listRequest;
   const raw = document.getElementById("searchInput").value.trim();
   if (!raw) return loadOrders(true);
   updateListHeading(true, "Aranıyor…");
@@ -1461,6 +1478,7 @@ async function searchOrders() {
     const { data, error } = await db.from(TABLE).select("*")
       .or(buildOrderSearchFilter(raw))
       .order("siparis_no", { ascending: false });
+    if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();
     renderTable(data, { append: false, hasMore: false });
@@ -1621,3 +1639,9 @@ document.querySelectorAll(".menu li").forEach(item => {
     if (event.key === "Enter" || event.key === " ") { event.preventDefault(); item.click(); }
   });
 });
+
+const requestedTab = new URLSearchParams(location.search).get("tab");
+if (["bekleyen","hazirlandi","kargolandi","tamamlandi","sorunlu","iptal"].includes(requestedTab)) {
+  currentTab = requestedTab;
+  document.querySelectorAll(".menu li").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
+}
