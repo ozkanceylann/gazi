@@ -913,6 +913,37 @@ body.login-page {
 .orders-page button { transition:background .15s,box-shadow .15s; }
 .orders-page :is(button,input,li,.table-wrapper):focus-visible { outline:3px solid #8bbfa3; outline-offset:3px; }
 .orders-page .modal { z-index:1100; }
+.cargo-tools[hidden]{display:none}
+.cargo-tools{padding:16px;margin:0 0 18px;border:1px solid #dfd8bd;border-radius:14px;background:#fffdf7}
+.cargo-tool-buttons,.cargo-legend{display:flex;gap:10px;flex-wrap:wrap}
+.cargo-tools p{font-size:13px;color:#47564f;margin:12px 0}
+.cargo-status{display:inline-block;font-size:12px;font-weight:700;line-height:1.5;padding:5px 9px;border-radius:999px;border:1px solid transparent;white-space:normal}
+.cargo-status--created{color:#525e58;background:#edf0ee;border-color:#d6ded9}
+.cargo-status--transit{color:#174b86;background:#e7f1ff;border-color:#c1d7f5}
+.cargo-status--delivery{color:#864200;background:#fff0d9;border-color:#f4d2a0}
+.cargo-status--delivered{color:#176341;background:#e4f5eb;border-color:#b8dec8}
+.cargo-status--problem{color:#982837;background:#ffe9eb;border-color:#efbec5}
+.cargo-status--unknown{color:#615575;background:#f0ebf8;border-color:#d8cde8}
+.cargo-checked{display:block;font-size:11px;color:#64736b;margin-top:5px}
+.cargo-detail{margin-top:12px}
+.cargo-detail p,.cargo-empty{font-size:13px;overflow-wrap:anywhere}
+.cargo-warning{color:#864200;background:#fff0d9;padding:8px;border-radius:8px}
+.cargo-timeline{padding-left:20px;max-height:200px;overflow:auto}
+.cargo-timeline li{padding:8px 0;border-bottom:1px solid #e7ece9;font-size:13px}
+.cargo-timeline span{display:block;color:#637168;font-size:12px;margin-top:4px}
+.cargo-settings-card{width:min(540px,94vw);max-height:90vh;overflow:auto;text-align:left}
+.cargo-settings-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.cargo-settings-heading h2{margin:4px 0 0;color:var(--brand)}
+.cargo-settings-env{font-size:11px;letter-spacing:.08em;font-weight:800;color:#8a6a22}
+.cargo-settings-card>p{font-size:13px;line-height:1.6;color:#536158}
+.cargo-settings-form{display:grid;gap:14px;margin:16px 0}
+.cargo-settings-form[hidden]{display:none}
+.cargo-settings-form label{display:grid;gap:6px;font-size:13px;font-weight:700;color:#27483a}
+.cargo-settings-form input{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #ccd7cf;border-radius:8px;font:inherit;background:white;color:#253e31}
+.cargo-settings-form input:focus{outline:2px solid #c3a35d;outline-offset:2px}
+.cargo-settings-form small{font-size:11px;font-weight:400;color:#66746c}
+.cargo-settings-note{margin:0;font-size:12px;font-weight:400;line-height:1.6;color:#5a675f}
+@media(max-width:600px){.cargo-tool-buttons button{width:100%}.cargo-tools{padding:12px}}
 .orders-page .alert-backdrop { z-index:1200; padding:16px; }
 .orders-page .toast { z-index:1300; }
 @media(max-width:900px) {
@@ -998,3 +1029,5 @@ body.login-page {
   background:linear-gradient(90deg,transparent,#e8c875);
 }
 .orders-page .sidebar-title .brand-caption::after { transform:rotate(180deg); }
+
+

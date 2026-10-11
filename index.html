@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
-  <script src="config.js"></script>
+  <script src="config.js?v=20261012-cargo-ui-test-links-2"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261011-dashboard-2" />
+  <link rel="stylesheet" href="style.css?v=20261012-cargo-ui-test-links-2" />
 
   <style>
     .btn-mini{
@@ -56,7 +56,8 @@
       <li onclick="window.location='rapor.html'">Raporlar</li>
     </ul>
 
-    <button class="btn-danger" onclick="logout()">Çıkış Yap</button>
+    <button class="btn-primary" onclick="openCargoSettings()">Kargo Ayarları</button>
+    <button class="btn-ghost" onclick="logout()">Çıkış Yap</button>
   </aside>
 
 
@@ -72,6 +73,14 @@
     </div>
 
     <p class="search-hint">İsim, numara, telefon veya adres yazıp Enter’a basın. Arama tüm siparişleri kapsar.</p>
+    <section id="cargoTools" class="cargo-tools" hidden aria-label="Kargo işlemleri">
+      <div class="cargo-tool-buttons">
+        <button id="refreshCargoBtn" class="btn-primary" type="button" onclick="refreshCargoMovements()">Kargo Hareketlerini Güncelle</button>
+        <button id="connectCargoBtn" class="btn-secondary" type="button" onclick="connectCargo()">DHL Bağlantısını Kontrol Et</button>
+      </div>
+      <p id="cargoSyncStatus" role="status" aria-live="polite">DHL test gönderileri güncellenir. Canlı gönderiler atlanır.</p>
+      <div class="cargo-legend"><span class="cargo-status cargo-status--created">Hazırlandı</span><span class="cargo-status cargo-status--transit">Yolda</span><span class="cargo-status cargo-status--delivery">Dağıtımda</span><span class="cargo-status cargo-status--delivered">Teslim edildi</span><span class="cargo-status cargo-status--problem">Sorun / İade</span></div>
+    </section>
     <div class="table-wrapper" tabindex="0" aria-label="Sipariş listesi">
       <table class="orders-table">
         <thead>
@@ -109,7 +118,7 @@
     <button id="btnPrepare" class="btn-primary" onclick="markPrepared()">Hazırla</button>
     <button id="btnCargo" class="btn-secondary" onclick="sendToCargo()">Kargola</button>
     <button id="btnWaiting" class="btn-waiting" onclick="setWaiting()">Bekliyor</button>
-    <button id="btnBarcode" class="btn-primary" style="display:none;" onclick="printBarcode()">Barkod Kes</button>
+    <button id="btnBarcode" class="btn-primary" style="display:none;" onclick="printBarcode()">Etiketi Tekrar Yazdır</button>
 
     <button class="btn-warning" onclick="enterEditMode()">Düzenle</button>
 
@@ -166,7 +175,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261012-cargo-test-links-1");
+      await import("./app.js?v=20261012-cargo-ui-test-links-2");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");
@@ -180,6 +189,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
     } catch (error) { console.error("Başlatma hatası:", error); }
   </script>
     <!-- SAYFA İÇERİĞİ -->
+
 
   <!-- 🔁 SERVICE WORKER AUTO UPDATE -->
   <script>
@@ -203,7 +213,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
     });
   }
   </script>
+
 </body>
 </html>
-
 

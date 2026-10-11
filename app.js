@@ -13,6 +13,7 @@ const SUPABASE_KEY =
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 await window.requireSession(db);
 
+
 /* ============================================================
    REFERANS VERİLER (ŞEHİR / İLÇE)
 ============================================================ */
@@ -44,7 +45,7 @@ const busy = { kargola: new Set(), barkod: new Set() };
    UI HELPERS
 ============================================================ */
 function getColumnCount(){
-  return currentTab === "bekleyen" ? 6 : 7;
+  return 7;
 }
 
 function shouldShowNoteColumn(tab) {
@@ -120,8 +121,10 @@ function confirmModal({title, text, confirmText="Onayla", cancelText="Vazgeç"})
         </div>
       </div>`;
     root.appendChild(wrap);
-    wrap.querySelector("#cCancel").onclick = ()=>{ wrap.remove(); res(false); };
-    wrap.querySelector("#cOk").onclick     = ()=>{ wrap.remove(); res(true); };
+    const finish = value => { wrap.remove(); res(value); };
+    wrap.dismiss = () => finish(false);
+    wrap.querySelector("#cCancel").onclick = wrap.dismiss;
+    wrap.querySelector("#cOk").onclick = () => finish(true);
   });
 }
 
@@ -158,6 +161,7 @@ function formatDateTimeTR(iso) {
 ============================================================ */
 let listRequest = 0;
 async function loadOrders(reset=false){
+  syncCargoTools();
   const request = ++listRequest;
   const tbody = document.getElementById("ordersBody");
   if(reset){
@@ -230,9 +234,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
 
   const isPreparedTab = currentTab === "hazirlandi";
 
-  const actionBtn = isTrackingTab
-    ? `<button class="btn-open" onclick="event.stopPropagation(); openTrackingUrl('${o.kargo_takip_url ?? ""}')">Sorgula</button>`
-    : `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
+  const actionBtn = `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
 
 const errorPreview = isPreparedTab && o.gonder_hata_bilgisi
   ? `<button class="error-chip"
@@ -281,7 +283,7 @@ tr.innerHTML = isPendingTab
 </td>
 
     <td>${o.toplam_tutar} TL</td>
-<td>${durumText}</td>
+<td>${isTrackingTab ? cargoStatusBadge(o) : escapeHtml(durumText ?? "—")}</td>
 
 <td>
   ${
@@ -383,7 +385,99 @@ function showNoteDetail(note = "") {
 ============================================================ */
 function openTrackingUrl(url){
   if(!url) return toast("Kargo sorgulama linki yok.");
-  window.open(url, "_blank");
+  try { const safe = new URL(url); if(safe.protocol !== "https:") throw new Error(); window.open(safe.href, "_blank", "noopener,noreferrer"); }
+  catch { toast("Kargo takip bağlantısı geçersiz."); }
+}
+
+function cargoStatusInfo(order){
+  const code=Number(order.shipmentStatusCode);
+  const states={1:["created","Gönderi hazırlandı"],2:["transit","Transfer aşamasında"],3:["transit","Teslimat biriminde"],4:["delivery","Dağıtımda"],5:["delivered","Teslim edildi"],6:["problem","Teslim edilemedi"],7:["problem","İade geliyor"],8:["problem","Destek gerekiyor"]};
+  const [tone,label]=order.isDelivered===true ? states[5] : (states[code]||["unknown","Durum bekleniyor"]);
+  return {tone,label:String(order.shipmentStatus||label).replace(/_/g," ")};
+}
+function cargoStatusBadge(order){
+  const {tone,label}=cargoStatusInfo(order);
+  const checked=order.kargo_gunc_saat ? `<small class="cargo-checked">${escapeHtml(formatDateTimeTR(order.kargo_gunc_saat))}</small>` : "";
+  return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${checked}`;
+}
+function isLiveShipment(order){
+  try { return JSON.parse(order.kargo_api_yanit||"{}").environment==="test" && !!order.kargo_takip_kodu; }
+  catch { return false; }
+}
+function syncCargoTools(){
+  const tools=document.getElementById("cargoTools");
+  if(tools) tools.hidden=!["kargolandi","tamamlandi","sorunlu"].includes(currentTab);
+}
+async function cargoRequest(url,body={}){
+  if(!url) throw new Error("Canlı kargo bağlantısı ayarlanmamış.");
+  const {data:sessionData}=await db.auth.getSession();
+  if(!sessionData.session?.access_token)throw new Error("Oturum gerekli. Panele yeniden giriş yapın.");
+  body={...body,accessToken:sessionData.session.access_token,publicKey:SUPABASE_KEY};
+  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),180000);
+  try{
+    const response=await fetch(url,{method:"POST",body:new URLSearchParams(body),signal:controller.signal});
+    let result;try{result=JSON.parse(await response.text());}catch{throw new Error("n8n geçerli JSON yanıtı döndürmedi.");}
+    if(!response.ok||result.success!==true||result.environment!=="test")throw new Error(result.message||"DHL test işlemi başarısız.");
+    return result;
+  }catch(error){if(error.name==="AbortError")throw new Error("DHL test isteği zaman aşımına uğradı.");if(error instanceof TypeError)throw new Error("Kargo bağlantısına ulaşılamadı. n8n erişimini kontrol edin.");throw error;}
+  finally{clearTimeout(timeout);}
+}
+let cargoSyncBusy=false;
+async function connectCargo(){
+  const button=document.getElementById("connectCargoBtn");if(button.disabled)return;
+  button.disabled=true;const label=button.textContent;button.textContent="Bağlanıyor…";
+  try{
+    const result=await cargoRequest(CONFIG.webhooks.baglan,{operation:"baglan"});
+    document.getElementById("cargoSyncStatus").textContent="DHL test bağlantısı hazır. Token geçerlilik: "+result.jwtExpireDate;
+    toast("DHL test hesabına bağlanıldı. Token n8n'de saklandı.");
+  }catch(error){toast(error.message,8000);}
+  finally{button.disabled=false;button.textContent=label;}
+}
+async function refreshCargoMovements(){
+  if(cargoSyncBusy)return;
+  cargoSyncBusy=true;const button=document.getElementById("refreshCargoBtn");const status=document.getElementById("cargoSyncStatus");button.disabled=true;
+  let success=0,failed=0,warnings=0,skipped=0;const errors=[];
+  try{
+    status.textContent="Kargolanmış siparişler bulunuyor…";
+    const candidates=[];
+    for(let offset=0;;offset+=100){
+      const {data,error}=await db.from(TABLE).select("siparis_no,kargo_takip_kodu,kargo_api_yanit").eq("kargo_durumu","Kargolandı").order("siparis_no",{ascending:true}).range(offset,offset+99);
+      if(error)throw error;
+      for(const row of data||[]){if(isLiveShipment(row))candidates.push(row);else skipped++;}
+      if((data||[]).length<100)break;
+    }
+    if(!candidates.length){status.textContent="Güncellenecek test gönderisi yok. "+skipped+" canlı / takip numarası olmayan sipariş atlandı.";return;}
+    for(let i=0;i<candidates.length;i++){
+      const order=candidates[i];status.textContent=`${i+1}/${candidates.length} · Sipariş ${order.siparis_no} güncelleniyor…`;
+      try{const result=await cargoRequest(CONFIG.webhooks.hareket,{operation:"hareket",siparis_no:String(order.siparis_no)});success++;if(result.warning){warnings++;errors.push("Sipariş "+order.siparis_no+": "+result.warning);}}
+      catch(error){failed++;errors.push("Sipariş "+order.siparis_no+": "+error.message);}
+    }
+    status.textContent=`${success} durum güncellendi · ${warnings} hareket uyarısı · ${failed} başarısız · ${skipped} test / takip numarası olmayan sipariş atlandı.`;
+    await loadOrders(true);
+    if(selectedOrder&&document.getElementById("orderModal").style.display==="flex")await openOrder(selectedOrder.siparis_no);
+    if(errors.length)showErrorDetail(errors.join("\n"));
+    else toast("Kargo hareketleri güncellendi.");
+  }catch(error){status.textContent="Güncelleme tamamlanamadı: "+error.message;toast(error.message,8000);}
+  finally{cargoSyncBusy=false;button.disabled=false;}
+}
+function renderCargoTracking(order){
+  if(!order.kargo_takip_kodu)return "";
+  let tracking;try{tracking=JSON.parse(order.kargo_api_yanit||"{}").tracking;}catch{}
+  const movements=Array.isArray(tracking?.movements)?[...tracking.movements].sort((a,b)=>Number(b.eventSequence)-Number(a.eventSequence)):[];
+  const timeline=movements.map(m=>`<li><strong>${escapeHtml(m.eventStatus||"Kargo hareketi")}</strong><span>${escapeHtml(m.eventDateTime||m.eventDateTime2||"")} · ${escapeHtml(m.location||"")}</span>${m.description?`<span>${escapeHtml(m.description)}</span>`:""}</li>`).join("");
+  const url=order.kargo_takip_url;
+  let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
+  return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu)}</p>${link}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
+}
+
+async function openCargoSettings(){
+  const root=document.getElementById("alertRoot");if(root.querySelector(".cargo-settings-backdrop"))return;
+  const wrap=document.createElement("div");wrap.className="alert-backdrop cargo-settings-backdrop";
+  wrap.innerHTML=`<section class="alert-card cargo-settings-card" role="dialog" aria-modal="true" aria-labelledby="cargoSettingsTitle"><div class="cargo-settings-heading"><h2 id="cargoSettingsTitle">Kargo Ayarları</h2><button class="btn-ghost" id="cargoSettingsClose" type="button">✕</button></div><p>Gazi kargo hesabı n8n üzerinden yönetilir.</p><p id="cargoSettingsStatus" role="status">Bağlantı durumu yükleniyor…</p><button class="btn-primary" id="cargoSettingsConnect" type="button" disabled>Bağlantıyı Kontrol Et</button><button class="btn-ghost" id="cargoSettingsDone" type="button">Kapat · Esc</button></section>`;
+  root.appendChild(wrap);const find=id=>wrap.querySelector("#"+id),status=find("cargoSettingsStatus"),button=find("cargoSettingsConnect");
+  wrap.dismiss=()=>wrap.remove();find("cargoSettingsClose").onclick=wrap.dismiss;find("cargoSettingsDone").onclick=wrap.dismiss;
+  button.onclick=async()=>{button.disabled=true;status.textContent="DHL bağlantısı kontrol ediliyor…";try{const result=await cargoRequest(CONFIG.webhooks.baglan,{operation:"baglan"});if(wrap.isConnected)status.textContent="DHL bağlantısı hazır. Token geçerlilik: "+result.jwtExpireDate;}catch(error){status.textContent=error.message;}finally{button.disabled=false;}};
+  status.textContent="DHL test bağlantısı kullanılıyor. Hesap bilgileri n8n’de tutulur.";button.disabled=false;
 }
 
 function printEtiket(){
@@ -616,6 +710,7 @@ document.getElementById("orderDetails").innerHTML = `
 </div>
 `;
 
+  document.getElementById("orderDetails").insertAdjacentHTML("beforeend",renderCargoTracking(d));
   /* ============================================================
       1) SOR BUTONU — SADECE Bekliyor & Hazırlandı
   ============================================================ */
@@ -678,9 +773,9 @@ document.getElementById("orderDetails").innerHTML = `
   document.getElementById("btnCargo").style.display =
     d.kargo_durumu === "Hazırlandı" ? "inline-block" : "none";
 
-  // Kargolandı → Barkod kes
+  // Mevcut etiketi tekrar aç; yeni kargo / barkod oluşturma.
   document.getElementById("btnBarcode").style.display =
-    kargo ? "inline-block" : "none";
+    (kargo || tamam || d.isDelivered) && d.zpl_base64 ? "inline-block" : "none";
 
   // Tamamlandı → butonları kapat, sadece kapat butonu açık kalsın
   if (tamam) {
@@ -688,6 +783,7 @@ document.getElementById("orderDetails").innerHTML = `
       btn.style.display = "none";
     });
     document.querySelector("#actionButtons .btn-close").style.display = "inline-block";
+    if(d.zpl_base64)document.getElementById("btnBarcode").style.display="inline-block";
   }
 
   // İptal → tüm actionButtons gizli, restoreButtons açık
@@ -1112,28 +1208,26 @@ function openCargoPdf(w, base64){
   if(w.closed){URL.revokeObjectURL(url);throw new Error("Etiket penceresi kapatıldı. Barkod Kes ile tekrar açabilirsiniz.");}
   w.document.body.innerHTML='<iframe title="Paket Etiketleri" style="border:0;width:100%;height:100vh" src="'+url+'#view=FitH"></iframe>';
   w.document.body.style.cssText="margin:0";
+  w.document.addEventListener("keydown",event=>{if(event.key==="Escape"){event.preventDefault();w.close();}});
   w.addEventListener("unload",()=>URL.revokeObjectURL(url),{once:true});
 }
 async function sendToCargo(){
   const siparisNo=selectedOrder?.siparis_no;
   if(!siparisNo) return toast("Önce sipariş seçin.");
   if(busy.kargola.has(siparisNo)) return toast("Kargolama sürüyor.");
-  const ok=await confirmModal({title:"Siparişi Kargola",text:"Sipariş DHL test ortamında kargolanacak. Her paketin kargo etiketi hazırlanıp açılacak. Devam edilsin mi?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
+  const ok=await confirmModal({title:"Siparişi Kargola",text:"Sipariş DHL test hesabıyla kargolanacak. Her paketin kargo etiketi hazırlanıp açılacak. Devam edilsin mi?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
   if(!ok) return;
   const w=window.open("","_blank");
   if(!w) return toast("Etiket ekranı için açılır pencerelere izin verin.");
   w.document.body.textContent="Kargolanıyor; paket etiketleri hazırlanıyor…";
   busy.kargola.add(siparisNo);
-  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),150000);
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",siparisNo).single();
     if(error) throw error;
+    if(order.kargo_takip_kodu && !isLiveShipment(order))throw new Error("Canlı gönderi test ortamında yeniden kargolanamaz.");
     if(order.zpl_base64){openCargoPdf(w,order.zpl_base64);return;}
     if(order.kargo_takip_kodu) throw new Error("Gönderi zaten mevcut. Yeni kargo oluşturmadan etiket dönüşümünü tamamlamak gerekiyor.");
-    const res=await fetch(WH_KARGOLA,{method:"POST",body:new URLSearchParams({operation:"kargola",payload:JSON.stringify({...order,test_mode:true})}),signal:controller.signal});
-    const text=await res.text();let payload;
-    try{payload=JSON.parse(text);}catch{throw new Error("n8n etiket yanıtı alınamadı. Çalıştırma sonucunu kontrol edin.");}
-    if(!res.ok||payload.success!==true||payload.environment!=="test")throw new Error(res.status===404?"Test kargolama bağlantısı bulunamadı.":payload.message||"Kargolama başarısız.");
+    const payload=await cargoRequest(WH_KARGOLA,{operation:"kargola",payload:JSON.stringify({...order,test_mode:true})});
     openCargoPdf(w,payload.pdf_base64);
     db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"🚚"}}).then(({error})=>{if(error)toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000);}).catch(()=>toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000));
     toast("Kargolandı. Paket etiketleri yazdırmaya hazır.",6000);
@@ -1141,27 +1235,33 @@ async function sendToCargo(){
   }catch(error){
     if(!w.closed) w.close();
     toast(error.name==="AbortError"?"İstek zaman aşımına uğradı. Tekrar göndermeden sipariş ve n8n sonucunu kontrol edin.":error.message,8000);
-  }finally{clearTimeout(timeout);busy.kargola.delete(siparisNo);}
+  }finally{busy.kargola.delete(siparisNo);}
 }
 
 async function printBarcode() {
   const siparisNo = selectedOrder?.siparis_no;
   if (siparisNo == null) return toast("Önce sipariş seçin.");
   const ok = await confirmModal({
-    title: "Barkod Kes",
-    text: "Barkodlar kargo adedi kadar tek PDF içinde açılacak.",
+    title: "Etiketi Tekrar Yazdır",
+    text: "Daha önce oluşturulmuş paket etiketleri açılacak. Yeni kargo veya yeni barkod oluşturulmaz.",
     confirmText: "Aç", cancelText: "Vazgeç"
   });
   if (!ok) return;
   const w = window.open("", "_blank");
   if (!w) return toast("Pop-up engellendi, izin ver.");
-  w.document.write("<html><head><title>Barkodlar</title></head><body>Barkodlar hazırlanıyor…</body></html>");
+  w.document.write("<html><head><title>Paket Etiketleri</title></head><body>Kayıtlı etiketler açılıyor…</body></html>");
   w.document.close();
   function fail(message) {
     if (!w.closed) w.close();
     toast(message);
   }
   try {
+    
+    if(selectedOrder.zpl_base64?.startsWith("JVBER")){
+      openCargoPdf(w,selectedOrder.zpl_base64);
+      toast("Kayıtlı paket etiketleri tekrar yazdırmaya hazır.");
+      return;
+    }
     const { data, error } = await db.from(TABLE)
       .select("zpl_base64, kargo_adet").eq("siparis_no", siparisNo).single();
     if (error) return fail("Barkod alınamadı!");
@@ -1193,7 +1293,7 @@ async function printBarcode() {
     const { PDFDocument } = window.PDFLib;
     const source = await PDFDocument.create();
     for (const value of list) {
-      const base64 = value.trim().replace(/^data:[^,]*,/, "").replace(/\\s/g, "");
+      const base64 = value.trim().replace(/^data:[^,]*,/, "").replace(/\s/g, "");
       const bytes = Uint8Array.from(atob(base64), character => character.charCodeAt(0));
       if (base64.startsWith("iVBOR")) {
         const image = await source.embedPng(bytes);
@@ -1208,11 +1308,7 @@ async function printBarcode() {
     }
     const pageCount = source.getPageCount();
     let output = source;
-    if (pageCount === 1 && cargoCount > 1) {
-      output = await PDFDocument.create();
-      const pages = await output.copyPages(source, Array(cargoCount).fill(0));
-      pages.forEach(page => output.addPage(page));
-    } else if (pageCount !== cargoCount) {
+    if (pageCount !== cargoCount) {
       return fail("Barkod sayfası (" + pageCount + ") kargo adediyle (" +
         cargoCount + ") eşleşmiyor. Barkodları kontrol edin.");
     }
@@ -1221,8 +1317,9 @@ async function printBarcode() {
     w.document.body.innerHTML = '<iframe title="Barkodlar" src="' + blobUrl +
       '#view=FitH" style="border:0;width:100%;height:100vh"></iframe>';
     w.document.body.style.cssText = "margin:0;overflow:hidden";
+    w.document.addEventListener("keydown",event=>{if(event.key==="Escape"){event.preventDefault();w.close();}});
     w.addEventListener("unload", () => URL.revokeObjectURL(blobUrl), { once: true });
-    toast(cargoCount + " barkod tek PDF içinde açıldı.");
+    toast(cargoCount + " kayıtlı paket etiketi tekrar yazdırmaya hazır.");
   } catch (error) {
     console.error("Barkod hazırlama hatası:", error);
     fail("Barkod PDF hazırlanamadı. Dosyayı ve internet bağlantısını kontrol edin.");
@@ -1239,25 +1336,13 @@ function cancelCancelForm(){
 }
 
 async function openCancelForm() {
-
-  const codeRaw = selectedOrder?.shipmentStatusCode;
-  let isShipped = false;
-
-  if (codeRaw === null || codeRaw === undefined || codeRaw === "" || codeRaw === "0") {
-    isShipped = false;
-  } else {
-    const num = Number(codeRaw);
-    isShipped = Number.isInteger(num) && num >= 1 && num <= 9;
-  }
+  const isShipped = hasExistingShipment(selectedOrder);
 
   // 🚨 Kargolanmışsa → daha form açılmadan uyarı ver!
   if (isShipped) {
     const ok = await confirmModal({
       title: "Kargolanmış Siparişi İptal Et",
-      text: `Bu sipariş kargoya gönderilmiş durumda.
-İptal sonucu ek ücret çıkabilir.
-
-Devam etmek istiyor musunuz?`,
+      text: `Bu sipariş kargoya gönderilmiş durumda. Siparişi iptal etseniz de kargo firmasından ek ücret çıkabilir. Devam etmek istiyor musunuz?`,
       confirmText: "Devam Et",
       cancelText: "Vazgeç"
     });
@@ -1270,56 +1355,35 @@ Devam etmek istiyor musunuz?`,
   document.getElementById("actionButtons").style.display = "none";
 }
 
+function hasExistingShipment(order){
+  return !!(order?.kargo_takip_kodu || order?.orderinvoiceid || order?.zpl_base64 || ["Kargolandı","Tamamlandı"].includes(order?.kargo_durumu) || Number(order?.shipmentStatusCode)>0);
+}
+
 
 
 /* ============================================================
    KARGOLANMIŞ İPTAL
 ============================================================ */
 
-async function confirmCancel() {
-
-  const reason = document.getElementById("iptalInput").value.trim();
-  if (!reason) return toast("İptal nedeni gerekli");
-
-  const codeRaw = selectedOrder?.shipmentStatusCode;
-  let isShipped = false;
-
-  if (!codeRaw || codeRaw === "0") {
-    isShipped = false;
-  } else {
-    const num = Number(codeRaw);
-    isShipped = Number.isInteger(num) && num >= 1 && num <= 9;
-  }
-
-  // 🚫 BU FONKSİYONDA ALERT / POPUP KESİNLİKLE OLMAYACAK.
-
-  // — Webhook —
-  if (WH_IPTAL) {
-    try {
-      await fetch(WH_IPTAL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...selectedOrder, reason, isShipped })
-      });
-    } catch {
-      toast("İptal webhook gönderilemedi.");
+let cancelBusy=false;
+async function confirmCancel(){
+  if(cancelBusy)return;
+  const reason=document.getElementById("iptalInput").value.trim();if(!reason)return toast("İptal nedeni gerekli");
+  const id=selectedOrder?.siparis_no;if(!id)return;
+  cancelBusy=true;
+  try{
+    const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();if(error)throw error;
+    if(hasExistingShipment(order) && !isLiveShipment(order))throw new Error("Canlı gönderi test bağlantısıyla iptal edilemez.");
+    if(hasExistingShipment(order)){
+      const result=await cargoRequest(CONFIG.webhooks.iptal,{operation:"iptal",siparis_no:String(id),reason});toast(result.message,6000);
+    }else{
+      if(!await updateSelectedOrder({kargo_durumu:"İptal",iptal_nedeni:reason,iptal_tarihi:new Date().toISOString()}))return;
+      toast("Sipariş iptal edildi");
     }
-  }
-
-  // — DB Güncelle —
-  if (!await updateSelectedOrder({
-    kargo_durumu: "İptal",
-    iptal_nedeni: reason,
-    iptal_tarihi: new Date().toISOString()
-  })) return;
-
-  toast("Sipariş iptal edildi");
-  closeModal();
-  loadOrders(true);
+    closeModal();await loadOrders(true);
+  }catch(error){toast(error.message,10000);}
+  finally{cancelBusy=false;}
 }
-
-
-
 
 async function restoreOrder(){
   const ok = await confirmModal({
@@ -1480,6 +1544,19 @@ function printSiparis(order){
 
 // Delegation also works when config loading finishes after DOMContentLoaded.
 document.addEventListener("keydown", (event) => {
+  if(event.key === "Escape" && !event.isComposing){
+    const overlays=document.querySelectorAll("#alertRoot .alert-backdrop");
+    const top=overlays[overlays.length-1];
+    if(top){event.preventDefault();if(typeof top.dismiss==="function")top.dismiss();else top.remove();return;}
+    const modal=document.getElementById("orderModal");
+    if(modal?.style.display==="flex"){
+      event.preventDefault();
+      if(document.getElementById("cancelForm").style.display==="block")cancelCancelForm();
+      else closeModal();
+      return;
+    }
+    document.querySelector(".sidebar")?.classList.remove("open");
+  }
   if (event.target?.id === "searchInput" && event.key === "Enter" && !event.isComposing) {
     event.preventDefault();
     searchOrders();
@@ -1508,6 +1585,9 @@ Object.assign(window, {
   markPrepared,
   sendToCargo,
   printBarcode,
+  connectCargo,
+  refreshCargoMovements,
+  openCargoSettings,
 
   enterEditMode,
   saveEdit,
