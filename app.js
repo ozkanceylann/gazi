@@ -1218,6 +1218,9 @@ Bu işlem normal şartlarda geri alınamaz ve iptal durumunda kargo firması ek 
 
 async function printBarcode() {
 
+  const siparisNo = selectedOrder?.siparis_no;
+  if (siparisNo == null) return toast("Önce sipariş seçin.");
+
   const ok = await confirmModal({
     title: "Barkod Kes",
     text: "Supabase içerisindeki barkod PDF/PNG dosyaları açılacak.",
@@ -1229,8 +1232,8 @@ async function printBarcode() {
   // Supabase'den veriyi çek
   const { data, error } = await db
     .from(TABLE)
-    .select("zpl_base64")
-    .eq("siparis_no", selectedOrder.siparis_no)
+    .select("zpl_base64, kargo_adet")
+    .eq("siparis_no", siparisNo)
     .single();
 
   if (error) return toast("Barkod alınamadı!");
@@ -1259,6 +1262,20 @@ async function printBarcode() {
   }
 
   if (!list.length) return toast("Geçerli barkod bulunamadı!");
+
+  const cargoCount = Number(data.kargo_adet);
+  if (!Number.isSafeInteger(cargoCount) || cargoCount < 1) {
+    return toast("Kargo adedi geçersiz. Siparişteki kargo adedini kontrol edin.");
+  }
+
+  // Tek barkod dosyası varsa her kargo için aynı barkodun bir kopyasını aç.
+  // Ayrı paket barkodları varsa bunları çoğaltma veya sessizce eksiltme.
+  if (list.length === 1) {
+    list = Array(cargoCount).fill(list[0]);
+  } else if (list.length !== cargoCount) {
+    return toast("Barkod sayısı (" + list.length + ") kargo adediyle (" +
+      cargoCount + ") eşleşmiyor. Barkodları kontrol edin.");
+  }
 
   // Base64 → Blob çevirici
   function base64ToBlob(base64, mime) {
