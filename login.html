@@ -56,11 +56,11 @@
       const { data, error } = await db.auth.signInWithPassword({ email, password });
       if(error){ errorBox.textContent="Hatalı email veya şifre!"; errorBox.style.display="block"; return; }
 
-      const meta = (data.user.user_metadata ?? data.user.raw_user_meta_data) || {};
-      if(!meta.firma || meta.firma.toLowerCase() !== CONFIG.brand.toLowerCase()){
+      const meta = data.user.app_metadata || {};
+      if(!meta.firma || String(meta.firma).trim().toLowerCase() !== CONFIG.brand.toLowerCase()){
         errorBox.textContent = "Bu panele sadece " + CONFIG.brandName + " kullanıcıları girebilir!";
         errorBox.style.display="block";
-        await db.auth.signOut();
+        await db.auth.signOut({ scope: "local" });
         return;
       }
 
