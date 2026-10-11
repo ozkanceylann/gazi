@@ -1430,22 +1430,17 @@ async function restoreOrder(){
 ============================================================ */
 function buildOrderSearchFilter(input) {
   const raw = input.trim();
-  // Quote PostgREST values so commas/parentheses cannot change the filter.
-  const pattern = value => '"' + '%' + value
-    .replace(/\\/g, "\\\\")
-    .replace(/%/g, "\\%")
-    .replace(/_/g, "\\_")
-    .replace(/"/g, '\\"') + '%' + '"';
+  const pattern = value => JSON.stringify("%" + value.replace(/[\\%_]/g, character => "\\" + character) + "%");
   const text = pattern(raw);
   const filters = ["ad_soyad", "adres", "kargo_takip_kodu"]
     .map(column => column + ".ilike." + text);
-  const digits = raw.replace(/\\D/g, "");
-  const phoneInput = /^[+\\d\\s().-]+$/.test(raw) && digits.length >= 3;
+  const digits = raw.replace(/\D/g, "");
+  const phoneInput = /^[+\d\s().-]+$/.test(raw) && digits.length >= 3;
   const phone = phoneInput
-    ? '"' + '%' + (digits.length >= 10 ? digits.slice(-10) : digits).split("").join("%") + '%' + '"'
+    ? JSON.stringify("%" + (digits.length >= 10 ? digits.slice(-10) : digits).split("").join("%") + "%")
     : text;
   filters.push("siparis_tel.ilike." + phone, "musteri_tel.ilike." + phone);
-  if (/^\\d+$/.test(raw)) {
+  if (/^\d+$/.test(raw)) {
     const value = Number(raw);
     if (Number.isSafeInteger(value) && value <= 2147483647)
       filters.push("siparis_no.eq." + value);
