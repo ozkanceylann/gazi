@@ -168,7 +168,14 @@ document.getElementById("orderModal").addEventListener("click", function(e){
       await window.waitConfig();
       await import("./app.js?v=20261011-dashboard-2");
       document.getElementById("brandLogo").src = CONFIG.logo;
-      document.getElementById("brandTitle").textContent = CONFIG.brandName + " Sipariş Sistemi";
+      const brandTitle = document.getElementById("brandTitle");
+      const brandName = document.createElement("span");
+      brandName.className = "brand-name";
+      brandName.textContent = CONFIG.brandName.charAt(0).toLocaleUpperCase("tr-TR") + CONFIG.brandName.slice(1);
+      const brandCaption = document.createElement("span");
+      brandCaption.className = "brand-caption";
+      brandCaption.textContent = "Sipariş Sistemi";
+      brandTitle.replaceChildren(brandName, brandCaption);
       await loadOrders(true);
     } catch (error) { console.error("Başlatma hatası:", error); }
   </script>
