@@ -15,7 +15,7 @@
   <script src="config.js"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261011-dashboard-1" />
+  <link rel="stylesheet" href="style.css?v=20261011-dashboard-2" />
 
   <style>
     .btn-mini{
@@ -163,21 +163,14 @@ document.getElementById("orderModal").addEventListener("click", function(e){
 </script>
 
 
-  <!-- APP -->
-  <script src="app.js?v=20261011-dashboard-1" type="module"></script>
-
-  <!-- LOGO & BAŞLIK & İLK YÜKLEME -->
   <script type="module">
-    document.addEventListener("DOMContentLoaded", async () => {
-
+    try {
       await window.waitConfig();
-
+      await import("./app.js?v=20261011-dashboard-2");
       document.getElementById("brandLogo").src = CONFIG.logo;
-      document.getElementById("brandTitle").innerHTML =
-        CONFIG.brandName + "<br/>Sipariş Sistemi";
-
-      loadOrders(true);
-    });
+      document.getElementById("brandTitle").textContent = CONFIG.brandName + " Sipariş Sistemi";
+      await loadOrders(true);
+    } catch (error) { console.error("Başlatma hatası:", error); }
   </script>
     <!-- SAYFA İÇERİĞİ -->
 
