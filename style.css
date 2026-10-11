@@ -877,3 +877,57 @@ body.login-page {
   border-radius: 12px;
   box-shadow: none;
 }
+
+/* Sipariş ana ekranı */
+.orders-page { --bg:#f3f6f4; --text:#22372e; --brand:#23734f; --brand-2:#2c658c; --sidebar:#133d2d; --sidebar-2:#214d3b; }
+.orders-page .sidebar { padding:24px 16px; box-shadow:2px 0 12px rgba(20,50,35,.08); }
+.orders-page .sidebar-header { border-bottom:1px solid #ffffff20; padding-bottom:24px; }
+.orders-page .sidebar-logo { max-height:100px; object-fit:contain; }
+.orders-page .sidebar-title { font-size:16px; line-height:1.5; }
+.orders-page .menu { margin-top:24px; }
+.orders-page .menu li { text-align:left; padding:13px 16px; margin-bottom:7px; background:transparent; font-size:14px; border:1px solid transparent; }
+.orders-page .menu li:hover { background:#ffffff12; }
+.orders-page .menu li.active { background:#ffffff18!important; border-color:#ffffff30; border-left:3px solid #a4d6a4; }
+.orders-page .sidebar > .btn-danger { background:#ffffff10; border:1px solid #ffffff25; }
+.orders-page .content-area { padding:30px; }
+.page-header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:24px; }
+.page-eyebrow { font-size:11px; letter-spacing:1.5px; font-weight:700; color:#698074; margin:0 0 8px; }
+.page-header h1 { font-size:27px; letter-spacing:-.5px; margin:0; }
+#listSummary { margin:8px 0 0; font-size:13px; color:#697b71; }
+.btn-refresh { width:auto; background:#fff; color:#345847; border:1px solid #dce5df; border-radius:10px; padding:11px 16px; cursor:pointer; white-space:nowrap; }
+.orders-page .top-bar { background:#fff; border:1px solid #dce5df; border-radius:14px; padding:12px; margin-bottom:8px; }
+.orders-page .top-bar input { min-width:0; border-color:#e3eae5; background:#f8faf9; }
+.orders-page .btn-clear { background:#edf2ef; color:#486052; }
+.search-hint { margin:0 0 22px 3px; font-size:12px; color:#718176; line-height:1.6; }
+.orders-page .table-wrapper { background:#fff; border:1px solid #dce5df; border-radius:14px; }
+.orders-page .orders-table { box-shadow:none; border-radius:0; }
+.orders-page .orders-table th { background:#edf3ef; color:#4e6758; padding:13px 12px!important; font-weight:600; }
+.orders-page .orders-table td { padding:12px!important; border-color:#edf1ee; }
+.orders-page .orders-table tbody tr:nth-child(even) { background:#fafcfb; }
+.orders-page .orders-table tr:hover td { background:#eef6f0!important; }
+.orders-page .orders-table td:first-child { font-weight:700; color:#52705d; }
+.orders-page .orders-table td:nth-child(2) { font-weight:600; }
+.orders-page .order-product-limit { max-width:clamp(180px,26vw,380px); }
+.orders-page .btn-open { height:28px!important; background:#e6f1ea!important; color:#256242!important; padding:0 12px!important; cursor:pointer; }
+.orders-page .btn-load-more { background:#fff; border:1px solid #dce5df; color:#276344; min-width:180px; }
+.orders-page button { transition:background .15s,box-shadow .15s; }
+.orders-page :is(button,input,li,.table-wrapper):focus-visible { outline:3px solid #8bbfa3; outline-offset:3px; }
+.orders-page .modal { z-index:1100; }
+.orders-page .alert-backdrop { z-index:1200; padding:16px; }
+.orders-page .toast { z-index:1300; }
+@media(max-width:900px) {
+ .orders-page .content-area { padding:76px 16px 24px; }
+ .orders-page .mobile-menu-btn { border:0; width:auto; background:#133d2d; }
+ .page-header h1 { font-size:23px; }
+ .page-header { align-items:flex-start; }
+}
+@media(max-width:520px) {
+ .page-header { flex-wrap:wrap; }
+ .btn-refresh { padding:9px 12px; font-size:12px; }
+ .orders-page .top-bar { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+ .orders-page .top-bar input { grid-column:1/-1; }
+ .orders-page .top-bar button { padding:11px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .orders-page *, .orders-page *::after { animation:none!important; transition:none!important; }
+}
