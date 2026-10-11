@@ -62,13 +62,13 @@ function renderTableHeader(){
 
   head.innerHTML = currentTab === "bekleyen"
   ? `
+    <th>Hazırla</th>
     <th>S.No</th>
     <th>İsim</th>
     <th>Ürün</th>
     <th>Tutar</th>
     <th>Not</th>
     <th>Sipariş Alan</th>
-    <th>Hazırla</th>
   `
   : `
     <th>S.No</th>
@@ -258,6 +258,7 @@ const noteChip = o.notlar ? `
 
 tr.innerHTML = isPendingTab
   ? `
+    <td><button class="btn-open" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button></td>
     <td>${o.siparis_no}</td>
     <td>${escapeHtml(o.ad_soyad)}</td>
     <td>
@@ -270,7 +271,6 @@ tr.innerHTML = isPendingTab
     <td>${o.toplam_tutar} TL</td>
     <td>${noteChip}</td>
     <td>${escapeHtml(o.siparis_alan ?? "-")}</td>
-    <td><button class="btn-open" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button></td>
   `
   : `
     <td>${o.siparis_no}</td>
