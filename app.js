@@ -73,8 +73,8 @@ function renderTableHeader(){
     <th>Ürün</th>
     <th>Tutar</th>
     <th>Durum</th>
-    <th>Not</th>
-    <th>Hata Mesajı</th>
+    <th>${shouldShowNoteColumn(currentTab) ? "Not" : "Kargo Kodu"}</th>
+    <th>${currentTab === "hazirlandi" ? "Hata / İşlem" : "İşlem"}</th>
   `;
 
 }
@@ -160,6 +160,7 @@ async function loadOrders(reset=false){
   }
 
   renderTableHeader();
+  updateListHeading(false, "Siparişler yükleniyor…");
 
   let q = db.from(TABLE).select("*", { count: "exact" });
 
@@ -180,6 +181,7 @@ async function loadOrders(reset=false){
   if(error){
     tbody.innerHTML = `<tr><td colspan="${getColumnCount()}">HATA: ${error.message}</td></tr>`;
     toggleLoadMore(false);
+    updateListHeading(false, "Liste yüklenemedi. Yeniden deneyin.");
     return;
   }
 
@@ -193,6 +195,7 @@ async function loadOrders(reset=false){
   }
 
   renderTable(data, { append: !reset, hasMore });
+  updateListHeading(false, `${tbody.children.length} sipariş gösteriliyor · Toplam ${count ?? data.length} kayıt`);
 }
 
 function renderTable(rows, { append=false, hasMore } = {}){
@@ -222,7 +225,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
 
   const actionBtn = isTrackingTab
     ? `<button class="btn-open" onclick="event.stopPropagation(); openTrackingUrl('${o.kargo_takip_url ?? ""}')">Sorgula</button>`
-    : `<button class="btn-open">Aç</button>`;
+    : `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
 
 const errorPreview = isPreparedTab
   ? `<button class="error-chip"
@@ -247,7 +250,7 @@ const noteChip = `
 tr.innerHTML = isPendingTab
   ? `
     <td>${o.siparis_no}</td>
-    <td>${o.ad_soyad}</td>
+    <td>${escapeHtml(o.ad_soyad)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -257,7 +260,7 @@ tr.innerHTML = isPendingTab
 
     <td>${o.toplam_tutar} TL</td>
     <td>${noteChip}</td>
-    <td>${o.siparis_alan ?? "-"}</td>
+    <td>${escapeHtml(o.siparis_alan ?? "-")}</td>
   `
   : `
     <td>${o.siparis_no}</td>
@@ -320,7 +323,7 @@ function shortenNote(text, max = 40){
 
 
 function escapeHtml(str=""){
-  return str
+  return String(str ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -351,7 +354,7 @@ function showNoteDetail(note = "") {
     <div class="alert-card">
       <div class="alert-title">📝 Sipariş Notu</div>
       <div class="alert-text">
-        <textarea class="error-detail-text" readonly>${note}</textarea>
+        <textarea class="error-detail-text" readonly>${escapeHtml(note)}</textarea>
       </div>
       <div class="alert-actions">
         <button class="btn-brand" id="noteCloseBtn">Kapat</button>
@@ -394,7 +397,7 @@ function openPrintChooser(){
         </button>
 
         <button class="btn-secondary" id="btnPrintEtiket">
-          🏷 Etiket Yazdır (40×60)
+          🏷 Etiket Yazdır (58×40 mm)
         </button>
 
         <button class="btn-close" id="btnCancelPrint">
@@ -1453,6 +1456,7 @@ function buildOrderSearchFilter(input) {
 async function searchOrders() {
   const raw = document.getElementById("searchInput").value.trim();
   if (!raw) return loadOrders(true);
+  updateListHeading(true, "Aranıyor…");
   try {
     const { data, error } = await db.from(TABLE).select("*")
       .or(buildOrderSearchFilter(raw))
@@ -1460,7 +1464,9 @@ async function searchOrders() {
     if (error) throw error;
     renderTableHeader();
     renderTable(data, { append: false, hasMore: false });
+    updateListHeading(true, `${data?.length ?? 0} sonuç · Tüm siparişlerde arama`);
   } catch (error) {
+    updateListHeading(true, "Arama tamamlanamadı. Yeniden deneyin.");
     console.error("Arama Hatası:", error);
     toast("Arama yapılırken bir hata oluştu!");
   }
@@ -1475,7 +1481,16 @@ function clearSearch(){
 /* ============================================================
    TAB / LOAD MORE / MOBİL MENÜ
 ============================================================ */
+function updateListHeading(search, summary) {
+  const titles = {bekleyen:"Bekleyen Siparişler", hazirlandi:"Hazırlanan Siparişler", kargolandi:"Kargolanan Siparişler", tamamlandi:"Tamamlanan Siparişler", sorunlu:"Sorunlu Siparişler", iptal:"İptal Edilen Siparişler"};
+  const title = document.getElementById("pageTitle");
+  const info = document.getElementById("listSummary");
+  if (title) title.textContent = search ? "Arama Sonuçları" : titles[currentTab];
+  if (info) info.textContent = summary;
+}
+
 function setTab(tab){
+  document.getElementById("searchInput").value = "";
   currentTab = tab;
   document.querySelectorAll(".menu li").forEach(li=>li.classList.remove("active"));
   const el = document.getElementById(`tab_${tab}`);
@@ -1597,3 +1612,12 @@ showNoteDetail,
 /* ============================================================
    BAŞLAT
 ============================================================ */
+
+// Menü öğeleri klavye ile de kullanılabilir.
+document.querySelectorAll(".menu li").forEach(item => {
+  item.tabIndex = 0;
+  item.setAttribute("role", "button");
+  item.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); item.click(); }
+  });
+});
