@@ -5,33 +5,54 @@
   <title>Giriş Yap</title>
   <script src="config.js"></script>
   <style>
-    body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:"Segoe UI",sans-serif;background:linear-gradient(135deg,#0b2e63,#1a3d7c)}
-    .login-box{width:90%;max-width:380px;background:#fff;padding:35px;border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35);text-align:center}
-    .logo{width:140px;margin:0 auto 20px}
-    h2{color:#1a3d7c;margin:0 0 20px;font-size:22px;font-weight:700}
+    :root{color-scheme:light;--green:#133d2d;--gold:#e8c875;--ink:#183c2d}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:28px 16px;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);background:radial-gradient(ellipse at 50% 15%,#285c43 0,transparent 58%),linear-gradient(145deg,#09291e,#133d2d 55%,#061e17);position:relative;isolation:isolate}
+    body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.11;background-image:repeating-linear-gradient(45deg,transparent 0 39px,#e8c875 40px,transparent 41px 80px),repeating-linear-gradient(-45deg,transparent 0 39px,#e8c875 40px,transparent 41px 80px);mask-image:linear-gradient(to bottom,#000,transparent 65%,#000)}
+    .login-box{width:100%;max-width:420px;position:relative;background:linear-gradient(135deg,#fff1bd,#efd48e 48%,#d7b262);padding:34px 34px 30px;border:1px solid #f8e2a5;border-radius:24px;box-shadow:0 24px 75px #0005,inset 0 1px 0 #fff9;text-align:center}
+    .login-box::before{content:"";position:absolute;inset:9px;border:1px solid #94722d55;border-radius:17px;pointer-events:none}
+    .logo{width:140px;max-height:100px;object-fit:contain;display:block;margin:0 auto 16px}
+    .brand-caption{margin:0 0 8px;font-size:10px;letter-spacing:2.4px;font-weight:700;color:#6a542b;text-transform:uppercase}
+    h2{color:var(--green);font-family:"Segoe Script","URW Chancery L","Brush Script MT",Georgia,serif;font-style:italic;font-weight:600;font-size:34px;line-height:1.3;margin:0}
+    .login-subtitle{font-size:14px;letter-spacing:.7px;margin:3px 0 16px;font-weight:600}
+    .ornament{display:flex;align-items:center;justify-content:center;gap:12px;color:#95742f;margin:0 0 22px;font-size:12px}
+    .ornament::before,.ornament::after{content:"";width:68px;height:1px;background:linear-gradient(90deg,transparent,#95742f)}
+    .ornament::after{transform:rotate(180deg)}
     .form-group{margin-bottom:16px;text-align:left}
-    label{font-size:14px;font-weight:600;color:#1a3d7c}
-    input{width:100%;padding:12px;border-radius:10px;border:1px solid #b8c6d9;margin-top:6px;background:#f7f9fc}
-    .btn-login{width:100%;padding:12px;border:none;border-radius:10px;background:#1a3d7c;color:#fff;cursor:pointer;margin-top:10px}
-    .error{margin-top:12px;color:#e74c3c;display:none}
+    label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:#284332}
+    input{display:block;width:100%;padding:13px 14px;border-radius:11px;border:1px solid #b79b5766;font-size:15px;background:#fffbf0;color:#183c2d;box-shadow:inset 0 1px 2px #9272310a;transition:border-color .15s,box-shadow .15s}
+    input::placeholder{color:#8e8b7b}
+    input:focus{outline:none;border-color:#42684b;box-shadow:0 0 0 3px #133d2d1a;background:#fffdf5}
+    .btn-login{width:100%;padding:14px;border:1px solid #315c43;border-radius:11px;background:linear-gradient(135deg,#1c4b35,#0d3022);color:#f9e3a3;font-size:15px;font-weight:700;letter-spacing:.4px;cursor:pointer;margin-top:5px;box-shadow:0 5px 12px #17342622}
+    .btn-login:hover{background:#1b5038}
+    .btn-login:focus-visible{outline:3px solid #66835a;outline-offset:3px}
+    .error{margin-top:14px;color:#8b2424;display:none;font-size:13px;line-height:1.6;padding:10px;border:1px solid #a8323233;background:#fff5eb;border-radius:8px}
+    .login-footer{font-size:11px;color:#6a542b;margin:20px 0 0}
+    @media(max-width:480px){.login-box{padding:28px 25px 26px}h2{font-size:30px}}
+    @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
   </style>
 </head>
 <body>
   <div class="login-box">
     <img id="brandLogo" class="logo" alt="Logo">
-    <h2 id="brandTitle"></h2>
+    <p class="brand-caption">SİPARİŞ YÖNETİMİ</p>
+    <h2 id="brandTitle">Gazi</h2>
+    <p class="login-subtitle">Sipariş Sistemi</p>
+    <div class="ornament" aria-hidden="true">◆</div>
 
     <div class="form-group">
-      <label>Email</label>
-      <input id="email" type="email" placeholder="Email adresiniz">
+      <label for="email">E-posta</label>
+      <input id="email" type="email" autocomplete="username" placeholder="Email adresiniz">
     </div>
     <div class="form-group">
-      <label>Şifre</label>
-      <input id="password" type="password" placeholder="Şifreniz">
+      <label for="password">Şifre</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="Şifreniz">
     </div>
 
     <button class="btn-login" onclick="login()">Giriş Yap</button>
-    <div id="errorBox" class="error"></div>
+    <div id="errorBox" class="error" role="alert"></div>
+    <p class="login-footer">Gazioğulları · Sipariş Takip Paneli</p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -39,7 +60,7 @@
     (async()=>{
       await window.waitConfig();
       document.getElementById("brandLogo").src = CONFIG.logo;
-      document.getElementById("brandTitle").innerText = CONFIG.brandName + " Sipariş Takip Sistemi";
+      document.getElementById("brandTitle").innerText = CONFIG.brandName.charAt(0).toLocaleUpperCase("tr-TR") + CONFIG.brandName.slice(1);
     })();
 
     const db = supabase.createClient(
