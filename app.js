@@ -1118,7 +1118,7 @@ async function sendToCargo(){
   const siparisNo=selectedOrder?.siparis_no;
   if(!siparisNo) return toast("Önce sipariş seçin.");
   if(busy.kargola.has(siparisNo)) return toast("Kargolama sürüyor.");
-  const ok=await confirmModal({title:"Siparişi Kargola",text:"Sipariş DHL canlı hesabında kargolanacak. Her paketin kargo etiketi hazırlanıp açılacak. Devam edilsin mi?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
+  const ok=await confirmModal({title:"Siparişi Kargola",text:"Sipariş DHL test ortamında kargolanacak. Her paketin kargo etiketi hazırlanıp açılacak. Devam edilsin mi?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
   if(!ok) return;
   const w=window.open("","_blank");
   if(!w) return toast("Etiket ekranı için açılır pencerelere izin verin.");
@@ -1128,13 +1128,12 @@ async function sendToCargo(){
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",siparisNo).single();
     if(error) throw error;
-    if(order.kargo_api_yanit){let saved;try{saved=JSON.parse(order.kargo_api_yanit);}catch{}if(saved?.environment==="test")throw new Error("Bu sipariş test ortamında kargolandı. Canlı gönderi için ayrı sipariş kullanın.");}
     if(order.zpl_base64){openCargoPdf(w,order.zpl_base64);return;}
     if(order.kargo_takip_kodu) throw new Error("Gönderi zaten mevcut. Yeni kargo oluşturmadan etiket dönüşümünü tamamlamak gerekiyor.");
-    const res=await fetch(WH_KARGOLA,{method:"POST",body:new URLSearchParams({payload:JSON.stringify({...order,test_mode:false})}),signal:controller.signal});
+    const res=await fetch(WH_KARGOLA,{method:"POST",body:new URLSearchParams({operation:"kargola",payload:JSON.stringify({...order,test_mode:true})}),signal:controller.signal});
     const text=await res.text();let payload;
     try{payload=JSON.parse(text);}catch{throw new Error("n8n etiket yanıtı alınamadı. Çalıştırma sonucunu kontrol edin.");}
-    if(!res.ok||payload.success!==true||payload.environment!=="production")throw new Error(res.status===404?"Canlı kargolama bağlantısı bulunamadı.":payload.message||"Kargolama başarısız.");
+    if(!res.ok||payload.success!==true||payload.environment!=="test")throw new Error(res.status===404?"Test kargolama bağlantısı bulunamadı.":payload.message||"Kargolama başarısız.");
     openCargoPdf(w,payload.pdf_base64);
     db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"🚚"}}).then(({error})=>{if(error)toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000);}).catch(()=>toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000));
     toast("Kargolandı. Paket etiketleri yazdırmaya hazır.",6000);
