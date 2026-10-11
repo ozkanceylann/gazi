@@ -43,8 +43,8 @@ body {
 #wrap {
   position: absolute;
   top: 2.5mm;
-  left: 5mm;
-  width: 50.5mm;
+  left: 3mm;
+  width: 52.5mm;
   margin: 0;
   padding: 0;
 
@@ -86,13 +86,13 @@ body {
 .label-content {
   position: absolute;
   top: 2.5mm;
-  left: 5mm;
-  width: 50.5mm;
+  left: 3mm;
+  width: 52.5mm;
 }
 .row { white-space: pre-wrap; }
 .separator-before {
   width: 100%;
-  max-width: 50.5mm;
+  max-width: 52.5mm;
   border-top: 1px dashed #000;
   padding-top: 0.5mm;
 }
@@ -128,7 +128,7 @@ body {
   }
 
   #wrap {
-    width: 50.5mm;
+    width: 52.5mm;
     margin: 0;
     padding: 0;
 
@@ -285,7 +285,7 @@ window.addEventListener("load", function () {
     const availableHeight = 34.5 * 96 / 25.4;
     let fontSize = 12;
     wrap.style.fontSize = fontSize + "px";
-    while (wrap.getBoundingClientRect().height > availableHeight && fontSize > 8) {
+    while (wrap.getBoundingClientRect().height > availableHeight && fontSize > 6) {
       fontSize -= 0.25;
       wrap.style.fontSize = fontSize + "px";
     }
