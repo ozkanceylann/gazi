@@ -542,6 +542,7 @@ function renderDetails() {
 
   /* — DETAY HTML — */
 document.getElementById("orderDetails").innerHTML = `
+<div class="detail-layout" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;">
 <div class="detail-column detail-column-customer">
   <div class="detail-group">
     <div class="detail-title">📞Müşteri İletişim</div>    
@@ -604,6 +605,7 @@ document.getElementById("orderDetails").innerHTML = `
 
 </div>
 
+</div>
 `;
 
   /* ============================================================
