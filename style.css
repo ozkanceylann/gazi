@@ -804,12 +804,7 @@ body.login-page {
   overflow-x: hidden;
   overscroll-behavior: contain;
 }
-#orderDetails:has(> .detail-column) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-}
+
 #orderDetails .detail-column > .detail-group {
   min-width: 0;
   margin: 0;
@@ -848,7 +843,7 @@ body.login-page {
     max-height: calc(100dvh - 20px) !important;
     padding: 16px;
   }
-  #orderDetails:has(> .detail-column) { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  
   #orderDetails .detail-column > .detail-group { padding: 10px 12px; }
 }
 
@@ -860,4 +855,16 @@ body.login-page {
 }
 @media (max-width: 600px) {
   #orderDetails .detail-column { gap: 8px; }
+}
+
+#orderDetails { display: block; }
+#orderDetails .detail-layout { min-width: 0; }
+#orderDetails .detail-column > .detail-group {
+  box-sizing: border-box;
+  width: 100%;
+}
+@media (max-width: 600px) {
+  #orderDetails .detail-column > .detail-group { padding: 9px; }
+  #orderDetails .detail-title { font-size: 13px; }
+  #orderDetails .detail-item { font-size: 12px; }
 }
