@@ -542,18 +542,7 @@ function renderDetails() {
 
   /* — DETAY HTML — */
 document.getElementById("orderDetails").innerHTML = `
-  <div class="detail-group">
-    <div class="detail-item"><b>No:</b> ${d.siparis_no}</div>
-    <div class="detail-item"><b>Sipariş Alan:</b> ${d.siparis_alan ?? "-"}</div>
-    <div class="detail-item"><b>Sipariş Alan Tel:</b> ${d.siparis_tel}</div>    
-    <div class="detail-item" style="margin-top:6px;">
-  <span class="pill pill-date">
-    📅 ${formatDateTimeTR(d.tarih)}
-  </span>
-</div>
-
-  </div>
-
+<div class="detail-column detail-column-customer">
   <div class="detail-group">
     <div class="detail-title">📞Müşteri İletişim</div>    
     <div class="detail-item"><b>İsim:</b> ${d.ad_soyad}</div>
@@ -570,6 +559,22 @@ document.getElementById("orderDetails").innerHTML = `
     <div class="detail-item">
       <small>Kodlar: ${d.sehir_kodu ?? "-"} / ${d.ilce_kodu ?? "-"}</small>
     </div>
+  </div>
+
+
+</div>
+<div class="detail-column detail-column-order">
+
+  <div class="detail-group">
+    <div class="detail-item"><b>No:</b> ${d.siparis_no}</div>
+    <div class="detail-item"><b>Sipariş Alan:</b> ${d.siparis_alan ?? "-"}</div>
+    <div class="detail-item"><b>Sipariş Alan Tel:</b> ${d.siparis_tel}</div>    
+    <div class="detail-item" style="margin-top:6px;">
+  <span class="pill pill-date">
+    📅 ${formatDateTimeTR(d.tarih)}
+  </span>
+</div>
+
   </div>
 
   <div class="detail-group">
@@ -595,6 +600,8 @@ document.getElementById("orderDetails").innerHTML = `
         <div class="note-empty">Not girilmemiş</div>
       `
   }
+</div>
+
 </div>
 
 `;
