@@ -375,7 +375,7 @@ function openTrackingUrl(url){
 
 function printEtiket(){
   localStorage.setItem("print_order", JSON.stringify(selectedOrder));
-  window.open("printetiket.html", "_blank", "width=320,height=240");
+  window.open("printetiket-v2.html?v=20261011-4", "_blank", "width=320,height=240");
 }
 function openPrintChooser(){
   const root = document.getElementById("alertRoot");
