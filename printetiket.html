@@ -45,7 +45,6 @@ body {
   position: absolute;
   top: 2.5mm;
   left: 5mm;
-  transform-origin: top left;
   width: 50.5mm;
   margin: 0;
   padding: 0;
@@ -69,7 +68,7 @@ body {
 }
 
 .small {
-  font-size: 9px;
+  font-size: 0.9em;
 }
 
 /* AYIRICI */
@@ -260,17 +259,19 @@ window.addEventListener("load", function () {
 
   setTimeout(function () {
 
-    // Keep every line inside the printable area instead of creating a second page.
+    // Resize the text itself; do not transform the label into scaled artwork.
     const wrap = document.getElementById("wrap");
     const availableHeight = 34.5 * 96 / 25.4;
     const availableWidth = 50.5 * 96 / 25.4;
-    wrap.style.transform = "none";
-    const scale = Math.min(
-      1,
-      availableHeight / Math.max(1, wrap.scrollHeight),
-      availableWidth / Math.max(1, wrap.scrollWidth)
-    );
-    wrap.style.transform = "scale(" + scale + ")";
+    let fontSize = 10;
+    wrap.style.fontSize = fontSize + "px";
+    while (
+      (wrap.scrollHeight > availableHeight || wrap.scrollWidth > availableWidth) &&
+      fontSize > 1
+    ) {
+      fontSize -= 0.25;
+      wrap.style.fontSize = fontSize + "px";
+    }
     window.print();
 
   }, 300);
