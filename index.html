@@ -15,7 +15,7 @@
   <script src="config.js"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261011-modal-4" />
+  <link rel="stylesheet" href="style.css?v=20261011-dashboard-1" />
 
   <style>
     .btn-mini{
@@ -32,10 +32,10 @@
 
 </head>
 
-<body>
+<body class="orders-page">
 
   <!-- MOBİL MENÜ -->
-  <div class="mobile-menu-btn" onclick="toggleMenu()">☰</div>
+  <button type="button" class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Menüyü aç veya kapat">☰</button>
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
@@ -63,14 +63,16 @@
 
   <!-- ANA İÇERİK -->
   <main class="content-area">
+    <header class="page-header"><div><p class="page-eyebrow">SİPARİŞ YÖNETİMİ</p><h1 id="pageTitle">Bekleyen Siparişler</h1><p id="listSummary" role="status" aria-live="polite">Siparişler yükleniyor…</p></div><button class="btn-refresh" type="button" onclick="clearSearch()">↻ Listeyi Yenile</button></header>
 
     <div class="top-bar">
-      <input id="searchInput" type="text" placeholder="Müşteri adı / Müşteri No / Sipariş No / Telefon / Adres" />
+      <input id="searchInput" type="search" aria-label="Sipariş ara" placeholder="Müşteri adı / Müşteri No / Sipariş No / Telefon / Adres" />
       <button class="btn-search" onclick="searchOrders()">Ara</button>
       <button class="btn-clear" onclick="clearSearch()">Temizle</button>
     </div>
 
-    <div class="table-wrapper">
+    <p class="search-hint">İsim, numara, telefon veya adres yazıp Enter’a basın. Arama tüm siparişleri kapsar.</p>
+    <div class="table-wrapper" tabindex="0" aria-label="Sipariş listesi">
       <table class="orders-table">
         <thead>
           <tr id="ordersHeadRow">
@@ -162,7 +164,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
 
 
   <!-- APP -->
-  <script src="app.js?v=20261011-search-1" type="module"></script>
+  <script src="app.js?v=20261011-dashboard-1" type="module"></script>
 
   <!-- LOGO & BAŞLIK & İLK YÜKLEME -->
   <script type="module">
@@ -204,6 +206,3 @@ document.getElementById("orderModal").addEventListener("click", function(e){
 </body>
 </html>
 
-
-</body>
-</html>
