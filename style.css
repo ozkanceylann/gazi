@@ -868,3 +868,12 @@ body.login-page {
   #orderDetails .detail-title { font-size: 13px; }
   #orderDetails .detail-item { font-size: 12px; }
 }
+
+#orderDetails .detail-layout > .detail-note {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  box-shadow: none;
+}
