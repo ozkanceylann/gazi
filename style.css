@@ -765,3 +765,89 @@ body.login-page {
   color: #999;
   font-style: italic;
 }
+
+/* Sipariş detayı: ekranı aşmadan, yalnızca uzun içerikte kaydır. */
+#orderModal {
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#orderModal .modal-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(760px, 100%) !important;
+  min-height: 0 !important;
+  max-height: calc(100vh - 32px) !important;
+  max-height: calc(100dvh - 32px) !important;
+  margin: 0;
+  padding: 20px;
+  overflow: hidden;
+  transform: none;
+  animation: none;
+}
+#orderModal h2 {
+  flex-shrink: 0;
+  margin: 0 36px 16px 0;
+  font-size: 20px;
+}
+#orderModal .close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  line-height: 28px;
+}
+#orderDetails {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+#orderDetails:has(> .detail-group) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+#orderDetails > .detail-group {
+  min-width: 0;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+#orderDetails > .detail-group:last-child {
+  grid-column: 1 / -1;
+}
+#orderDetails .detail-title { margin-bottom: 8px; }
+#orderDetails .detail-item { margin: 4px 0; overflow-wrap: anywhere; }
+#orderDetails .pill-date { padding: 5px 9px; }
+#orderDetails .note-card { max-height: none; overflow: visible; padding: 9px 12px; }
+#orderModal #actionButtons,
+#orderModal #editButtons,
+#orderModal #restoreButtons {
+  position: static;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 0 !important;
+}
+#orderModal .modal-btns button {
+  min-width: 90px;
+  flex: 1;
+  height: 40px;
+  padding: 8px 12px !important;
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  #orderModal { padding: 10px; }
+  #orderModal .modal-content {
+    max-height: calc(100vh - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 16px;
+  }
+  #orderDetails:has(> .detail-group) { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  #orderDetails > .detail-group { padding: 10px 12px; }
+}
