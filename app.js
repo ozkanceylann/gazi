@@ -1217,118 +1217,89 @@ Bu işlem normal şartlarda geri alınamaz ve iptal durumunda kargo firması ek 
 }
 
 async function printBarcode() {
-
   const siparisNo = selectedOrder?.siparis_no;
   if (siparisNo == null) return toast("Önce sipariş seçin.");
-
   const ok = await confirmModal({
     title: "Barkod Kes",
-    text: "Supabase içerisindeki barkod PDF/PNG dosyaları açılacak.",
-    confirmText: "Aç",
-    cancelText: "Vazgeç"
+    text: "Barkodlar kargo adedi kadar tek PDF içinde açılacak.",
+    confirmText: "Aç", cancelText: "Vazgeç"
   });
   if (!ok) return;
-
-  // Supabase'den veriyi çek
-  const { data, error } = await db
-    .from(TABLE)
-    .select("zpl_base64, kargo_adet")
-    .eq("siparis_no", siparisNo)
-    .single();
-
-  if (error) return toast("Barkod alınamadı!");
-  if (!data?.zpl_base64) return toast("Barkod bulunamadı!");
-
-  let raw = data.zpl_base64;
-  let list = [];
-
-  // JSON formatını çöz
+  const w = window.open("", "_blank");
+  if (!w) return toast("Pop-up engellendi, izin ver.");
+  w.document.write("<html><head><title>Barkodlar</title></head><body>Barkodlar hazırlanıyor…</body></html>");
+  w.document.close();
+  function fail(message) {
+    if (!w.closed) w.close();
+    toast(message);
+  }
   try {
-    const parsed = JSON.parse(raw);
+    const { data, error } = await db.from(TABLE)
+      .select("zpl_base64, kargo_adet").eq("siparis_no", siparisNo).single();
+    if (error) return fail("Barkod alınamadı!");
+    if (!data?.zpl_base64) return fail("Barkod bulunamadı!");
+    const cargoCount = Number(data.kargo_adet);
+    if (!Number.isSafeInteger(cargoCount) || cargoCount < 1)
+      return fail("Kargo adedi geçersiz. Siparişteki kargo adedini kontrol edin.");
 
-    if (Array.isArray(parsed)) {
-      list = parsed
-        .map(item => {
-          if (!item) return null;
-          if (typeof item === "string") return item;
-          if (typeof item === "object" && item.data) return item.data;
-          return null;
-        })
-        .filter(x => !!x);
-    } else list = [raw];
+    let raw = data.zpl_base64;
+    try { raw = JSON.parse(raw); } catch {}
+    const list = (Array.isArray(raw) ? raw : [raw])
+      .map(item => typeof item === "string" ? item : item?.data)
+      .filter(item => typeof item === "string" && item.trim());
+    if (!list.length) return fail("Geçerli barkod bulunamadı!");
 
-  } catch {
-    list = [raw];
-  }
-
-  if (!list.length) return toast("Geçerli barkod bulunamadı!");
-
-  const cargoCount = Number(data.kargo_adet);
-  if (!Number.isSafeInteger(cargoCount) || cargoCount < 1) {
-    return toast("Kargo adedi geçersiz. Siparişteki kargo adedini kontrol edin.");
-  }
-
-  // Tek barkod dosyası varsa her kargo için aynı barkodun bir kopyasını aç.
-  // Ayrı paket barkodları varsa bunları çoğaltma veya sessizce eksiltme.
-  if (list.length === 1) {
-    list = Array(cargoCount).fill(list[0]);
-  } else if (list.length !== cargoCount) {
-    return toast("Barkod sayısı (" + list.length + ") kargo adediyle (" +
-      cargoCount + ") eşleşmiyor. Barkodları kontrol edin.");
-  }
-
-  // Base64 → Blob çevirici
-  function base64ToBlob(base64, mime) {
-    const binary = atob(base64);
-    const len = binary.length;
-    const buffer = new Uint8Array(len);
-    for (let i = 0; i < len; i++) buffer[i] = binary.charCodeAt(i);
-    return new Blob([buffer], { type: mime });
-  }
-
-  // Her barkodu ayrı sekmede aç
-  list.forEach(b64 => {
-    if (typeof b64 !== "string") return;
-
-    const trimmed = b64.trim();
-
-    // PDF / PNG algılaması
-    let mime = "application/pdf";
-    if (trimmed.startsWith("iVBOR")) mime = "image/png";
-
-    // Blob'a çevir
-    const blob = base64ToBlob(trimmed, mime);
-    const blobUrl = URL.createObjectURL(blob);
-
-    // Yeni sekme aç
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast("Pop-up engellendi, izin ver.");
-      return;
+    if (!window.PDFLib) {
+      if (!window.barcodePdfLibPromise) {
+        window.barcodePdfLibPromise = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
+          script.onload = () => window.PDFLib ? resolve() : reject(new Error("PDF aracı yüklenemedi"));
+          script.onerror = () => { script.remove(); reject(new Error("PDF aracı yüklenemedi")); };
+          document.head.appendChild(script);
+        }).catch(error => { window.barcodePdfLibPromise = null; throw error; });
+      }
+      await window.barcodePdfLibPromise;
     }
 
-    // Chrome PDF bug fix → iframe içinde aç
-    w.document.write(`
-      <html>
-      <head>
-        <title>Barkod</title>
-        <style>
-          body { margin:0; padding:0; overflow:hidden; background:#000; }
-          iframe { border:0; width:100vw; height:100vh; }
-        </style>
-      </head>
-      <body>
-        <iframe src="${blobUrl}"></iframe>
-      </body>
-      </html>
-    `);
-    w.document.close();
-  });
-
-  toast(list.length + " adet barkod açıldı.");
+    const { PDFDocument } = window.PDFLib;
+    const source = await PDFDocument.create();
+    for (const value of list) {
+      const base64 = value.trim().replace(/^data:[^,]*,/, "").replace(/\\s/g, "");
+      const bytes = Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+      if (base64.startsWith("iVBOR")) {
+        const image = await source.embedPng(bytes);
+        const width = image.width * 72 / 96;
+        const height = image.height * 72 / 96;
+        source.addPage([width, height]).drawImage(image, { x: 0, y: 0, width, height });
+      } else {
+        const pdf = await PDFDocument.load(bytes);
+        const pages = await source.copyPages(pdf, pdf.getPageIndices());
+        pages.forEach(page => source.addPage(page));
+      }
+    }
+    const pageCount = source.getPageCount();
+    let output = source;
+    if (pageCount === 1 && cargoCount > 1) {
+      output = await PDFDocument.create();
+      const pages = await output.copyPages(source, Array(cargoCount).fill(0));
+      pages.forEach(page => output.addPage(page));
+    } else if (pageCount !== cargoCount) {
+      return fail("Barkod sayfası (" + pageCount + ") kargo adediyle (" +
+        cargoCount + ") eşleşmiyor. Barkodları kontrol edin.");
+    }
+    if (w.closed) return;
+    const blobUrl = URL.createObjectURL(new Blob([await output.save()], { type: "application/pdf" }));
+    w.document.body.innerHTML = '<iframe title="Barkodlar" src="' + blobUrl +
+      '#view=FitH" style="border:0;width:100%;height:100vh"></iframe>';
+    w.document.body.style.cssText = "margin:0;overflow:hidden";
+    w.addEventListener("unload", () => URL.revokeObjectURL(blobUrl), { once: true });
+    toast(cargoCount + " barkod tek PDF içinde açıldı.");
+  } catch (error) {
+    console.error("Barkod hazırlama hatası:", error);
+    fail("Barkod PDF hazırlanamadı. Dosyayı ve internet bağlantısını kontrol edin.");
+  }
 }
-
-
 
 /* ============================================================
    İPTAL / GERİ AL
