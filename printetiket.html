@@ -25,12 +25,15 @@ html {
 }
 
 body {
+  position: relative;
   width: 60mm;
+  height: 39.5mm;
   margin: 0;
-  padding: 2.5mm;
+  padding: 0;
 
   font-family: Arial, sans-serif;
   font-size: 9px;
+  font-weight: 700;
   line-height: 1.2;
 
   color: #000;
@@ -39,6 +42,10 @@ body {
 
 /* ANA ALAN */
 #wrap {
+  position: absolute;
+  top: 2.5mm;
+  left: 2.5mm;
+  transform-origin: top left;
   width: 55mm;
   margin: 0;
   padding: 0;
@@ -92,8 +99,9 @@ body {
 
   body {
     width: 60mm;
+    height: 39.5mm;
     margin: 0;
-    padding: 2.5mm;
+    padding: 0;
 
     overflow: hidden;
 
@@ -252,6 +260,17 @@ window.addEventListener("load", function () {
 
   setTimeout(function () {
 
+    // Keep every line inside the printable area instead of creating a second page.
+    const wrap = document.getElementById("wrap");
+    const availableHeight = 34.5 * 96 / 25.4;
+    const availableWidth = 55 * 96 / 25.4;
+    wrap.style.transform = "none";
+    const scale = Math.min(
+      1,
+      availableHeight / Math.max(1, wrap.scrollHeight),
+      availableWidth / Math.max(1, wrap.scrollWidth)
+    );
+    wrap.style.transform = "scale(" + scale + ")";
     window.print();
 
   }, 300);
