@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261012-cargo-filters-pending-9"; // örn: 2025-12-15
+const VERSION = "20261012-subtle-prepare-10"; // örn: 2025-12-15
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
