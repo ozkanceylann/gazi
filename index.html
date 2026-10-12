@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
-  <script src="config.js?v=20261012-subtle-prepare-10"></script>
+  <script src="config.js?v=20261012-compact-search-11"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261012-subtle-prepare-10" />
+  <link rel="stylesheet" href="style.css?v=20261012-compact-search-11" />
 
   <style>
     .btn-mini{
@@ -71,7 +71,6 @@
       <button class="btn-clear" onclick="clearSearch()">Temizle</button>
     </div>
 
-    <p class="search-hint">İsim, numara, telefon veya adres yazıp Enter’a basın. Arama tüm siparişleri kapsar.</p>
     <section id="cargoTools" class="cargo-tools" hidden aria-label="Kargo işlemleri">
       <div class="cargo-tool-buttons">
         <button id="refreshCargoBtn" class="btn-primary" type="button" onclick="refreshCargoMovements()">Kargo Hareketlerini Güncelle</button>
@@ -174,7 +173,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261012-subtle-prepare-10");
+      await import("./app.js?v=20261012-compact-search-11");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

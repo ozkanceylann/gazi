@@ -1078,3 +1078,8 @@ body.login-page {
 .cargo-legend button { cursor:pointer; font-family:inherit; }
 .cargo-status--all { color:#345847; background:#edf2ef; border-color:#ccd8d0; }
 .cargo-legend button[aria-pressed="true"] { outline:2px solid currentColor; outline-offset:2px; }
+
+/* Kompakt arama alanı */
+.orders-page .top-bar { max-width:860px; padding:6px; gap:8px; margin-bottom:14px; border-radius:10px; }
+.orders-page .top-bar input { padding:8px 10px; font-size:13px; }
+.orders-page .top-bar button { padding:8px 12px; font-size:13px; }
