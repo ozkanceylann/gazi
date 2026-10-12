@@ -302,6 +302,14 @@ tr.innerHTML = isPendingTab
 
   `;
 
+// Mobil kartlarda her değerin sütun başlığını koru.
+const labels=Array.from(document.querySelectorAll("#ordersHeadRow th"),th=>th.textContent.trim());
+Array.from(tr.children).forEach((cell,index)=>{cell.dataset.label=labels[index]||"";});
+tr.tabIndex=0;
+tr.addEventListener("keydown",event=>{
+  if(event.target===tr && event.key==="Enter"){event.preventDefault();openOrder(o.siparis_no);}
+});
+
 // Satır tıklama kontrolü (chip'e tıklayınca detay açılmasın)
 tr.addEventListener("click", (e)=>{
   if (
