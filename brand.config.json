@@ -6,13 +6,10 @@
   "table": "gazi_siparisler",
   "webhooks": {
     "kargola": "https://n8n.ozkanceylan.uk/webhook/gazi_kargola",
-    "barkod": "https://n8n.ozkanceylan.uk/webhook/barkod_gazi",
-    "iptal": "https://n8n.ozkanceylan.uk/webhook/gazi_kargo_test",
-    "sehir_ilce": "https://n8n.ozkanceylan.uk/webhook/sehir_ilce_kodu_sor_gazi",
-    "hareket": "https://n8n.ozkanceylan.uk/webhook/gazi_kargo_test",
-    "baglan": "https://n8n.ozkanceylan.uk/webhook/gazi_kargo_test",
-    "etiket": "https://n8n.ozkanceylan.uk/webhook/gazi_kargo_test",
-    "ayarlar": "https://n8n.ozkanceylan.uk/webhook/gazi_kargo_test"
-  },
-  "cargoTest": true
+    "barkod": "https://n8n.ozkanceylan.uk/webhook/gazi_barkod",
+    "iptal": "https://n8n.ozkanceylan.uk/webhook/gazi_iptal",
+    "sehir_ilce": "https://n8n.ozkanceylan.uk/webhook/gazi_sehir_ilce",
+    "hareket": "https://n8n.ozkanceylan.uk/webhook/gazi_hareket",
+    "baglan": "https://n8n.ozkanceylan.uk/webhook/gazi_baglan"
+  }
 }

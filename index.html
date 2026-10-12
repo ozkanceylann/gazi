@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
-  <script src="config.js?v=20261012-live-cargo-labels-6"></script>
+  <script src="config.js?v=20261012-standard-webhooks-7"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261012-live-cargo-labels-6" />
+  <link rel="stylesheet" href="style.css?v=20261012-standard-webhooks-7" />
 
   <style>
     .btn-mini{
@@ -77,7 +77,7 @@
         <button id="refreshCargoBtn" class="btn-primary" type="button" onclick="refreshCargoMovements()">Kargo Hareketlerini Güncelle</button>
         <button id="connectCargoBtn" class="btn-secondary" type="button" onclick="connectCargo()">DHL Bağlantısını Kontrol Et</button>
       </div>
-      <p id="cargoSyncStatus" role="status" aria-live="polite">DHL test gönderileri güncellenir. Canlı gönderiler atlanır.</p>
+      <p id="cargoSyncStatus" role="status" aria-live="polite">Canlı DHL gönderilerinin durumları ve hareketleri güncellenir.</p>
       <div class="cargo-legend"><span class="cargo-status cargo-status--created">Hazırlandı</span><span class="cargo-status cargo-status--transit">Yolda</span><span class="cargo-status cargo-status--delivery">Dağıtımda</span><span class="cargo-status cargo-status--delivered">Teslim edildi</span><span class="cargo-status cargo-status--problem">Sorun / İade</span></div>
     </section>
     <div class="table-wrapper" tabindex="0" aria-label="Sipariş listesi">
@@ -174,7 +174,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261012-live-cargo-labels-6");
+      await import("./app.js?v=20261012-standard-webhooks-7");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

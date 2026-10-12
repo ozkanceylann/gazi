@@ -401,7 +401,7 @@ function cargoStatusBadge(order){
   return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${checked}`;
 }
 function isLiveShipment(order){
-  try { return JSON.parse(order.kargo_api_yanit||"{}").environment==="test" && !!order.kargo_takip_kodu; }
+  try { return JSON.parse(order.kargo_api_yanit||"{}").environment!=="test" && !!order.kargo_takip_kodu; }
   catch { return false; }
 }
 function syncCargoTools(){
@@ -417,9 +417,9 @@ async function cargoRequest(url,body={}){
   try{
     const response=await fetch(url,{method:"POST",body:new URLSearchParams(body),signal:controller.signal});
     let result;try{result=JSON.parse(await response.text());}catch{throw new Error("n8n geçerli JSON yanıtı döndürmedi.");}
-    if(!response.ok||result.success!==true||result.environment!==(url===WH_KARGOLA?"production":"test"))throw new Error(result.message||"DHL test işlemi başarısız.");
+    if(!response.ok||result.success!==true||result.environment!=="production")throw new Error(result.message||"DHL canlı işlemi başarısız.");
     return result;
-  }catch(error){if(error.name==="AbortError")throw new Error("DHL test isteği zaman aşımına uğradı.");if(error instanceof TypeError)throw new Error("Kargo bağlantısına ulaşılamadı. n8n erişimini kontrol edin.");throw error;}
+  }catch(error){if(error.name==="AbortError")throw new Error("DHL canlı isteği zaman aşımına uğradı.");if(error instanceof TypeError)throw new Error("Kargo bağlantısına ulaşılamadı. n8n erişimini kontrol edin.");throw error;}
   finally{clearTimeout(timeout);}
 }
 let cargoSyncBusy=false;
@@ -428,8 +428,8 @@ async function connectCargo(){
   button.disabled=true;const label=button.textContent;button.textContent="Bağlanıyor…";
   try{
     const result=await cargoRequest(CONFIG.webhooks.baglan,{operation:"baglan"});
-    document.getElementById("cargoSyncStatus").textContent="DHL test bağlantısı hazır. Token geçerlilik: "+result.jwtExpireDate;
-    toast("DHL test hesabına bağlanıldı. Token n8n'de saklandı.");
+    document.getElementById("cargoSyncStatus").textContent="DHL canlı bağlantısı hazır. Token geçerlilik: "+result.jwtExpireDate;
+    toast("DHL canlı hesabına bağlanıldı. Token n8n'de saklandı.");
   }catch(error){toast(error.message,8000);}
   finally{button.disabled=false;button.textContent=label;}
 }
@@ -446,7 +446,7 @@ async function refreshCargoMovements(){
       for(const row of data||[]){if(isLiveShipment(row))candidates.push(row);else skipped++;}
       if((data||[]).length<100)break;
     }
-    if(!candidates.length){status.textContent="Güncellenecek test gönderisi yok. "+skipped+" canlı / takip numarası olmayan sipariş atlandı.";return;}
+    if(!candidates.length){status.textContent="Güncellenecek canlı gönderi yok. "+skipped+" test / takip numarası olmayan sipariş atlandı.";return;}
     for(let i=0;i<candidates.length;i++){
       const order=candidates[i];status.textContent=`${i+1}/${candidates.length} · Sipariş ${order.siparis_no} güncelleniyor…`;
       try{const result=await cargoRequest(CONFIG.webhooks.hareket,{operation:"hareket",siparis_no:String(order.siparis_no)});success++;if(result.warning){warnings++;errors.push("Sipariş "+order.siparis_no+": "+result.warning);}}
@@ -791,24 +791,10 @@ document.getElementById("orderDetails").innerHTML = `
    ŞEHİR/İLÇE KODU SOR  (ORİJİNAL - WEBHOOK İLE)
 ============================================================ */
 async function queryCityDistrictCodes(){
-  toast("Kodlar sorgulanıyor...");
-
-  const res = await fetch(WH_SEHIR_ILCE, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(selectedOrder)
-  });
-
-  if(!res.ok) return toast("Kod bulunamadı");
-
-  const d = await res.json();
-
-  await db.from(TABLE)
-    .update({ sehir_kodu:d.sehir_kodu, ilce_kodu:d.ilce_kodu })
-    .eq("siparis_no", selectedOrder.siparis_no);
-
-  toast("Kodlar güncellendi");
-  openOrder(selectedOrder.siparis_no);
+  const id=selectedOrder?.siparis_no;if(!id)return;
+  toast("Şehir / ilçe kodları sorgulanıyor…");
+  try{await cargoRequest(WH_SEHIR_ILCE,{siparis_no:String(id)});toast("Kodlar güncellendi");await openOrder(id);}
+  catch(error){toast(error.message,10000);}
 }
 
 /* ============================================================
@@ -1221,97 +1207,18 @@ async function sendToCargo(){
   finally{busy.kargola.delete(siparisNo);}
 }
 
-async function printBarcode() {
-  const siparisNo = selectedOrder?.siparis_no;
-  if (siparisNo == null) return toast("Önce sipariş seçin.");
-  const ok = await confirmModal({
-    title: "Etiketi Tekrar Yazdır",
-    text: "Daha önce oluşturulmuş paket etiketleri açılacak. Yeni kargo veya yeni barkod oluşturulmaz.",
-    confirmText: "Aç", cancelText: "Vazgeç"
-  });
-  if (!ok) return;
-  const w = window.open("", "_blank");
-  if (!w) return toast("Pop-up engellendi, izin ver.");
-  w.document.write("<html><head><title>Paket Etiketleri</title></head><body>Kayıtlı etiketler açılıyor…</body></html>");
-  w.document.close();
-  function fail(message) {
-    if (!w.closed) w.close();
-    toast(message);
-  }
-  try {
-    
-    if(selectedOrder.zpl_base64?.startsWith("JVBER")){
-      openCargoPdf(w,selectedOrder.zpl_base64);
-      toast("Kayıtlı paket etiketleri tekrar yazdırmaya hazır.");
-      return;
-    }
-    const { data, error } = await db.from(TABLE)
-      .select("zpl_base64, kargo_adet").eq("siparis_no", siparisNo).single();
-    if (error) return fail("Barkod alınamadı!");
-    if (!data?.zpl_base64) return fail("Barkod bulunamadı!");
-    const cargoCount = Number(data.kargo_adet);
-    if (!Number.isSafeInteger(cargoCount) || cargoCount < 1)
-      return fail("Kargo adedi geçersiz. Siparişteki kargo adedini kontrol edin.");
-
-    let raw = data.zpl_base64;
-    try { raw = JSON.parse(raw); } catch {}
-    const list = (Array.isArray(raw) ? raw : [raw])
-      .map(item => typeof item === "string" ? item : item?.data)
-      .filter(item => typeof item === "string" && item.trim());
-    if (!list.length) return fail("Geçerli barkod bulunamadı!");
-
-    if (!window.PDFLib) {
-      if (!window.barcodePdfLibPromise) {
-        window.barcodePdfLibPromise = new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
-          script.onload = () => window.PDFLib ? resolve() : reject(new Error("PDF aracı yüklenemedi"));
-          script.onerror = () => { script.remove(); reject(new Error("PDF aracı yüklenemedi")); };
-          document.head.appendChild(script);
-        }).catch(error => { window.barcodePdfLibPromise = null; throw error; });
-      }
-      await window.barcodePdfLibPromise;
-    }
-
-    const { PDFDocument } = window.PDFLib;
-    const source = await PDFDocument.create();
-    for (const value of list) {
-      const base64 = value.trim().replace(/^data:[^,]*,/, "").replace(/\s/g, "");
-      const bytes = Uint8Array.from(atob(base64), character => character.charCodeAt(0));
-      if (base64.startsWith("iVBOR")) {
-        const image = await source.embedPng(bytes);
-        const width = image.width * 72 / 96;
-        const height = image.height * 72 / 96;
-        source.addPage([width, height]).drawImage(image, { x: 0, y: 0, width, height });
-      } else {
-        const pdf = await PDFDocument.load(bytes);
-        const pages = await source.copyPages(pdf, pdf.getPageIndices());
-        pages.forEach(page => source.addPage(page));
-      }
-    }
-    const pageCount = source.getPageCount();
-    let output = source;
-    if (pageCount !== cargoCount) {
-      return fail("Barkod sayfası (" + pageCount + ") kargo adediyle (" +
-        cargoCount + ") eşleşmiyor. Barkodları kontrol edin.");
-    }
-    if (w.closed) return;
-    const blobUrl = URL.createObjectURL(new Blob([await output.save()], { type: "application/pdf" }));
-    w.document.body.innerHTML = '<iframe title="Barkodlar" src="' + blobUrl +
-      '#view=FitH" style="border:0;width:100%;height:100vh"></iframe>';
-    w.document.body.style.cssText = "margin:0;overflow:hidden";
-    w.document.addEventListener("keydown",event=>{if(event.key==="Escape"){event.preventDefault();w.close();}});
-    w.addEventListener("unload", () => URL.revokeObjectURL(blobUrl), { once: true });
-    toast(cargoCount + " kayıtlı paket etiketi tekrar yazdırmaya hazır.");
-  } catch (error) {
-    console.error("Barkod hazırlama hatası:", error);
-    fail("Barkod PDF hazırlanamadı. Dosyayı ve internet bağlantısını kontrol edin.");
-  }
+async function printBarcode(){
+  const id=selectedOrder?.siparis_no;if(!id)return toast("Önce sipariş seçin.");
+  if(busy.barkod.has(id))return toast("Paket etiketleri hazırlanıyor.");
+  const ok=await confirmModal({title:"Etiketi Tekrar Yazdır",text:"Her paketin kendi etiketi açılacak. Yeni sipariş oluşturulmaz.",confirmText:"Aç",cancelText:"Vazgeç"});
+  if(!ok)return;
+  const w=window.open("","_blank");if(!w)return toast("Etiket ekranı için açılır pencerelere izin verin.");
+  w.document.body.textContent="Paket etiketleri hazırlanıyor…";busy.barkod.add(id);
+  try{const r=await cargoRequest(WH_BARKOD,{siparis_no:String(id)});openCargoPdf(w,r.pdf_base64);toast(r.kargo_adet+" paket etiketi açıldı.");}
+  catch(error){if(!w.closed)w.close();toast(error.message,10000);}
+  finally{busy.barkod.delete(id);}
 }
 
-/* ============================================================
-   İPTAL / GERİ AL
-============================================================ */
 
 function cancelCancelForm(){
   document.getElementById("cancelForm").style.display = "none";
@@ -1356,7 +1263,7 @@ async function confirmCancel(){
   cancelBusy=true;
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();if(error)throw error;
-    if(hasExistingShipment(order) && !isLiveShipment(order))throw new Error("Canlı gönderi test bağlantısıyla iptal edilemez.");
+    if(hasExistingShipment(order) && !isLiveShipment(order))throw new Error("Test gönderisi canlı bağlantıyla iptal edilemez.");
     if(hasExistingShipment(order)){
       const result=await cargoRequest(CONFIG.webhooks.iptal,{operation:"iptal",siparis_no:String(id),reason});toast(result.message,6000);
     }else{
