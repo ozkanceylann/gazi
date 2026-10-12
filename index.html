@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
-  <script src="config.js?v=20261012-buttons-live-cancel-8"></script>
+  <script src="config.js?v=20261012-cargo-filters-pending-9"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261012-buttons-live-cancel-8" />
+  <link rel="stylesheet" href="style.css?v=20261012-cargo-filters-pending-9" />
 
   <style>
     .btn-mini{
@@ -78,7 +78,7 @@
         <button id="connectCargoBtn" class="btn-secondary" type="button" onclick="connectCargo()">DHL Bağlantısını Kontrol Et</button>
       </div>
       <p id="cargoSyncStatus" role="status" aria-live="polite">Canlı DHL gönderilerinin durumları ve hareketleri güncellenir.</p>
-      <div class="cargo-legend"><span class="cargo-status cargo-status--created">Hazırlandı</span><span class="cargo-status cargo-status--transit">Yolda</span><span class="cargo-status cargo-status--delivery">Dağıtımda</span><span class="cargo-status cargo-status--delivered">Teslim edildi</span><span class="cargo-status cargo-status--problem">Sorun / İade</span></div>
+      <div class="cargo-legend" role="group" aria-label="Kargo sürecine göre filtrele"><button type="button" class="cargo-status cargo-status--all" data-cargo-filter="all" aria-pressed="true" onclick="filterCargo('all')">Tümü</button><button type="button" class="cargo-status cargo-status--created" data-cargo-filter="created" aria-pressed="false" onclick="filterCargo('created')">Hazırlandı</button><button type="button" class="cargo-status cargo-status--transit" data-cargo-filter="transit" aria-pressed="false" onclick="filterCargo('transit')">Yolda</button><button type="button" class="cargo-status cargo-status--delivery" data-cargo-filter="delivery" aria-pressed="false" onclick="filterCargo('delivery')">Dağıtımda</button><button type="button" class="cargo-status cargo-status--delivered" data-cargo-filter="delivered" aria-pressed="false" onclick="filterCargo('delivered')">Teslim edildi</button><button type="button" class="cargo-status cargo-status--problem" data-cargo-filter="problem" aria-pressed="false" onclick="filterCargo('problem')">Sorun / İade</button></div>
     </section>
     <div class="table-wrapper" tabindex="0" aria-label="Sipariş listesi">
       <table class="orders-table">
@@ -174,7 +174,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261012-buttons-live-cancel-8");
+      await import("./app.js?v=20261012-cargo-filters-pending-9");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

@@ -33,6 +33,7 @@ const WH_SEHIR_ILCE = CONFIG.webhooks.sehir_ilce;
    GLOBAL STATE
 ============================================================ */
 let currentTab = "bekleyen";
+let cargoFilter = "all";
 let currentPage = 1;
 const PAGE_SIZE = 10;
 let selectedOrder = null;
@@ -45,7 +46,7 @@ const busy = { kargola: new Set(), barkod: new Set() };
    UI HELPERS
 ============================================================ */
 function getColumnCount(){
-  return 7;
+  return currentTab === "bekleyen" ? 8 : 7;
 }
 
 function shouldShowNoteColumn(tab) {
@@ -62,8 +63,9 @@ function renderTableHeader(){
 
   head.innerHTML = currentTab === "bekleyen"
   ? `
-    <th>Hazırla</th>
     <th>S.No</th>
+    <th>Hazırla</th>
+    <th>Kargo Adet</th>
     <th>İsim</th>
     <th>Ürün</th>
     <th>Tutar</th>
@@ -181,6 +183,8 @@ async function loadOrders(reset=false){
   if(currentTab==="sorunlu") {  q=q.in("shipmentStatusCode", [6,7]).eq("isDelivered", false); } // 6: sorunlu, 7: iade
   if(currentTab==="iptal")      q = q.eq("kargo_durumu","İptal");
 
+  q = applyCargoFilter(q);
+
   const start = (currentPage - 1) * PAGE_SIZE;
   const end   = currentPage * PAGE_SIZE - 1;
 
@@ -258,8 +262,9 @@ const noteChip = o.notlar ? `
 
 tr.innerHTML = isPendingTab
   ? `
-    <td><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button></td>
     <td>${o.siparis_no}</td>
+    <td><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button></td>
+    <td>${escapeHtml(o.kargo_adet ?? "—")}</td>
     <td>${escapeHtml(o.ad_soyad)}</td>
     <td>
   <span class="order-product-limit"
@@ -413,7 +418,23 @@ function isLiveShipment(order){
 function syncCargoTools(){
   const tools=document.getElementById("cargoTools");
   if(tools) tools.hidden=!["kargolandi","tamamlandi","sorunlu"].includes(currentTab);
+  document.querySelectorAll("[data-cargo-filter]").forEach(button=>{
+    button.setAttribute("aria-pressed",String(button.dataset.cargoFilter===cargoFilter));
+  });
 }
+function applyCargoFilter(query){
+  if(!["kargolandi","tamamlandi","sorunlu"].includes(currentTab)||cargoFilter==="all")return query;
+  if(cargoFilter==="delivered")return query.or("shipmentStatusCode.eq.5,isDelivered.eq.true");
+  const codes={created:[1],transit:[2,3],delivery:[4],problem:[6,7,8]};
+  return query.in("shipmentStatusCode",codes[cargoFilter]).not("isDelivered","is","true");
+}
+function filterCargo(tone){
+  if(!["all","created","transit","delivery","delivered","problem"].includes(tone))return;
+  cargoFilter=tone;
+  document.getElementById("searchInput").value="";
+  loadOrders(true);
+}
+window.filterCargo=filterCargo;
 async function cargoRequest(url,body={}){
   if(!url) throw new Error("Canlı kargo bağlantısı ayarlanmamış.");
   const {data:sessionData}=await db.auth.getSession();
@@ -1340,8 +1361,9 @@ async function searchOrders() {
     if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();
-    renderTable(data, { append: false, hasMore: false });
-    updateListHeading(true, `${data?.length ?? 0} sonuç · Tüm siparişlerde arama`);
+    const matches = cargoFilter==="all" ? data : data.filter(order=>cargoStatusInfo(order).tone===cargoFilter);
+    renderTable(matches, { append: false, hasMore: false });
+    updateListHeading(true, `${matches?.length ?? 0} sonuç · Tüm siparişlerde arama`);
   } catch (error) {
     updateListHeading(true, "Arama tamamlanamadı. Yeniden deneyin.");
     console.error("Arama Hatası:", error);
@@ -1369,6 +1391,7 @@ function updateListHeading(search, summary) {
 function setTab(tab){
   document.getElementById("searchInput").value = "";
   currentTab = tab;
+  cargoFilter = "all";
   document.querySelectorAll(".menu li").forEach(li=>li.classList.remove("active"));
   const el = document.getElementById(`tab_${tab}`);
   if(el) el.classList.add("active");

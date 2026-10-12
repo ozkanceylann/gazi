@@ -1036,9 +1036,9 @@ body.login-page {
 .orders-page .btn-prepare,
 .orders-page #actionButtons .btn-prepare {
   width:auto;
-  min-width:96px;
-  min-height:40px;
-  padding:10px 18px;
+  min-width:82px;
+  min-height:34px;
+  padding:8px 14px;
   border:1px solid #af842c;
   border-radius:9px;
   background:#edc66c;
@@ -1066,3 +1066,12 @@ body.login-page {
 .orders-page .sidebar > .btn-logout:hover { background:#aa2028; }
 .orders-page .btn-prepare:focus-visible,
 .orders-page .btn-logout:focus-visible { outline:3px solid #edc66c; outline-offset:3px; }
+
+/* Alt sabit çıkış, kaydırılabilen menü ve süreç filtreleri */
+.orders-page .sidebar { height:100dvh; box-sizing:border-box; }
+.orders-page .sidebar-header { flex-shrink:0; }
+.orders-page .sidebar .menu { min-height:0; overflow-y:auto; margin-bottom:16px; }
+.orders-page .sidebar > .btn-logout { margin-top:auto; flex-shrink:0; }
+.cargo-legend button { cursor:pointer; font-family:inherit; }
+.cargo-status--all { color:#345847; background:#edf2ef; border-color:#ccd8d0; }
+.cargo-legend button[aria-pressed="true"] { outline:2px solid currentColor; outline-offset:2px; }
