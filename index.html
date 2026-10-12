@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
-  <script src="config.js?v=20261012-standard-webhooks-7"></script>
+  <script src="config.js?v=20261012-buttons-live-cancel-8"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261012-standard-webhooks-7" />
+  <link rel="stylesheet" href="style.css?v=20261012-buttons-live-cancel-8" />
 
   <style>
     .btn-mini{
@@ -56,7 +56,7 @@
       <li onclick="window.location='rapor.html'">Raporlar</li>
     </ul>
 
-    <button class="btn-ghost" onclick="logout()">Çıkış Yap</button>
+    <button class="btn-logout" type="button" onclick="logout()">Çıkış Yap</button>
   </aside>
 
 
@@ -114,7 +114,7 @@
 
 <div id="actionButtons" class="modal-btns">
 
-    <button id="btnPrepare" class="btn-primary" onclick="markPrepared()">Hazırla</button>
+    <button id="btnPrepare" class="btn-primary btn-prepare" onclick="markPrepared()">Hazırla</button>
     <button id="btnCargo" class="btn-secondary" onclick="sendToCargo()">Kargola</button>
     <button id="btnWaiting" class="btn-waiting" onclick="setWaiting()">Bekliyor</button>
     <button id="btnBarcode" class="btn-primary" style="display:none;" onclick="printBarcode()">Etiketi Tekrar Yazdır</button>
@@ -174,7 +174,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261012-standard-webhooks-7");
+      await import("./app.js?v=20261012-buttons-live-cancel-8");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

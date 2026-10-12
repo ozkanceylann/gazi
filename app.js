@@ -258,7 +258,7 @@ const noteChip = o.notlar ? `
 
 tr.innerHTML = isPendingTab
   ? `
-    <td><button class="btn-open" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button></td>
+    <td><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button></td>
     <td>${o.siparis_no}</td>
     <td>${escapeHtml(o.ad_soyad)}</td>
     <td>
@@ -399,6 +399,12 @@ function cargoStatusBadge(order){
   const {tone,label}=cargoStatusInfo(order);
   const checked=order.kargo_gunc_saat ? `<small class="cargo-checked">${escapeHtml(formatDateTimeTR(order.kargo_gunc_saat))}</small>` : "";
   return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${checked}`;
+}
+function cargoEnvironment(order){
+  try {
+    const response=typeof order?.kargo_api_yanit==="string" ? JSON.parse(order.kargo_api_yanit||"{}") : order?.kargo_api_yanit;
+    return response?.environment;
+  } catch { return undefined; }
 }
 function isLiveShipment(order){
   try { return JSON.parse(order.kargo_api_yanit||"{}").environment!=="test" && !!order.kargo_takip_kodu; }
@@ -1263,7 +1269,7 @@ async function confirmCancel(){
   cancelBusy=true;
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();if(error)throw error;
-    if(hasExistingShipment(order) && !isLiveShipment(order))throw new Error("Test gönderisi canlı bağlantıyla iptal edilemez.");
+    if(hasExistingShipment(order) && cargoEnvironment(order)==="test")throw new Error("Test gönderisi canlı bağlantıyla iptal edilemez.");
     if(hasExistingShipment(order)){
       const result=await cargoRequest(CONFIG.webhooks.iptal,{operation:"iptal",siparis_no:String(id),reason});toast(result.message,6000);
     }else{
