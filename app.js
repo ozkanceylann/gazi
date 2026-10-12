@@ -444,13 +444,17 @@ function syncCargoTools(){
     button.setAttribute("aria-pressed",String(button.dataset.cargoFilter===cargoFilter));
   });
 }
+const CARGO_FILTER_GROUPS={created:["created"],transit:["transfer","branch"],delivery:["delivery"],delivered:["delivered"],problem:["failed","return","support"]};
+function matchesCargoFilter(order){
+  return cargoFilter==="all"||(CARGO_FILTER_GROUPS[cargoFilter]||[]).includes(cargoStatusInfo(order).key);
+}
 function applyCargoFilter(query){
   if(!["kargolandi","tamamlandi","sorunlu"].includes(currentTab)||cargoFilter==="all")return query;
-  const expression=cargoStateFilter(cargoFilter);
+  const expression=(CARGO_FILTER_GROUPS[cargoFilter]||[]).map(cargoStateFilter).filter(Boolean).join(',');
   return expression ? query.or(expression) : query;
 }
 function filterCargo(key){
-  if(key!=="all"&&!CARGO_STATES.some(s=>s.key===key))return;
+  if(key!=="all"&&!CARGO_FILTER_GROUPS[key])return;
   cargoFilter=key;
   document.getElementById("searchInput").value="";
   loadOrders(true);
@@ -1416,7 +1420,7 @@ async function searchOrders() {
     if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();
-    const matches = cargoFilter==="all" ? data : data.filter(order=>cargoStatusInfo(order).key===cargoFilter);
+    const matches = cargoFilter==="all" ? data : data.filter(matchesCargoFilter);
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(true, `${matches?.length ?? 0} sonuç · Tüm siparişlerde arama`);
   } catch (error) {
