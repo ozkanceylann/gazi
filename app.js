@@ -422,10 +422,36 @@ function cargoStateFilter(key){
   if(key==="delivered")expression+=`,and(shipmentStatusCode.is.null,${fallback})`;
   return expression;
 }
+
+function cargoBranchPhones(value){
+  let area="";
+  return String(value||"").split(/\s*[-/;,]\s*/).map(part=>{
+    let digits=part.replace(/\D/g,"");
+    if(digits.length===12&&digits.startsWith("90"))digits="0"+digits.slice(2);
+    if(digits.length===10)digits="0"+digits;
+    if(digits.length===11&&digits.startsWith("0"))area=digits.slice(0,4);
+    else if(digits.length===7&&area)digits=area+digits;
+    else return null;
+    return {number:digits,label:digits.replace(/^(\d{4})(\d{3})(\d{2})(\d{2})$/,"$1 $2 $3 $4")};
+  }).filter(Boolean);
+}
+function cargoBranchContact(movement){
+  if(!movement)return "";
+  const name=movement.locationAddress||movement.location||"";
+  const phones=cargoBranchPhones(movement.locationPhone);
+  return `<span class="cargo-branch-contact">${escapeHtml(name)}${phones.map(phone=>` · <a href="tel:${phone.number}" onclick="event.stopPropagation()" aria-label="${escapeHtml(name)} şubesini ara: ${phone.label}" style="color:inherit;text-decoration:underline;white-space:nowrap">☎ ${phone.label}</a>`).join("")}</span>`;
+}
+function cargoTrackingData(order){
+  try{const response=typeof order.kargo_api_yanit==="string"?JSON.parse(order.kargo_api_yanit||"{}"):order.kargo_api_yanit;return response?.tracking||{};}catch{return {};}
+}
+
 function cargoStatusBadge(order){
   const {tone,label}=cargoStatusInfo(order);
   const checked=order.kargo_gunc_saat ? `<small class="cargo-checked">${escapeHtml(formatDateTimeTR(order.kargo_gunc_saat))}</small>` : "";
-  return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${checked}`;
+  const movements=cargoTrackingData(order).movements;
+  const latest=Array.isArray(movements)?[...movements].sort((a,b)=>Number(b.eventSequence)-Number(a.eventSequence)||String(b.eventDateTime2||"").localeCompare(String(a.eventDateTime2||"")))[0]:null;
+  const contact=cargoStatusInfo(order).key==="failed"&&latest ? `<small style="display:block;margin-top:5px">${cargoBranchContact(latest)}</small>` : "";
+  return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${checked}${contact}`;
 }
 function cargoEnvironment(order){
   try {
@@ -518,9 +544,9 @@ async function refreshSelectedCargoMovements(id){
 }
 function renderCargoTracking(order){
   if(!order.kargo_takip_kodu)return "";
-  let tracking;try{tracking=JSON.parse(order.kargo_api_yanit||"{}").tracking;}catch{}
+  const tracking=cargoTrackingData(order);
   const movements=Array.isArray(tracking?.movements)?[...tracking.movements].sort((a,b)=>Number(b.eventSequence)-Number(a.eventSequence)):[];
-  const timeline=movements.map(m=>`<li><strong>${escapeHtml(m.eventStatus||"Kargo hareketi")}</strong><span>${escapeHtml(m.eventDateTime||m.eventDateTime2||"")} · ${escapeHtml(m.location||"")}</span>${m.description?`<span>${escapeHtml(m.description)}</span>`:""}</li>`).join("");
+  const timeline=movements.map(m=>`<li><strong>${escapeHtml(m.eventStatus||"Kargo hareketi")}</strong><span>${escapeHtml(m.eventDateTime||m.eventDateTime2||"")} · ${cargoBranchContact(m)}</span>${m.description?`<span>${escapeHtml(m.description)}</span>`:""}</li>`).join("");
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
   const detailButton=isLiveShipment(order)?`<button class="btn-open" type="button" data-cargo-detail-refresh onclick="refreshSelectedCargoMovements(${Number(order.siparis_no)})">Hareket geçmişini getir</button>`:"";
