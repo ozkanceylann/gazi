@@ -209,7 +209,8 @@
     try {
       const rows = [], size = 500;
       for (let offset = 0;;offset += size) {
-        let q = db.from(TABLE).select("*");
+        let q = db.from(TABLE).select("*")
+          .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
         if(s) q=q.gte("tarih", s);
         if(e) {
           const next = new Date(e+"T12:00:00"); next.setDate(next.getDate()+1);
