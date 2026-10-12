@@ -1083,3 +1083,17 @@ body.login-page {
 .orders-page .top-bar { max-width:none; width:100%; padding:6px; gap:8px; margin-bottom:14px; border-radius:10px; }
 .orders-page .top-bar input { padding:8px 10px; font-size:13px; }
 .orders-page .top-bar button { padding:8px 12px; font-size:13px; }
+
+/* Kargolama denenmiş, etiketi tamamlanmamış siparişler */
+.orders-page .orders-table tr.cargo-label-retry td { background:#e9f6ed!important; border-color:#d1e8d8; }
+.orders-page .orders-table tr.cargo-label-retry:hover td { background:#def0e4!important; }
+.orders-page .orders-table tr.cargo-label-retry td:first-child { border-left:3px solid #4a9965; }
+.orders-page .btn-cargo-label {
+  width:auto; min-height:32px; padding:6px 10px;
+  border:1px solid #a9cfb5; border-radius:7px;
+  background:#d8efdf; color:#215a37;
+  font-family:inherit; font-size:12px; font-weight:500;
+  white-space:nowrap; cursor:pointer;
+}
+.orders-page .btn-cargo-label:hover { background:#c4e5ce; }
+.orders-page .btn-cargo-label:disabled { opacity:.6; cursor:wait; }

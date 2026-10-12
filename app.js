@@ -46,7 +46,7 @@ const busy = { kargola: new Set(), barkod: new Set() };
    UI HELPERS
 ============================================================ */
 function getColumnCount(){
-  return currentTab === "bekleyen" ? 8 : 7;
+  return ["bekleyen","hazirlandi"].includes(currentTab) ? 8 : 7;
 }
 
 function shouldShowNoteColumn(tab) {
@@ -80,6 +80,7 @@ function renderTableHeader(){
     <th>Durum</th>
     <th>${shouldShowNoteColumn(currentTab) ? "Not" : "Kargo Kodu"}</th>
     <th>${currentTab === "hazirlandi" ? "Hata / İşlem" : "İşlem"}</th>
+    ${currentTab === "hazirlandi" ? "<th>Kargo Etiketi</th>" : ""}
   `;
 
 }
@@ -213,6 +214,13 @@ async function loadOrders(reset=false){
   updateListHeading(false, `${tbody.children.length} sipariş gösteriliyor · Toplam ${count ?? data.length} kayıt`);
 }
 
+function needsCargoLabelRetry(order){
+  return order?.kargo_durumu==="Hazırlandı"
+    && !!String(order.gonder_hata_bilgisi||"").trim()
+    && !String(order.zpl_base64||"").startsWith("JVBER")
+    && cargoEnvironment(order)!=="test";
+}
+
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -237,6 +245,8 @@ function renderTable(rows, { append=false, hasMore } = {}){
     const isPendingTab = currentTab === "bekleyen";
 
   const isPreparedTab = currentTab === "hazirlandi";
+  const retryLabel = isPreparedTab && needsCargoLabelRetry(o);
+  if(retryLabel) tr.classList.add("cargo-label-retry");
 
   const actionBtn = `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
 
@@ -299,6 +309,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${errorPreview}</td>
+${isPreparedTab ? `<td>${retryLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">Kargo Etiketi Oluştur</button>` : "—"}</td>` : ""}
 
   `;
 
@@ -1233,6 +1244,36 @@ async function sendToCargo(){
   finally{busy.kargola.delete(siparisNo);}
 }
 
+async function retryCargoLabel(siparisNo,button){
+  const id=Number(siparisNo);
+  if(!Number.isSafeInteger(id)||id<1)return;
+  if(busy.kargola.has(id)||busy.barkod.has(id))return toast("Bu siparişin kargo işlemi sürüyor.");
+  const w=window.open("","_blank");
+  if(!w)return toast("Etiket ekranı için açılır pencerelere izin verin.");
+  w.document.body.textContent="Kargo etiketi oluşturuluyor…";
+  busy.kargola.add(id);busy.barkod.add(id);
+  const label=button.textContent;button.disabled=true;button.textContent="Oluşturuluyor…";
+  try{
+    const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
+    if(error)throw error;
+    if(String(order?.zpl_base64||"").startsWith("JVBER")){
+      openCargoPdf(w,order.zpl_base64);
+      return toast("Kayıtlı kargo etiketi açıldı.");
+    }
+    if(!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
+    const result=await cargoRequest(WH_KARGOLA,{operation:"kargola",siparis_no:String(id)});
+    openCargoPdf(w,result.pdf_base64);
+    toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi hazır.",6000);
+  }catch(error){
+    if(!w.closed)w.close();
+    toast(error.message||"Kargo etiketi oluşturulamadı.",10000);
+  }finally{
+    busy.kargola.delete(id);busy.barkod.delete(id);
+    button.disabled=false;button.textContent=label;
+    await loadOrders(true);
+  }
+}
+
 async function printBarcode(){
   const id=selectedOrder?.siparis_no;if(!id)return toast("Önce sipariş seçin.");
   if(busy.barkod.has(id))return toast("Paket etiketleri hazırlanıyor.");
@@ -1503,6 +1544,7 @@ Object.assign(window, {
   markPrepared,
   sendToCargo,
   printBarcode,
+  retryCargoLabel,
   connectCargo,
   refreshCargoMovements,
 
