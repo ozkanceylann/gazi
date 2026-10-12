@@ -1334,7 +1334,7 @@ async function printBarcode(){
   w.document.body.textContent="Paket etiketleri hazırlanıyor…";busy.barkod.add(id);
   try{const r=await cargoRequest(WH_BARKOD,{siparis_no:String(id)});openCargoPdf(w,r.pdf_base64);toast(r.kargo_adet+" paket etiketi açıldı.");}
   catch(error){if(!w.closed)w.close();toast(error.message,10000);}
-  finally{busy.barkod.delete(id);}
+  finally{busy.barkod.delete(id);await loadOrders(true);}
 }
 
 
