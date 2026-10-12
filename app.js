@@ -474,29 +474,33 @@ async function connectCargo(){
 async function refreshCargoMovements(){
   if(cargoSyncBusy)return;
   cargoSyncBusy=true;const button=document.getElementById("refreshCargoBtn");const status=document.getElementById("cargoSyncStatus");button.disabled=true;
-  let success=0,failed=0,warnings=0,skipped=0;const errors=[];
   try{
-    status.textContent="Kargolanmış siparişler bulunuyor…";
-    const candidates=[];
-    for(let offset=0;;offset+=100){
-      const {data,error}=await db.from(TABLE).select("siparis_no,kargo_takip_kodu,kargo_api_yanit").eq("kargo_durumu","Kargolandı").order("siparis_no",{ascending:true}).range(offset,offset+99);
-      if(error)throw error;
-      for(const row of data||[]){if(isLiveShipment(row))candidates.push(row);else skipped++;}
-      if((data||[]).length<100)break;
-    }
-    if(!candidates.length){status.textContent="Güncellenecek canlı gönderi yok. "+skipped+" test / takip numarası olmayan sipariş atlandı.";return;}
-    for(let i=0;i<candidates.length;i++){
-      const order=candidates[i];status.textContent=`${i+1}/${candidates.length} · Sipariş ${order.siparis_no} güncelleniyor…`;
-      try{const result=await cargoRequest(CONFIG.webhooks.hareket,{operation:"hareket",siparis_no:String(order.siparis_no)});success++;if(result.warning){warnings++;errors.push("Sipariş "+order.siparis_no+": "+result.warning);}}
-      catch(error){failed++;errors.push("Sipariş "+order.siparis_no+": "+error.message);}
-    }
-    status.textContent=`${success} durum güncellendi · ${warnings} hareket uyarısı · ${failed} başarısız · ${skipped} test / takip numarası olmayan sipariş atlandı.`;
+    status.textContent="Kargo durumları toplu sorgulanıyor…";
+    const url=CONFIG.webhooks.hareket_toplu||new URL("gazi_hareket_toplu",CONFIG.webhooks.hareket).href;
+    const result=await cargoRequest(url,{operation:"hareket_toplu"});
+    status.textContent=`${result.received} gönderi incelendi · ${result.updated} kayıt güncellendi · ${result.unchanged} değişmemiş · ${result.unmatched} eşleşmedi.`;
+    if(result.ambiguous)status.textContent+=` ${result.ambiguous} belirsiz eşleşme atlandı.`;
+    if(result.has_more)status.textContent+=" Önceki günler tamamlandı; kalan günler için yeniden güncelleyebilirsiniz.";
     await loadOrders(true);
     if(selectedOrder&&document.getElementById("orderModal").style.display==="flex")await openOrder(selectedOrder.siparis_no);
-    if(errors.length)showErrorDetail(errors.join("\n"));
-    else toast("Kargo hareketleri güncellendi.");
+    toast(result.has_more?"Geçmiş günler toplu güncellendi. Kalan günler için tekrar güncelleyin.":"Kargo durumları toplu güncellendi.",6000);
   }catch(error){status.textContent="Güncelleme tamamlanamadı: "+error.message;toast(error.message,8000);}
   finally{cargoSyncBusy=false;button.disabled=false;}
+}
+let cargoDetailBusy=false;
+async function refreshSelectedCargoMovements(id){
+  if(cargoDetailBusy)return;
+  const orderId=Number(id);
+  if(!Number.isSafeInteger(orderId)||orderId<1)return;
+  cargoDetailBusy=true;
+  const button=document.querySelector("[data-cargo-detail-refresh]");
+  if(button){button.disabled=true;button.textContent="Hareketler getiriliyor…";}
+  try{
+    const result=await cargoRequest(CONFIG.webhooks.hareket,{operation:"hareket",siparis_no:String(orderId)});
+    if(selectedOrder?.siparis_no==orderId&&document.getElementById("orderModal").style.display==="flex")await openOrder(orderId);
+    toast(result.warning||"Kargo hareket geçmişi güncellendi.",6000);
+  }catch(error){toast(error.message,8000);}
+  finally{cargoDetailBusy=false;if(button?.isConnected){button.disabled=false;button.textContent="Hareket geçmişini getir";}}
 }
 function renderCargoTracking(order){
   if(!order.kargo_takip_kodu)return "";
@@ -505,7 +509,8 @@ function renderCargoTracking(order){
   const timeline=movements.map(m=>`<li><strong>${escapeHtml(m.eventStatus||"Kargo hareketi")}</strong><span>${escapeHtml(m.eventDateTime||m.eventDateTime2||"")} · ${escapeHtml(m.location||"")}</span>${m.description?`<span>${escapeHtml(m.description)}</span>`:""}</li>`).join("");
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
-  return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu)}</p>${link}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
+  const detailButton=isLiveShipment(order)?`<button class="btn-open" type="button" data-cargo-detail-refresh onclick="refreshSelectedCargoMovements(${Number(order.siparis_no)})">Hareket geçmişini getir</button>`:"";
+  return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu)}</p>${link}${detailButton}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
 }
 
 
@@ -1547,6 +1552,7 @@ Object.assign(window, {
   retryCargoLabel,
   connectCargo,
   refreshCargoMovements,
+  refreshSelectedCargoMovements,
 
   enterEditMode,
   saveEdit,
@@ -1583,3 +1589,4 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","sorunlu","iptal"].includ
   currentTab = requestedTab;
   document.querySelectorAll(".menu li").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
