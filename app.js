@@ -179,7 +179,7 @@ async function loadOrders(reset=false){
 
   if(currentTab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
   if(currentTab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
-  if(currentTab==="kargolandi") q = q.eq("kargo_durumu","Kargolandı");
+  if(currentTab==="kargolandi") q = q.in("kargo_durumu",["Kargolandı","Tamamlandı"]);
   if(currentTab==="tamamlandi") { q = q.or("shipmentStatusCode.eq.5,isDelivered.eq.true"); }
   if(currentTab==="sorunlu") {  q=q.in("shipmentStatusCode", [6,7]).eq("isDelivered", false); } // 6: sorunlu, 7: iade
   if(currentTab==="iptal")      q = q.eq("kargo_durumu","İptal");
@@ -405,11 +405,22 @@ function openTrackingUrl(url){
   catch { toast("Kargo takip bağlantısı geçersiz."); }
 }
 
+const CARGO_STATES = [{"key":"created","code":1,"label":"Gönderi Hazırlandı","tone":"created","raw":"Gönderi_Hazırlandı"},{"key":"transfer","code":2,"label":"Transfer Aşamasında","tone":"transit","raw":"Transfer_Aşamasında"},{"key":"branch","code":3,"label":"Teslimat Birimine Ulaştı","tone":"transit","raw":"Teslimat_Birimine_Ulaştı"},{"key":"delivery","code":4,"label":"Alıcı Adresine Yönlendirildi","tone":"delivery","raw":"Alıcı_Adresine_Yönlendirildi"},{"key":"delivered","code":5,"label":"Teslim Edildi","tone":"delivered","raw":"Teslim_Edildi"},{"key":"failed","code":6,"label":"Teslim Edilemedi","tone":"problem","raw":"Teslim_Edilemedi"},{"key":"return","code":7,"label":"Geri Geliyor","tone":"problem","raw":"Geri_Geliyor"},{"key":"support","code":8,"label":"Destek Gerekiyor","tone":"problem","raw":"Destek_Gerekiyor"}];
 function cargoStatusInfo(order){
   const code=Number(order.shipmentStatusCode);
-  const states={1:["created","Gönderi hazırlandı"],2:["transit","Transfer aşamasında"],3:["transit","Teslimat biriminde"],4:["delivery","Dağıtımda"],5:["delivered","Teslim edildi"],6:["problem","Teslim edilemedi"],7:["problem","İade geliyor"],8:["problem","Destek gerekiyor"]};
-  const [tone,label]=order.isDelivered===true ? states[5] : (states[code]||["unknown","Durum bekleniyor"]);
-  return {tone,label:String(order.shipmentStatus||label).replace(/_/g," ")};
+  const normalized=String(order.shipmentStatus||"").replace(/_/g," ").trim().toLocaleLowerCase("tr-TR");
+  const state=CARGO_STATES.find(s=>s.code===code)
+    ||CARGO_STATES.find(s=>s.label.toLocaleLowerCase("tr-TR")===normalized)
+    ||(order.isDelivered===true ? CARGO_STATES.find(s=>s.key==="delivered") : null);
+  return state ? {...state} : {key:"unknown",tone:"unknown",label:String(order.shipmentStatus||"Durum bekleniyor").replace(/_/g," ")};
+}
+function cargoStateFilter(key){
+  const state=CARGO_STATES.find(s=>s.key===key);
+  if(!state)return "";
+  const fallback=`or(shipmentStatus.is.null,shipmentStatus.eq.),isDelivered.eq.true`;
+  let expression=`shipmentStatusCode.eq.${state.code},and(shipmentStatusCode.is.null,or(shipmentStatus.eq.${state.raw},shipmentStatus.eq.${state.label}))`;
+  if(key==="delivered")expression+=`,and(shipmentStatusCode.is.null,${fallback})`;
+  return expression;
 }
 function cargoStatusBadge(order){
   const {tone,label}=cargoStatusInfo(order);
@@ -435,13 +446,12 @@ function syncCargoTools(){
 }
 function applyCargoFilter(query){
   if(!["kargolandi","tamamlandi","sorunlu"].includes(currentTab)||cargoFilter==="all")return query;
-  if(cargoFilter==="delivered")return query.or("shipmentStatusCode.eq.5,isDelivered.eq.true");
-  const codes={created:[1],transit:[2,3],delivery:[4],problem:[6,7,8]};
-  return query.in("shipmentStatusCode",codes[cargoFilter]).not("isDelivered","is","true");
+  const expression=cargoStateFilter(cargoFilter);
+  return expression ? query.or(expression) : query;
 }
-function filterCargo(tone){
-  if(!["all","created","transit","delivery","delivered","problem"].includes(tone))return;
-  cargoFilter=tone;
+function filterCargo(key){
+  if(key!=="all"&&!CARGO_STATES.some(s=>s.key===key))return;
+  cargoFilter=key;
   document.getElementById("searchInput").value="";
   loadOrders(true);
 }
@@ -1406,7 +1416,7 @@ async function searchOrders() {
     if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();
-    const matches = cargoFilter==="all" ? data : data.filter(order=>cargoStatusInfo(order).tone===cargoFilter);
+    const matches = cargoFilter==="all" ? data : data.filter(order=>cargoStatusInfo(order).key===cargoFilter);
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(true, `${matches?.length ?? 0} sonuç · Tüm siparişlerde arama`);
   } catch (error) {
