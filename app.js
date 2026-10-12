@@ -273,7 +273,7 @@ const noteChip = o.notlar ? `
 tr.innerHTML = isPendingTab
   ? `
     <td>${o.siparis_no}</td>
-    <td><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button></td>
+    <td>${o.kargo_durumu === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button>` : actionBtn}</td>
     <td>${escapeHtml(o.kargo_adet ?? "—")}</td>
     <td>${escapeHtml(o.ad_soyad)}</td>
     <td>
