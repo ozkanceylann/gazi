@@ -175,7 +175,8 @@ async function loadOrders(reset=false){
   renderTableHeader();
   updateListHeading(false, "Siparişler yükleniyor…");
 
-  let q = db.from(TABLE).select("*", { count: "exact" });
+  let q = db.from(TABLE).select("*", { count: "exact" })
+    .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
 
   if(currentTab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
   if(currentTab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
@@ -698,6 +699,11 @@ function showApiResult(content) {
 async function openOrder(id){
   const { data } = await db.from(TABLE).select("*").eq("siparis_no", id).single();
   if(!data) return toast("Sipariş bulunamadı!");
+  if(data.kargo_durumu==="Silindi"){
+    let mergedInto;try{mergedInto=JSON.parse(data.kargo_api_yanit||"{}").one_time_reconciliation?.merged_into;}catch{}
+    if(Number.isSafeInteger(Number(mergedInto))&&Number(mergedInto)>0&&Number(mergedInto)!==Number(id))return openOrder(Number(mergedInto));
+    return toast("Bu sipariş arşivlendi.");
+  }
   selectedOrder = data;
   renderDetails();
   document.getElementById("orderModal").style.display = "flex";
@@ -1441,6 +1447,7 @@ async function searchOrders() {
   updateListHeading(true, "Aranıyor…");
   try {
     const { data, error } = await db.from(TABLE).select("*")
+      .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi")
       .or(buildOrderSearchFilter(raw))
       .order("siparis_no", { ascending: false });
     if (request !== listRequest) return;
