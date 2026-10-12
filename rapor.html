@@ -2,14 +2,14 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Raporlar</title>
 
   <!-- CONFIG -->
   <script src="config.js"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261012-mobile-layout-12" />
+  <link rel="stylesheet" href="style.css?v=20261012-completed-close-revert-mobile-13" />
 
   <!-- SUPABASE & CHARTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -38,7 +38,6 @@
 
   <aside class="sidebar">
     <div class="sidebar-header">
-      <button class="menu-close" type="button" onclick="toggleMenu()" aria-label="Menüyü kapat">×</button>
       <img id="brandLogo" class="sidebar-logo" alt="Logo">
       <div id="brandTitle" class="sidebar-title"></div>
     </div>
@@ -53,9 +52,8 @@
       <li class="active">Raporlar</li>
     </ul>
 
-    <button class="btn-logout" onclick="reportLogout()">Çıkış Yap</button>
+    <button class="btn-danger" onclick="reportLogout()">Çıkış Yap</button>
   </aside>
-  <button class="menu-backdrop" type="button" onclick="toggleMenu()" aria-label="Menüyü kapat"></button>
 
   <div class="content-area">
 

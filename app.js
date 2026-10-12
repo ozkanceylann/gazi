@@ -302,14 +302,6 @@ tr.innerHTML = isPendingTab
 
   `;
 
-// Mobil kartlarda her değerin sütun başlığını koru.
-const labels=Array.from(document.querySelectorAll("#ordersHeadRow th"),th=>th.textContent.trim());
-Array.from(tr.children).forEach((cell,index)=>{cell.dataset.label=labels[index]||"";});
-tr.tabIndex=0;
-tr.addEventListener("keydown",event=>{
-  if(event.target===tr && event.key==="Enter"){event.preventDefault();openOrder(o.siparis_no);}
-});
-
 // Satır tıklama kontrolü (chip'e tıklayınca detay açılmasın)
 tr.addEventListener("click", (e)=>{
   if (
@@ -789,7 +781,7 @@ document.getElementById("orderDetails").innerHTML = `
 
   const iptal = d.kargo_durumu === "İptal";
   const kargo = d.kargo_durumu === "Kargolandı";
-  const tamam = d.kargo_durumu === "Tamamlandı";
+  const tamam = currentTab === "tamamlandi" || d.kargo_durumu === "Tamamlandı" || d.isDelivered === true || Number(d.shipmentStatusCode) === 5;
 
   // Bekleyeni → Hazırla
   document.getElementById("btnPrepare").style.display =
@@ -809,7 +801,6 @@ document.getElementById("orderDetails").innerHTML = `
       btn.style.display = "none";
     });
     document.querySelector("#actionButtons .btn-close").style.display = "inline-block";
-    if(d.zpl_base64)document.getElementById("btnBarcode").style.display="inline-block";
   }
 
   // İptal → tüm actionButtons gizli, restoreButtons açık
