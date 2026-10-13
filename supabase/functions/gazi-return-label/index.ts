@@ -47,10 +47,10 @@ Deno.serve(async(req:Request)=>{
     const c=await rpc('begin',id!);locked=!c.existing;
     if(c.existing)return reply({success:true,environment:'production',already_created:true,reference:c.reference,url:c.url});
     const payload=returnPayload(c.order,c.reference);
-    if(c.gateway.url!=='https://n8n.ozkanceylan.uk/webhook/gazi_plpgsql_live_gateway')throw Error('DHL geçit adresi geçersiz');
+    if(c.gateway.url!=='https://n8n.ozkanceylan.uk/webhook/gazi_iade_olustur')throw Error('DHL geçit adresi geçersiz');
     submitted=true;
     const response=await fetch(c.gateway.url,{method:'POST',redirect:'error',
-      headers:{'Content-Type':'application/json','x-gazi-live-key':c.gateway.key},
+      headers:{'Content-Type':'application/json','x-gazi-return-key':c.gateway.key},
       body:JSON.stringify({path:'standardcmdapi/createReturnOrder',method:'POST',body:payload}),signal:AbortSignal.timeout(55000)});
     const result=await response.json(),dhl=Array.isArray(result.data)?result.data[0]:result.data;
     if(!response.ok||result.status!==200||!dhl?.orderInvoiceId||dhl.referenceId!==c.reference){
