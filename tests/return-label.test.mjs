@@ -34,7 +34,7 @@ globalThis.fetch=async(url,options)=>{
   if(url.endsWith('/auth/v1/user'))return Response.json({id:'admin',app_metadata:{firma:'gazi'}});
   if(url.endsWith('/rpc/gazi_iade_internal')){
     const b=JSON.parse(options.body);operations.push(b.p_operation);
-    if(b.p_operation==='begin')return Response.json({order,reference:'GZI-9319-R1',gateway:{url:'https://n8n.ozkanceylan.uk/webhook/gazi_plpgsql_live_gateway',key:'mock'}});
+    if(b.p_operation==='begin')return Response.json({order,reference:'GZI-9319-R1',gateway:{url:'https://n8n.ozkanceylan.uk/webhook/gazi_iade_olustur',key:'mock'}});
     return Response.json({ok:true});
   }
   externalCalls++;throw new DOMException('Timeout','TimeoutError');
@@ -46,4 +46,32 @@ assert.deepEqual(operations,['begin','uncertain']);
 globalThis.fetch=async()=>Response.json({id:'seller',app_metadata:{firma:'gazi',role:'seller'}});
 assert.equal((await handler(request())).status,403);
 assert.equal((await handler(new Request('https://edge.example',{method:'POST'}))).status,401);
-console.log('Return payload, existing-label reuse, uncertain-request protection and authorization passed.');
+operations=[];externalCalls=0;
+globalThis.fetch=async(url,options)=>{
+  if(url.endsWith('/auth/v1/user'))return Response.json({id:'admin',app_metadata:{firma:'gazi'}});
+  if(url.endsWith('/rpc/gazi_iade_internal')){
+    const b=JSON.parse(options.body);operations.push(b.p_operation);
+    if(b.p_operation==='begin')return Response.json({order,reference:'GZI-9319-R1',gateway:{url:'https://n8n.ozkanceylan.uk/webhook/gazi_iade_olustur',key:'mock'}});
+    assert.equal(b.p_operation,'finish');
+    return Response.json({reference:b.p_data.reference,url:b.p_data.url});
+  }
+  assert.equal(url,'https://n8n.ozkanceylan.uk/webhook/gazi_iade_olustur');
+  assert.equal(options.headers['x-gazi-return-key'],'mock');
+  externalCalls++;
+  return Response.json({status:200,data:{orderInvoiceId:'mock-invoice',referenceId:'GZI-9319-R1',returnOrderLabelURL:'https://mn.tc?rtnid=MOCK'}});
+};
+response=await handler(request());
+assert.equal(response.status,200);
+assert.equal((await response.json()).url,'https://mn.tc?rtnid=MOCK');
+assert.deepEqual(operations,['begin','finish']);
+assert.equal(externalCalls,1);
+
+const {readFile}=await import('node:fs/promises');
+const validate=new Function('$','$input',await readFile(new URL('../n8n/return-gateway-validation.js',import.meta.url),'utf8'));
+const validatePayload=(p,key='mock',path='standardcmdapi/createReturnOrder')=>validate(()=>({first:()=>({json:{headers:{'x-gazi-return-key':key},body:{path,method:'POST',body:p}}})}),{first:()=>({json:{key:'mock'}})});
+assert.deepEqual(validatePayload(payload)[0].json.body,payload);
+assert.throws(()=>validatePayload(payload,'wrong'));
+assert.throws(()=>validatePayload(payload,'mock','standardcmdapi/createOrder'));
+assert.throws(()=>validatePayload({...payload,order:{...payload.order,isCOD:1}}));
+assert.throws(()=>validatePayload({...payload,orderPieceList:[{...payload.orderPieceList[0],kg:-1}]}));
+console.log('Main Gazi workflow, saved-label reuse, uncertain-request protection, authorization and payload safety passed.');
