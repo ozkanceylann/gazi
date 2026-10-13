@@ -46,7 +46,7 @@ const busy = { kargola: new Set(), barkod: new Set(), iade: new Set() };
    UI HELPERS
 ============================================================ */
 function getColumnCount(){
-  return ["bekleyen","hazirlandi"].includes(currentTab) ? 8 : 7;
+  return currentTab === "hazirlandi" ? 9 : currentTab === "bekleyen" ? 8 : 7;
 }
 
 function shouldShowNoteColumn(tab) {
@@ -84,13 +84,14 @@ function renderTableHeader(){
   `
   : `
     <th>S.No</th>
+    ${currentTab === "hazirlandi" ? '<th class="cargo-count-column" aria-label="Kargo Adet">Kargo<br>Adet</th>' : ""}
     <th>İsim</th>
     <th>Ürün</th>
     <th>Tutar</th>
     <th>Durum</th>
     <th>${shouldShowNoteColumn(currentTab) ? "Not" : "Kargo Kodu"}</th>
     <th>${currentTab === "hazirlandi" ? "Hata / İşlem" : "İşlem"}</th>
-    ${currentTab === "hazirlandi" ? "<th>Kargo Etiketi</th>" : ""}
+    ${currentTab === "hazirlandi" ? "<th>Kargola / Etiket</th>" : ""}
   `;
 
 }
@@ -317,6 +318,7 @@ tr.innerHTML = isPendingTab
   `
   : `
     <td>${o.siparis_no}</td>
+    ${isPreparedTab ? `<td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>` : ""}
     <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
     <td>
   <span class="order-product-limit"
@@ -337,7 +339,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${errorPreview}</td>
-${isPreparedTab ? `<td>${retryLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">Kargo Etiketi Oluştur</button>` : "—"}</td>` : ""}
+${isPreparedTab ? `<td>${retryLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">Kargo Etiketi Oluştur</button>` : `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>`}</td>` : ""}
 
   `;
 
@@ -1359,8 +1361,29 @@ function openCargoPdf(w, base64){
   w.document.addEventListener("keydown",event=>{if(event.key==="Escape"){event.preventDefault();w.close();}});
   w.addEventListener("unload",()=>URL.revokeObjectURL(url),{once:true});
 }
-async function sendToCargo(){
-  const siparisNo=selectedOrder?.siparis_no;
+
+async function shipPreparedFromList(siparisNo, button){
+  if(button.disabled || busy.kargola.has(Number(siparisNo))) return;
+  const label=button.textContent;
+  button.disabled=true;
+  button.textContent="Kontrol ediliyor…";
+  try {
+    const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",siparisNo).single();
+    if(error) throw error;
+    if(order?.kargo_durumu!=="Hazırlandı") throw new Error("Sipariş artık Hazırlandı durumunda değil. Listeyi yenileyin.");
+    if(cargoEnvironment(order)==="test") throw new Error("Test gönderisi canlı bağlantıyla kargolanamaz.");
+    button.textContent="Kargolanıyor…";
+    await sendToCargo(Number(siparisNo));
+  } catch(error){
+    toast(error.message||"Sipariş kargolanamadı.",6000);
+  } finally {
+    button.disabled=false;
+    button.textContent=label;
+  }
+}
+
+async function sendToCargo(orderId){
+  const siparisNo=Number(orderId ?? selectedOrder?.siparis_no);
   if(!siparisNo)return toast("Önce sipariş seçin.");
   if(busy.kargola.has(siparisNo))return toast("Kargolama ve etiket hazırlama sürüyor.");
   const ok=await confirmModal({title:"Siparişi Kargola",text:"Sipariş DHL canlı hesabında kargolanacak. Her paketin ayrı kargo etiketi hazırlanıp açılacak. Devam etmek istiyor musunuz?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
@@ -1678,6 +1701,7 @@ Object.assign(window, {
   setWaiting,
   markPrepared,
   sendToCargo,
+  shipPreparedFromList,
   printBarcode,
   retryCargoLabel,
   createReturnLabel,

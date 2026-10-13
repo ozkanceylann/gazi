@@ -1128,3 +1128,13 @@ body.login-page {
   font-size:12px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums;
 }
 .cargo-count--empty { background:#f0f3f1; border-color:#dce3de; color:#718176; }
+
+/* Hazırlandı listesinden kargolama */
+.orders-page .btn-ship-order {
+  width:auto; min-height:30px; padding:6px 12px;
+  border:1px solid #b7d2c0; border-radius:7px;
+  background:#e6f1ea; color:#256242;
+  font-family:inherit; font-size:12px; font-weight:600; cursor:pointer;
+}
+.orders-page .btn-ship-order:hover { background:#d6e9dd; }
+.orders-page .btn-ship-order:disabled { opacity:.6; cursor:wait; }
