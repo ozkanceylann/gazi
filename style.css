@@ -1182,3 +1182,16 @@ body.login-page {
 }
 a.order-taker-phone:hover { background:#dceef8; border-color:#97bed5; }
 a.order-taker-phone:focus-visible { outline:3px solid #97bed5; outline-offset:2px; }
+
+/* Aynı telefon, biçimi değişse de her zaman aynı renk */
+.order-taker-phone {
+  --phone-hue:205;
+  border-color:hsl(var(--phone-hue) 42% 76%);
+  background:hsl(var(--phone-hue) 58% 94%);
+  color:hsl(var(--phone-hue) 48% 29%);
+}
+a.order-taker-phone:hover {
+  background:hsl(var(--phone-hue) 58% 89%);
+  border-color:hsl(var(--phone-hue) 42% 65%);
+}
+a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%); }

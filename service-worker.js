@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261014-taker-phone-27"; // örn: 2025-12-15
+const VERSION = "20261014-phone-colors-28"; // örn: 2025-12-15
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar

@@ -265,15 +265,36 @@ function hasZeroOrderTotal(value) {
 }
 
 
+
+function orderTakerPhoneKey(value) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (digits.length === 10) return "90" + digits;
+  if (digits.length === 11 && digits.startsWith("0")) return "90" + digits.slice(1);
+  return digits;
+}
+
 function orderTakerPhoneSlot(value) {
   const label = String(value ?? "").trim();
   if (!label || label === "-" || label === "—") return "—";
-  const digits = label.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 15) {
+  const key = orderTakerPhoneKey(label);
+  if (key.length < 10 || key.length > 15) {
     return `<span class="order-taker-phone">${escapeHtml(label)}</span>`;
   }
-  const number = label.startsWith("+") ? "+" + digits : digits.startsWith("90") && digits.length === 12 ? "+" + digits : digits;
-  return `<a class="order-taker-phone" href="tel:${number}" onclick="event.stopPropagation()" aria-label="Sipariş alan kişiyi ara: ${escapeHtml(label)}">${escapeHtml(label)}</a>`;
+  let hash = 2166136261;
+  for (const digit of key) hash = Math.imul(hash ^ digit.charCodeAt(0), 16777619) >>> 0;
+  const hue = (hash % 36000) / 100;
+  const number = key.startsWith("90") && key.length === 12 ? "+" + key : (label.startsWith("+") ? "+" : "") + key;
+  return `<a class="order-taker-phone" style="--phone-hue:${hue}" href="tel:${number}" onclick="event.stopPropagation()" aria-label="Sipariş alan kişiyi ara: ${escapeHtml(label)}">${escapeHtml(label)}</a>`;
+}
+
+function orderTakerMarkup(order) {
+  const name = String(order.siparis_alan ?? "").trim();
+  const phone = String(order.siparis_tel ?? "").trim();
+  const isPhone = value => /^[+\d\s().-]+$/.test(value) && orderTakerPhoneKey(value).length >= 10;
+  const repeated = isPhone(name) && isPhone(phone) && orderTakerPhoneKey(name) === orderTakerPhoneKey(phone);
+  const nameMarkup = name && name !== "-" && name !== "—" && !repeated && !(isPhone(name) && !phone)
+    ? `<span class="order-taker-name">${escapeHtml(name)}</span>` : "";
+  return nameMarkup + orderTakerPhoneSlot(phone || (isPhone(name) ? name : ""));
 }
 
 function renderTable(rows, { append=false, hasMore } = {}){
@@ -343,7 +364,7 @@ tr.innerHTML = isPendingTab
 
     <td>${o.toplam_tutar} TL</td>
     <td>${noteChip}</td>
-    <td><span class="order-taker-name">${escapeHtml(o.siparis_alan ?? "-")}</span>${orderTakerPhoneSlot(o.siparis_tel)}</td>
+    <td>${orderTakerMarkup(o)}</td>
   `
   : `
     <td>${o.siparis_no}</td>
@@ -863,8 +884,7 @@ document.getElementById("orderDetails").innerHTML = `
 
   <div class="detail-group">
     <div class="detail-item"><b>No:</b> ${d.siparis_no}</div>
-    <div class="detail-item"><b>Sipariş Alan:</b> ${d.siparis_alan ?? "-"}</div>
-    <div class="detail-item"><b>Sipariş Alan Tel:</b> ${orderTakerPhoneSlot(d.siparis_tel)}</div>    
+    <div class="detail-item"><b>Sipariş Alan:</b> ${orderTakerMarkup(d)}</div>    
     <div class="detail-item" style="margin-top:6px;">
   <span class="pill pill-date">
     📅 ${formatDateTimeTR(d.tarih)}
