@@ -264,6 +264,18 @@ function hasZeroOrderTotal(value) {
   return /^[+-]?0+(?:[.,]0+)*$/.test(amount);
 }
 
+
+function orderTakerPhoneSlot(value) {
+  const label = String(value ?? "").trim();
+  if (!label || label === "-" || label === "—") return "—";
+  const digits = label.replace(/\D/g, "");
+  if (digits.length < 10 || digits.length > 15) {
+    return `<span class="order-taker-phone">${escapeHtml(label)}</span>`;
+  }
+  const number = label.startsWith("+") ? "+" + digits : digits.startsWith("90") && digits.length === 12 ? "+" + digits : digits;
+  return `<a class="order-taker-phone" href="tel:${number}" onclick="event.stopPropagation()" aria-label="Sipariş alan kişiyi ara: ${escapeHtml(label)}">${escapeHtml(label)}</a>`;
+}
+
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -331,7 +343,7 @@ tr.innerHTML = isPendingTab
 
     <td>${o.toplam_tutar} TL</td>
     <td>${noteChip}</td>
-    <td>${escapeHtml(o.siparis_alan ?? "-")}</td>
+    <td><span class="order-taker-name">${escapeHtml(o.siparis_alan ?? "-")}</span>${orderTakerPhoneSlot(o.siparis_tel)}</td>
   `
   : `
     <td>${o.siparis_no}</td>
@@ -852,7 +864,7 @@ document.getElementById("orderDetails").innerHTML = `
   <div class="detail-group">
     <div class="detail-item"><b>No:</b> ${d.siparis_no}</div>
     <div class="detail-item"><b>Sipariş Alan:</b> ${d.siparis_alan ?? "-"}</div>
-    <div class="detail-item"><b>Sipariş Alan Tel:</b> ${escapeHtml(d.siparis_tel ?? "—")}</div>    
+    <div class="detail-item"><b>Sipariş Alan Tel:</b> ${orderTakerPhoneSlot(d.siparis_tel)}</div>    
     <div class="detail-item" style="margin-top:6px;">
   <span class="pill pill-date">
     📅 ${formatDateTimeTR(d.tarih)}

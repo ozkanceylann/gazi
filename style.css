@@ -1171,3 +1171,14 @@ body.login-page {
 }
 .orders-page .orders-table tr.order-zero-total:hover td { background:#ffe5e5!important; }
 .orders-page .orders-table tr.order-zero-total td:first-child { border-left:3px solid #dda0a0; }
+
+/* Siparişi alan kişinin telefonu */
+.order-taker-name { display:block; margin-bottom:4px; }
+.order-taker-phone {
+  display:inline-flex; align-items:center; width:auto; max-width:100%;
+  padding:4px 10px; border:1px solid #bcd9e9; border-radius:999px;
+  background:#eaf4fa; color:#285e7c; font-size:12px; font-weight:600;
+  line-height:1.4; white-space:nowrap; text-decoration:none;
+}
+a.order-taker-phone:hover { background:#dceef8; border-color:#97bed5; }
+a.order-taker-phone:focus-visible { outline:3px solid #97bed5; outline-offset:2px; }
