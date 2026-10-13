@@ -10,6 +10,6 @@ Tamamlananlar ekranındaki **İADE Etiketi Oluştur** düğmesiyle, teslim edilm
 
 Sunucu anahtarı `gazi_carrier_private.return_connection` tablosunda tutulur ve n8n'deki İade · Sunucu Anahtarını Oku düğmesinin anahtarıyla eşleşmelidir. Anahtar tarayıcıya veya repoya yazılmaz. Yeni kurulumda bu bağlantı yetkili sunucu tarafından yapılandırılmalıdır.
 
-`gazi-siparis` PL/pgSQL paneli beklemededir. Ona ait iki Supabase cron görevi ve `GAZI_PLPGSQL_CANLI_GATEWAY` kapalıdır. Ana Gazi panelinin mevcut saatlik toplu kargo güncellemesi ve token yenilemesi devam eder.
+`gazi-siparis` PL/pgSQL paneli beklemededir. Ona ait iki Supabase cron görevi, çift yönlü otomatik sipariş senkronizasyonu ve `GAZI_PLPGSQL_CANLI_GATEWAY` kapalıdır. Ana Gazi panelinin mevcut saatlik toplu kargo güncellemesi ve token yenilemesi devam eder.
 
 Kontroller: `node tests/return-label.test.mjs`
