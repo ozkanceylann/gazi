@@ -11,7 +11,7 @@ const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcnN4dHBxenF6aGxzaHBtZ290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODExMTcsImV4cCI6MjA3Nzg1NzExN30.98oYONSkb8XSDrfGW2FxhFmt2BLB5ZRo3Ho50GhZYgE";
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-await window.requireSession(db);
+const sessionUser = await window.requireSession(db);
 
 
 /* ============================================================
@@ -37,6 +37,8 @@ let cargoFilter = "all";
 let currentPage = 1;
 const PAGE_SIZE = 10;
 let selectedOrder = null;
+const orderTakerNames = new Map();
+const isGaziAdmin = sessionUser.app_metadata?.role !== "seller";
 
 const busy = { kargola: new Set(), barkod: new Set(), iade: new Set() };
 
@@ -46,7 +48,7 @@ const busy = { kargola: new Set(), barkod: new Set(), iade: new Set() };
    UI HELPERS
 ============================================================ */
 function getColumnCount(){
-  return currentTab === "hazirlandi" ? 9 : currentTab === "bekleyen" ? 8 : 7;
+  return currentTab === "hazirlandi" ? 10 : currentTab === "bekleyen" ? 8 : 8;
 }
 
 function shouldShowNoteColumn(tab) {
@@ -90,6 +92,7 @@ function renderTableHeader(){
     <th>Tutar</th>
     <th>Durum</th>
     <th>${shouldShowNoteColumn(currentTab) ? "Not" : "Kargo Kodu"}</th>
+    <th>Sipariş Alan</th>
     <th>${currentTab === "hazirlandi" ? "Hata / İşlem" : "İşlem"}</th>
     ${currentTab === "hazirlandi" ? "<th>Kargola / Etiket</th>" : ""}
   `;
@@ -287,16 +290,79 @@ function orderTakerPhoneSlot(value) {
   return `<a class="order-taker-phone" style="--phone-hue:${hue}" href="tel:${number}" onclick="event.stopPropagation()" aria-label="Sipariş alan kişiyi ara: ${escapeHtml(label)}">${escapeHtml(label)}</a>`;
 }
 
+
 function orderTakerMarkup(order) {
-  const name = String(order.siparis_alan ?? "").trim();
   const phone = String(order.siparis_tel ?? "").trim();
-  const isPhone = value => /^[+\d\s().-]+$/.test(value) && orderTakerPhoneKey(value).length >= 10;
-  const repeated = isPhone(name) && isPhone(phone) && orderTakerPhoneKey(name) === orderTakerPhoneKey(phone);
-  const nameMarkup = name && name !== "-" && name !== "—" && !repeated && !(isPhone(name) && !phone)
-    ? `<span class="order-taker-name">${escapeHtml(name)}</span>` : "";
-  return nameMarkup + orderTakerPhoneSlot(phone || (isPhone(name) ? name : ""));
+  const name = String(order.siparis_alan ?? "").trim();
+  const fallbackPhone = /^[+\d\s().-]+$/.test(name) ? name : "";
+  const key = orderTakerPhoneKey(phone || fallbackPhone);
+  const displayName = orderTakerNames.get(key);
+  if (displayName) {
+    return `<a class="order-taker-person" href="tel:+${key}" title="${escapeHtml(phone || fallbackPhone)}" onclick="event.stopPropagation()">${escapeHtml(displayName)}</a>`;
+  }
+  if (name && !fallbackPhone && name !== "-" && name !== "—") return `<span class="order-taker-person">${escapeHtml(name)}</span>`;
+  return `<span class="order-taker-person order-taker-person--unknown">${escapeHtml(phone || fallbackPhone || "—")}</span>`;
 }
 
+async function loadOrderTakerNames() {
+  if (!isGaziAdmin) return [];
+  const {data,error} = await db.from("gazi_order_takers").select("phone,display_name").order("phone");
+  if (error) throw error;
+  orderTakerNames.clear();
+  for (const row of data || []) if (row.display_name) orderTakerNames.set(row.phone,row.display_name);
+  return data || [];
+}
+
+async function openOrderTakerSettings() {
+  if (!isGaziAdmin) return;
+  let rows;
+  try { rows = await loadOrderTakerNames(); } catch { return toast("Telefon tanımları yüklenemedi. Yeniden deneyin."); }
+  const root = document.getElementById("alertRoot");
+  const wrap = document.createElement("div");
+  wrap.className = "alert-backdrop";
+  wrap.innerHTML = `
+    <section class="alert-card taker-settings" role="dialog" aria-modal="true" aria-labelledby="takerSettingsTitle">
+      <div class="taker-settings-heading"><h2 id="takerSettingsTitle">Telefon / Kişi Tanımları</h2><button type="button" data-close aria-label="Kapat">×</button></div>
+      <p>Numarayı kullanan kişinin adını yaz. Siparişlerde bu isim görünecek.</p>
+      <div class="taker-settings-rows"></div>
+    </section>`;
+  const finish = () => wrap.remove();
+  wrap.dismiss = finish;
+  wrap.querySelector("[data-close]").onclick = finish;
+  wrap.addEventListener("click", e => { if(e.target === wrap) finish(); });
+  const container = wrap.querySelector(".taker-settings-rows");
+  const addRow = (phone="",displayName="") => {
+    const form = document.createElement("form");
+    form.className = "taker-settings-row";
+    form.innerHTML = `<label>Telefon<input name="phone" type="tel" value="${escapeHtml(phone)}" ${phone ? "readonly" : ""} placeholder="Yeni telefon" required></label><label>İsim<input name="display_name" value="${escapeHtml(displayName || "")}" maxlength="80" placeholder="Kişinin adı"></label><button type="submit">Kaydet</button><span class="taker-row-status" role="status"></span>`;
+    form.addEventListener("submit",async e=>{
+      e.preventDefault();
+      const input = form.elements.namedItem("phone");
+      const key = orderTakerPhoneKey(input.value);
+      const name = form.elements.namedItem("display_name").value.trim();
+      const status = form.querySelector(".taker-row-status");
+      if(!/^[0-9]{10,15}$/.test(key)) { status.textContent="Geçerli telefon yazın."; return; }
+      const button = form.querySelector("button");
+      button.disabled=true; status.textContent="Kaydediliyor…";
+      try {
+        const {error}=await db.from("gazi_order_takers").upsert({phone:key,display_name:name || null},{onConflict:"phone"});
+        if(error) throw error;
+        await loadOrderTakerNames();
+        input.value=key; input.readOnly=true;
+        status.textContent="Kaydedildi";
+        if(!phone) { phone=key; addRow(); }
+        await loadOrders(true);
+        if(selectedOrder && document.getElementById("orderModal").style.display==="flex") renderDetails();
+      } catch { status.textContent="Kaydedilemedi. Yeniden deneyin."; }
+      finally {button.disabled=false;}
+    });
+    container.appendChild(form);
+  };
+  for(const row of rows) addRow(row.phone,row.display_name);
+  addRow();
+  root.appendChild(wrap);
+  wrap.querySelector('input[name="display_name"]')?.focus();
+}
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -388,6 +454,7 @@ tr.innerHTML = isPendingTab
   }
 </td>
 
+<td>${orderTakerMarkup(o)}</td>
 <td>${errorPreview}</td>
 ${isPreparedTab ? `<td>${retryLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">Kargo Etiketi Oluştur</button>` : `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>`}</td>` : ""}
 
@@ -1753,6 +1820,7 @@ document.addEventListener("keydown", (event) => {
 ============================================================ */
 Object.assign(window, {
   logout,
+  openOrderTakerSettings,
   loadOrders,
    loadMore,
   setTab,
@@ -1807,6 +1875,9 @@ document.querySelectorAll(".menu li").forEach(item => {
     if (event.key === "Enter" || event.key === " ") { event.preventDefault(); item.click(); }
   });
 });
+
+document.getElementById("takerSettingsMenu").hidden = !isGaziAdmin;
+try { await loadOrderTakerNames(); } catch { toast("Kişi isimleri yüklenemedi. Sayfayı yenileyin."); }
 
 const requestedTab = new URLSearchParams(location.search).get("tab");
 if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"].includes(requestedTab)) {

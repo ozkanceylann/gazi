@@ -1195,3 +1195,20 @@ a.order-taker-phone:hover {
   border-color:hsl(var(--phone-hue) 42% 65%);
 }
 a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%); }
+
+/* Telefon yerine kayıtlı kişi isimleri */
+.order-taker-person { display:inline-block; padding:4px 10px; border:1px solid #dce5df; border-radius:999px; background:#f0f5f2; color:#355745; font-weight:600; text-decoration:none; }
+.order-taker-person--unknown { color:#718176; font-weight:400; }
+.orders-page .menu li[hidden] { display:none; }
+.taker-settings { width:min(680px,94vw); max-height:85dvh; overflow:auto; text-align:left; }
+.taker-settings-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.taker-settings-heading h2 { font-size:20px; margin:0; color:#355745; }
+.taker-settings-heading button { border:0; background:transparent; font-size:26px; cursor:pointer; color:#53655a; }
+.taker-settings p { color:#718176; font-size:13px; line-height:1.5; }
+.taker-settings-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:8px; padding:10px 0; border-bottom:1px solid #e7ede9; align-items:end; }
+.taker-settings-row label { display:grid; gap:4px; font-size:12px; color:#53655a; }
+.taker-settings-row input { min-width:0; width:100%; }
+.taker-settings-row button { border:0; border-radius:8px; padding:11px 12px; background:var(--brand); color:white; cursor:pointer; }
+.taker-settings-row button:disabled { opacity:.6; cursor:wait; }
+.taker-row-status { grid-column:1/-1; font-size:12px; color:#53655a; }
+@media(max-width:520px) { .taker-settings-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .taker-settings-row button { grid-column:1/-1; } }
