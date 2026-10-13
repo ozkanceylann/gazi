@@ -9,11 +9,11 @@
   <script src="config.js"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261012-completed-close-revert-mobile-13" />
+  <link rel="stylesheet" href="style.css?v=20261014-report-performance-31" />
 
   <!-- SUPABASE & CHARTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
   <style>
     .report-card{
@@ -31,6 +31,15 @@
     select, input[type="date"]{
       padding:10px;border:1px solid #ccc;border-radius:8px
     }
+
+    .report-extra-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin:24px 0}
+    .report-chart-card{min-width:0;background:#fff;border:1px solid #dce5df;border-radius:14px;padding:18px}
+    .report-chart-card h3{font-size:16px;margin:0 0 6px;color:#355745}
+    .report-chart-card p{font-size:12px;line-height:1.5;color:#718176;margin:0 0 14px}
+    .report-chart-area{position:relative;height:300px;min-width:0}
+    .report-chart-area[data-chart-error]::after{content:attr(data-chart-error);color:#8d4242;font-size:13px}
+    #reportMore[hidden]{display:none}
+    @media(max-width:800px){.report-extra-grid{grid-template-columns:minmax(0,1fr)}}
   </style>
 </head>
 <body class="orders-page">
@@ -84,14 +93,21 @@
 
     <div style="background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);margin-bottom:20px;">
       <h3>📈 Günlük Sipariş</h3>
-      <canvas id="dailyChart" style="max-height:300px;"></canvas>
+      <div class="report-chart-area"><canvas id="dailyChart" aria-label="Günlük sipariş" role="img"></canvas></div>
     </div>
 
     <div style="background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);margin-bottom:20px;">
-      <h3>📞 Sipariş Alan</h3>
-      <canvas id="salesByTel" style="max-height:300px;"></canvas>
+      <h3>Siparişi alan kişiler</h3>
+      <div class="report-chart-area"><canvas id="salesByTel" aria-label="Siparişi alan kişiler" role="img"></canvas></div>
     </div>
 
+
+    <section class="report-extra-grid" aria-label="Ek satış raporları">
+      <article class="report-chart-card"><h3>En çok satılan ürünler</h3><p>İptal dışındaki kayıtlarda ürünü içeren sipariş sayısı. Ürün açıklamalarına göre ilk 10.</p><div class="report-chart-area"><canvas id="productChart" aria-label="En çok satılan ürünler" role="img"></canvas></div></article>
+      <article class="report-chart-card"><h3>Sipariş durumları</h3><p>Seçili dönemin durum dağılımı.</p><div class="report-chart-area"><canvas id="statusChart" aria-label="Sipariş durumları" role="img"></canvas></div></article>
+      <article class="report-chart-card"><h3>En çok sipariş gelen şehirler</h3><p>İlk 10 şehir · sipariş sayısı.</p><div class="report-chart-area"><canvas id="cityChart" aria-label="Şehirlere göre siparişler" role="img"></canvas></div></article>
+      <article class="report-chart-card"><h3>Günlük sipariş tutarı</h3><p>İptal dışındaki sipariş tutarları; tahsilat bilgisi değildir.</p><div class="report-chart-area"><canvas id="amountChart" aria-label="Günlük sipariş tutarı" role="img"></canvas></div></article>
+    </section>
     <div class="table-wrapper">
       <table class="orders-table">
         <thead>
@@ -107,6 +123,7 @@
         <tbody id="reportTable"></tbody>
       </table>
     </div>
+    <button type="button" id="reportMore" class="btn-load-more" hidden>50 sipariş daha göster</button>
   </div>
 
 
@@ -136,9 +153,29 @@
   );
 
   await window.requireSession(db);
-  let chart1=null, chart2=null;
+  const chartInstances = new Map();
+  let chartSpecs = new Map(), chartLoader = null, chartRevision = 0;
+  let tableLimit = 50;
+  const takerNames = new Map();
   let reportRequest = 0;
   let lastRows=[];
+
+
+  function phoneKey(value) {
+    const d=String(value??"").replace(/\D/g,"");
+    return d.length===10?"90"+d:d.length===11&&d.startsWith("0")?"90"+d.slice(1):d;
+  }
+  function takerLabel(row) {
+    const source=String(row.siparis_tel||row.siparis_alan||"").trim();
+    const saved=takerNames.get(phoneKey(source));
+    if(saved)return saved;
+    const name=String(row.siparis_alan||"").trim();
+    return name || row.siparis_tel || "Tanımsız";
+  }
+  const takerLoad=db.from("gazi_order_takers").select("phone,display_name").then(({data,error})=>{
+    if(error)throw error;
+    for(const row of data||[])if(row.display_name)takerNames.set(row.phone,row.display_name);
+  }).catch(error=>{console.error("Kişi tanımları:",error);document.getElementById("reportStatus").textContent="Kişi isimleri yüklenemedi.";});
 
   function escapeReport(value) { return String(value??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c])); }
   function parseAmount(value) {
@@ -149,12 +186,16 @@
   }
   let detailTrigger=null;
   function closeReportDetail(){
+    detailRequest++;
     document.getElementById("orderModal").style.display="none";
     detailTrigger?.focus();
   }
-  function openReportDetail(orderNo,trigger) {
-    const order=lastRows.find(row=>Number(row.siparis_no)===Number(orderNo));
-    if(!order)return;
+  let detailRequest=0;
+  async function openReportDetail(orderNo,trigger) {
+    const request=++detailRequest;
+    const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",Number(orderNo)).single();
+    if(request!==detailRequest)return;
+    if(error||!order){document.getElementById("reportStatus").textContent="Sipariş detayı yüklenemedi.";return;}
     detailTrigger=trigger;
     const root=document.getElementById("orderDetails");root.replaceChildren();
     const grid=document.createElement("div");grid.className="report-detail-grid";
@@ -171,7 +212,7 @@
       for(const [label,key] of fields) {
         const row=document.createElement("div");row.className="detail-item";
         const b=document.createElement("b");b.textContent=label?label+": ":"";
-        row.append(b,document.createTextNode(String(order[key]??"—")));group.append(row);
+        row.append(b,document.createTextNode(String(key==="siparis_alan" ? takerLabel(order) : order[key]??"—")));group.append(row);
       }
       grid.append(group);
     }
@@ -209,7 +250,7 @@
     try {
       const rows = [], size = 500;
       for (let offset = 0;;offset += size) {
-        let q = db.from(TABLE).select("*")
+        let q = db.from(TABLE).select("siparis_no,ad_soyad,toplam_tutar,kargo_durumu,tarih,siparis_alan,siparis_tel,urun_bilgisi,sehir,shipmentStatusCode,isDelivered")
           .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
         if(s) q=q.gte("tarih", s);
         if(e) {
@@ -225,7 +266,9 @@
         rows.push(...(data||[]));
         if(!data || data.length<size)break;
       }
-      lastRows=rows; renderReport(rows);
+      await takerLoad;
+      if(request!==reportRequest)return;
+      lastRows=rows; tableLimit=50; renderReport(rows);
       status.textContent=rows.length+" sipariş · Müşteri adına tıklayarak ayrıntıları açın.";
     } catch(error) { if(request!==reportRequest)return; console.error(error); status.textContent="Rapor yüklenemedi. Yeniden deneyin."; }
   }
@@ -234,83 +277,103 @@
   /* ==============================
         TABLO + ÖZET + GRAFİK
   ============================== */
+
+  function renderReportTable(){
+    const table=document.getElementById("reportTable");
+    const visible=lastRows.slice(0,tableLimit);
+    table.innerHTML=visible.length ? visible.map(r=>`<tr>
+      <td>${Number(r.siparis_no)}</td>
+      <td><button class="report-customer" data-order="${Number(r.siparis_no)}">${escapeReport(r.ad_soyad)}</button></td>
+      <td>${escapeReport(r.toplam_tutar)} TL</td><td>${escapeReport(r.kargo_durumu)}</td>
+      <td>${escapeReport((r.tarih||"").substring(0,10))}</td><td>${escapeReport(takerLabel(r))}</td>
+    </tr>`).join("") : '<tr><td colspan="6">Kayıt yok</td></tr>';
+    document.getElementById("reportMore").hidden=lastRows.length<=tableLimit;
+  }
+  document.getElementById("reportMore").onclick=()=>{tableLimit+=50;renderReportTable();};
+
   function renderReport(rows){
-    const table = document.getElementById("reportTable");
-    const summary = document.getElementById("summaryCards");
-    table.innerHTML=""; summary.innerHTML="";
-
-    if(!rows.length){
-      table.innerHTML = `<tr><td colspan="6">Kayıt yok</td></tr>`;
-      buildCharts([]);
-      return;
-    }
-
-    let toplam=0, adet=rows.length, kargolanan=0;
-    rows.forEach(r=>{
-      toplam += parseAmount(r.toplam_tutar);
-      if(r.kargo_durumu==="Kargolandı") kargolanan++;
-      table.innerHTML += `
-        <tr>
-          <td>${r.siparis_no}</td>
-          <td><button class="report-customer" data-order="${Number(r.siparis_no)}">${escapeReport(r.ad_soyad)}</button></td>
-          <td>${escapeReport(r.toplam_tutar)} TL</td>
-          <td>${escapeReport(r.kargo_durumu)}</td>
-          <td>${(r.tarih||"").substring(0,10)}</td>
-          <td>${escapeReport(r.siparis_alan||"")}</td>
-        </tr>`;
-    });
-
-    summary.innerHTML = `
-      <div class="report-card"><h3>Toplam Sipariş</h3><div class="value">${adet}</div></div>
-      <div class="report-card"><h3>Toplam Tutar</h3><div class="value">${toplam.toLocaleString("tr-TR")} TL</div></div>
-      <div class="report-card"><h3>Kargolanan</h3><div class="value">${kargolanan}</div></div>
-    `;
-
+    renderReportTable();
+    const total=rows.reduce((sum,r)=>sum+parseAmount(r.toplam_tutar),0);
+    const shipped=rows.filter(r=>r.kargo_durumu==="Kargolandı").length;
+    document.getElementById("summaryCards").innerHTML=`
+      <div class="report-card"><h3>Toplam Sipariş</h3><div class="value">${rows.length}</div></div>
+      <div class="report-card"><h3>Toplam Tutar</h3><div class="value">${total.toLocaleString("tr-TR")} TL</div></div>
+      <div class="report-card"><h3>Kargolanan</h3><div class="value">${shipped}</div></div>`;
     buildCharts(rows);
   }
 
-
-  /* ==============================
-        GRAFİKLER
-  ============================== */
-  function buildCharts(rows){
-    const daily={};
-    rows.forEach(r=>{
-      const d=(r.tarih||"").substring(0,10);
-      daily[d]=(daily[d]||0)+1;
-    });
-
-    const labels1=Object.keys(daily).sort();
-    const values1=labels1.map(day=>daily[day]);
-
-    if(chart1) chart1.destroy();
-    chart1 = new Chart(document.getElementById("dailyChart"),{
-      type:"line",
-      data:{
-        labels:labels1,
-        datasets:[{ label:"Günlük Sipariş", data:values1, borderWidth:3 }]
-      }
-    });
-
-    const byTel={};
-    rows.forEach(r=>{
-      const key=r.siparis_alan||"Bilinmiyor";
-      byTel[key]=(byTel[key]||0)+1;
-    });
-
-    const labels2=Object.keys(byTel);
-    const values2=Object.values(byTel);
-
-    if(chart2) chart2.destroy();
-    chart2 = new Chart(document.getElementById("salesByTel"),{
-      type:"bar",
-      data:{
-        labels:labels2,
-        datasets:[{ label:"Sipariş Sayısı", data:values2, borderWidth:2 }]
-      }
-    });
+  function productNames(value){
+    if(Array.isArray(value))return value.map(String);
+    const text=String(value||"").trim();
+    if(!text)return [];
+    try{const parsed=JSON.parse(text);if(Array.isArray(parsed))return parsed.map(String);}catch{}
+    return text.split(/\n|;/).map(x=>x.trim()).filter(Boolean);
   }
-
+  function aggregateReport(rows) {
+    const daily=new Map(),people=new Map(),products=new Map(),statuses=new Map(),cities=new Map(),amounts=new Map();
+    const add=(map,key,n=1)=>map.set(key,(map.get(key)||0)+n);
+    for(const r of rows){
+      const day=String(r.tarih||"").slice(0,10);
+      if(day)add(daily,day);
+      add(people,takerLabel(r));
+      const status=r.isDelivered||Number(r.shipmentStatusCode)===5?"Teslim edildi":r.kargo_durumu||"Tanımsız";
+      add(statuses,status);
+      if(r.sehir)add(cities,String(r.sehir).trim().toLocaleUpperCase("tr-TR"));
+      if(r.kargo_durumu==="İptal")continue;
+      if(day)add(amounts,day,parseAmount(r.toplam_tutar));
+      const unique=new Set(productNames(r.urun_bilgisi).map(x=>x.trim().replace(/\s+/g," ").toLocaleLowerCase("tr-TR")));
+      for(const product of unique)if(product)add(products,product);
+    }
+    return {daily,people,products,statuses,cities,amounts};
+  }
+  function ensureChartLibrary(){
+    if(window.Chart)return Promise.resolve();
+    if(!chartLoader)chartLoader=new Promise((resolve,reject)=>{
+      const script=document.createElement("script");
+      script.src="https://cdn.jsdelivr.net/npm/chart.js";
+      script.onload=resolve;script.onerror=()=>{chartLoader=null;script.remove();reject(new Error("Grafik kütüphanesi yüklenemedi."));};
+      document.head.append(script);
+    });
+    return chartLoader;
+  }
+  async function drawReportChart(canvas){
+    const revision=chartRevision;
+    if(!chartSpecs.has(canvas.id)||chartInstances.has(canvas.id))return;
+    try{
+      await ensureChartLibrary();
+      if(revision!==chartRevision||chartInstances.has(canvas.id))return;
+      const spec=chartSpecs.get(canvas.id);if(!spec)return;
+      chartInstances.set(canvas.id,new Chart(canvas,spec));
+    }catch(error){console.error(error);canvas.parentElement.dataset.chartError="Grafik yüklenemedi. Sayfayı yenileyin.";}
+  }
+  const chartObserver="IntersectionObserver" in window ? new IntersectionObserver(entries=>{
+    for(const entry of entries)if(entry.isIntersecting)drawReportChart(entry.target);
+  },{rootMargin:"120px"}) : null;
+  const chartColors=["#56866b","#c9a456","#7096b4","#ab8bbc","#dba09a","#82a9a2","#8e94bd","#b4aa77"];
+  function buildCharts(rows){
+    chartRevision++;
+    for(const chart of chartInstances.values())chart.destroy();
+    chartInstances.clear();chartSpecs.clear();
+    const data=aggregateReport(rows);
+    const make=(id,map,label,type="bar",top=false)=>{
+      const entries=top?[...map].sort((a,b)=>b[1]-a[1]).slice(0,10):[...map].sort((a,b)=>a[0].localeCompare(b[0],"tr"));
+      chartSpecs.set(id,{type,data:{labels:entries.map(x=>x[0]),datasets:[{label,data:entries.map(x=>x[1]),backgroundColor:type==="line"?"#56866b22":chartColors,borderColor:type==="line"?"#56866b":chartColors,borderWidth:2,tension:.2}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,normalized:true,
+          indexAxis:top?"y":"x",plugins:{legend:{display:type==="doughnut"}},
+          ...(type==="doughnut"?{}:{scales:{[top?"x":"y"]:{beginAtZero:true}}})}});
+    };
+    make("dailyChart",data.daily,"Sipariş sayısı","line");
+    make("salesByTel",data.people,"Sipariş sayısı","bar",true);
+    make("productChart",data.products,"Ürünü içeren sipariş","bar",true);
+    make("statusChart",data.statuses,"Sipariş sayısı","doughnut");
+    make("cityChart",data.cities,"Sipariş sayısı","bar",true);
+    make("amountChart",data.amounts,"Sipariş tutarı (TL)","line");
+    for(const id of chartSpecs.keys()){
+      const canvas=document.getElementById(id);
+      if(chartObserver)chartObserver.observe(canvas);
+      if(!chartObserver||canvas.getBoundingClientRect().top<window.innerHeight+120)drawReportChart(canvas);
+    }
+  }
 
   /* ==============================
         EXCEL EXPORT
@@ -323,7 +386,7 @@
     const rows = lastRows.map(r=>[
       r.siparis_no, r.ad_soyad, r.toplam_tutar,
       r.kargo_durumu, (r.tarih||"").substring(0,19),
-      r.siparis_alan||""
+      takerLabel(r)
     ]);
 
     const tableHtml = `
