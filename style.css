@@ -1212,3 +1212,23 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .taker-settings-row button:disabled { opacity:.6; cursor:wait; }
 .taker-row-status { grid-column:1/-1; font-size:12px; color:#53655a; }
 @media(max-width:520px) { .taker-settings-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .taker-settings-row button { grid-column:1/-1; } }
+
+/* İkincil menü seçenekleri başlangıçta kapalı */
+.orders-page .sidebar .menu { scrollbar-width:none; }
+.orders-page .sidebar .menu::-webkit-scrollbar { display:none; }
+.orders-page .menu li.menu-more,
+.orders-page .menu li.menu-more:hover {
+  margin:0; padding:0; background:transparent; border:0;
+  border-radius:0; text-align:inherit; cursor:default;
+}
+.menu-more summary {
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:9px 10px; border:1px solid #ffffff20; border-radius:8px;
+  color:#d2e3d9; font-size:12px; cursor:pointer; list-style:none;
+}
+.menu-more summary::-webkit-details-marker { display:none; }
+.menu-more summary:hover { background:#ffffff0c; }
+.menu-more summary:focus-visible { outline:3px solid #8bbfa3; outline-offset:3px; }
+.menu-more-arrow { width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg); margin-top:-3px; }
+.menu-more details[open] .menu-more-arrow { transform:rotate(225deg); margin-top:3px; }
+.menu-subitems { list-style:none; margin:10px 0 0; padding:0; }

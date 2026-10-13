@@ -114,7 +114,7 @@ function toggleLoadMore(visible){
 }
 
 // Sidebar menü tıklanınca otomatik kapanması (mobil)
-document.querySelectorAll(".sidebar .menu li").forEach(item => {
+document.querySelectorAll(".sidebar .menu li:not(.menu-more)").forEach(item => {
   item.addEventListener("click", () => {
     const sidebar = document.querySelector(".sidebar");
     if (sidebar.classList.contains("open")) {
@@ -1725,7 +1725,7 @@ function setTab(tab){
   document.getElementById("tabSearchInput").value = "";
   currentTab = tab;
   cargoFilter = "all";
-  document.querySelectorAll(".menu li").forEach(li=>li.classList.remove("active"));
+  document.querySelectorAll(".menu li:not(.menu-more)").forEach(li=>li.classList.remove("active"));
   const el = document.getElementById(`tab_${tab}`);
   if(el) el.classList.add("active");
   loadOrders(true);
@@ -1868,7 +1868,7 @@ showNoteDetail,
 ============================================================ */
 
 // Menü öğeleri klavye ile de kullanılabilir.
-document.querySelectorAll(".menu li").forEach(item => {
+document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => {
   item.tabIndex = 0;
   item.setAttribute("role", "button");
   item.addEventListener("keydown", event => {
@@ -1882,7 +1882,7 @@ try { await loadOrderTakerNames(); } catch { toast("Kişi isimleri yüklenemedi.
 const requestedTab = new URLSearchParams(location.search).get("tab");
 if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"].includes(requestedTab)) {
   currentTab = requestedTab;
-  document.querySelectorAll(".menu li").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
+  document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
 
 

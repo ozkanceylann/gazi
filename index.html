@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
-  <script src="config.js?v=20261014-phone-persons-29"></script>
+  <script src="config.js?v=20261014-sidebar-more-30"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261014-phone-persons-29" />
+  <link rel="stylesheet" href="style.css?v=20261014-sidebar-more-30" />
 
   <style>
     .btn-mini{
@@ -51,11 +51,16 @@
       <li id="tab_tamamlandi" onclick="setTab('tamamlandi')">Tamamlananlar</li>
       <li id="tab_iade" onclick="setTab('iade')">İade</li>
       <li id="tab_sorunlu"    onclick="setTab('sorunlu')">Sorunlu</li>
-      <li id="tab_iptal"      onclick="setTab('iptal')">İptal</li>
-
-      <!-- ✔ RAPORLAR BURADAN AÇILIYOR -->
-      <li onclick="window.location='rapor.html'">Raporlar</li>
-      <li id="takerSettingsMenu" hidden onclick="openOrderTakerSettings()">Telefon / Kişi Tanımları</li>
+      <li class="menu-more">
+        <details id="sidebarMore">
+          <summary>Diğer işlemler <span class="menu-more-arrow" aria-hidden="true"></span></summary>
+          <ul class="menu-subitems">
+            <li id="tab_iptal" onclick="setTab('iptal')">İptal</li>
+            <li onclick="window.location='rapor.html'">Raporlar</li>
+            <li id="takerSettingsMenu" hidden onclick="openOrderTakerSettings()">Telefon / Kişi Tanımları</li>
+          </ul>
+        </details>
+      </li>
     </ul>
 
     <button class="btn-logout" type="button" onclick="logout()">Çıkış Yap</button>
@@ -175,7 +180,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261014-phone-persons-29");
+      await import("./app.js?v=20261014-sidebar-more-30");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");
