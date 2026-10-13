@@ -17,8 +17,15 @@ create table if not exists public.gazi_iade_islemleri (
 alter table public.gazi_iade_islemleri enable row level security;
 revoke all on public.gazi_iade_islemleri from anon, authenticated;
 grant all on public.gazi_iade_islemleri to service_role;
-grant usage on schema gazi_live to service_role;
-grant select on gazi_live.settings to service_role;
+create schema if not exists gazi_carrier_private;
+revoke all on schema gazi_carrier_private from public, anon, authenticated;
+grant usage on schema gazi_carrier_private to service_role;
+create table if not exists gazi_carrier_private.return_connection (
+  id integer primary key check (id=1), server_key text not null check (length(server_key)>=32)
+);
+alter table gazi_carrier_private.return_connection enable row level security;
+revoke all on gazi_carrier_private.return_connection from public, anon, authenticated;
+grant select on gazi_carrier_private.return_connection to service_role;
 
 create or replace function public.gazi_iade_internal(p_operation text,p_id integer,p_data jsonb default '{}'::jsonb)
 returns jsonb language plpgsql security invoker set search_path='' as $$
@@ -38,7 +45,8 @@ begin
       or nullif(trim(o.sehir),'') is null or nullif(trim(o.ilce),'') is null
       or nullif(trim(o.musteri_tel),'') is null or nullif(trim(o.sehir_kodu),'') is null
       or nullif(trim(o.ilce_kodu),'') is null then raise exception 'İade için müşteri, telefon, adres ve şehir/ilçe kodları eksiksiz olmalı'; end if;
-    select value into config from gazi_live.settings where key='gateway';
+    select jsonb_build_object('url','https://n8n.ozkanceylan.uk/webhook/gazi_iade_olustur','key',server_key)
+      into config from gazi_carrier_private.return_connection where id=1;
     if nullif(config->>'url','') is null or nullif(config->>'key','') is null then raise exception 'DHL iade bağlantısı ayarlanmamış'; end if;
     ref:=coalesce(r.reference_id,'GZI-'||p_id||'-R1');
     insert into public.gazi_iade_islemleri(siparis_no,reference_id,status)
