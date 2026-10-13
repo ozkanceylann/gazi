@@ -1554,6 +1554,19 @@ function buildOrderSearchFilter(input) {
   return filters.join(",");
 }
 
+
+function searchActiveOrders() {
+  const inTab = !!document.getElementById("tabSearchInput").value.trim();
+  return searchOrders(inTab ? "tab" : "all");
+}
+
+// Keep the single search button's scope tied to the field being edited.
+document.addEventListener("input", (event) => {
+  const id = event.target?.id;
+  if (!["searchInput", "tabSearchInput"].includes(id)) return;
+  document.getElementById(id === "searchInput" ? "tabSearchInput" : "searchInput").value = "";
+});
+
 async function searchOrders(scope = "all") {
   const inTab = scope === "tab";
   const inputId = inTab ? "tabSearchInput" : "searchInput";
@@ -1703,6 +1716,7 @@ Object.assign(window, {
    loadMore,
   setTab,
   searchOrders,
+  searchActiveOrders,
   clearSearch,
   toggleMenu,
 

@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
-  <script src="config.js?v=20261014-tab-search-23"></script>
+  <script src="config.js?v=20261014-search-slot-24"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261014-tab-search-23" />
+  <link rel="stylesheet" href="style.css?v=20261014-search-slot-24" />
 
   <style>
     .btn-mini{
@@ -66,23 +66,10 @@
   <main class="content-area">
     <header class="page-header"><div><p class="page-eyebrow">SİPARİŞ YÖNETİMİ</p><h1 id="pageTitle">Bekleyen Siparişler</h1><p id="listSummary" role="status" aria-live="polite">Siparişler yükleniyor…</p></div><button class="btn-refresh" type="button" onclick="clearSearch()">↻ Listeyi Yenile</button></header>
 
-    <div class="top-bar search-split">
-      <section class="search-panel" aria-label="Tüm siparişlerde arama">
-        <label for="searchInput">Tüm siparişlerde ara</label>
-        <div class="search-panel-controls">
-          <input id="searchInput" type="search" placeholder="İsim, sipariş no, telefon veya adres" />
-          <button type="button" class="btn-search" onclick="searchOrders()">Ara</button>
-          <button type="button" class="btn-clear" onclick="clearSearch()">Temizle</button>
-        </div>
-      </section>
-      <section class="search-panel search-panel--tab" aria-label="Bulunduğunuz sekmede arama">
-        <label for="tabSearchInput">Sekmede ara</label>
-        <div class="search-panel-controls">
-          <input id="tabSearchInput" type="search" placeholder="Yalnızca bu sekmedeki siparişler" />
-          <button type="button" class="btn-search" onclick="searchOrders('tab')">Ara</button>
-          <button type="button" class="btn-clear" onclick="clearSearch()">Temizle</button>
-        </div>
-      </section>
+    <div class="top-bar search-slot">
+      <input id="searchInput" type="search" aria-label="Tüm siparişlerde ara" placeholder="Tüm siparişlerde ara" />
+      <input id="tabSearchInput" type="search" aria-label="Sekmede ara" placeholder="Sekmede ara" />
+      <button type="button" class="btn-search" onclick="searchActiveOrders()">Ara</button>
     </div>
 
     <section id="cargoTools" class="cargo-tools" hidden aria-label="Kargo işlemleri">
@@ -187,7 +174,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261014-tab-search-23");
+      await import("./app.js?v=20261014-search-slot-24");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

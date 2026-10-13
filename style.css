@@ -1139,25 +1139,22 @@ body.login-page {
 .orders-page .btn-ship-order:hover { background:#d6e9dd; }
 .orders-page .btn-ship-order:disabled { opacity:.6; cursor:wait; }
 
-/* Eşit iki arama alanı: tüm siparişler ve açık sekme */
-.orders-page .top-bar.search-split {
-  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:0; padding:0; overflow:hidden;
+
+/* Tek uzun arama çubuğu, ince kapsam ayırıcı ve ortak buton */
+.orders-page .top-bar.search-slot {
+  display:flex; align-items:center; gap:0; padding:5px;
+  border:1px solid #dce5df; border-radius:10px; background:#fff;
 }
-.search-panel { min-width:0; padding:12px; }
-.search-panel label { display:block; margin-bottom:7px; color:#486052; font-size:12px; font-weight:600; }
-.search-panel--tab { background:#eef4fa; border-left:1px solid #d5e1ed; }
-.search-panel--tab label { color:#46617d; }
-.search-panel-controls { display:flex; gap:6px; }
-.orders-page .search-panel-controls input { width:0; flex:1; min-width:0; }
-.orders-page .search-panel-controls button { flex-shrink:0; }
-.orders-page .search-panel--tab input { background:#fff; border-color:#d5e1ed; }
-.orders-page .search-panel--tab .btn-search { background:#466b8e; }
-@media(max-width:700px) {
-  .orders-page .top-bar.search-split { grid-template-columns:minmax(0,1fr); }
-  .search-panel--tab { border-left:0; border-top:1px solid #d5e1ed; }
+.orders-page .search-slot input {
+  flex:1 1 0; width:0; min-width:0; padding:10px 12px;
+  border:0; border-radius:0; background:transparent; font-size:13px;
 }
-@media(max-width:420px) {
-  .search-panel-controls { flex-wrap:wrap; }
-  .orders-page .search-panel-controls input { flex-basis:100%; width:100%; }
+.orders-page .search-slot #tabSearchInput { border-left:1px solid #dce5df; }
+.orders-page .search-slot .btn-search {
+  flex:0 0 auto; width:auto; margin-left:5px; padding:10px 20px;
+  background:var(--brand); color:#fff; border-radius:7px; font-weight:600;
+}
+@media(max-width:520px) {
+  .orders-page .search-slot input { padding:10px 7px; font-size:12px; }
+  .orders-page .search-slot .btn-search { padding:10px 12px; }
 }
