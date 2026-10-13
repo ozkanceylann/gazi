@@ -174,7 +174,21 @@ function formatDateTimeTR(iso) {
    LİSTELEME
 ============================================================ */
 let listRequest = 0;
+function applyTabFilter(q) {
+  if(currentTab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
+  if(currentTab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
+  if(currentTab==="kargolandi") q = q.in("kargo_durumu",["Kargolandı","Tamamlandı"]);
+  if(currentTab==="tamamlandi") { q = q.or("shipmentStatusCode.eq.5,isDelivered.eq.true"); }
+  if(currentTab==="sorunlu") q=q.or([cargoStateFilter("failed"),cargoStateFilter("support")].join(","));
+  if(currentTab==="iade") q=q.or(cargoStateFilter("return")+",iade_kodu.not.is.null");
+  if(currentTab==="iptal")      q = q.eq("kargo_durumu","İptal");
+
+  return q;
+}
+
 async function loadOrders(reset=false){
+  if(document.getElementById("tabSearchInput")?.value.trim()) return searchOrders("tab");
+  if(document.getElementById("searchInput")?.value.trim()) return searchOrders();
   syncCargoTools();
   const request = ++listRequest;
   const tbody = document.getElementById("ordersBody");
@@ -189,13 +203,7 @@ async function loadOrders(reset=false){
   let q = db.from(TABLE).select("*", { count: "exact" })
     .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
 
-  if(currentTab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
-  if(currentTab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
-  if(currentTab==="kargolandi") q = q.in("kargo_durumu",["Kargolandı","Tamamlandı"]);
-  if(currentTab==="tamamlandi") { q = q.or("shipmentStatusCode.eq.5,isDelivered.eq.true"); }
-  if(currentTab==="sorunlu") q=q.or([cargoStateFilter("failed"),cargoStateFilter("support")].join(","));
-  if(currentTab==="iade") q=q.or(cargoStateFilter("return")+",iade_kodu.not.is.null");
-  if(currentTab==="iptal")      q = q.eq("kargo_durumu","İptal");
+  q = applyTabFilter(q);
 
   q = applyCargoFilter(q);
 
@@ -1546,32 +1554,37 @@ function buildOrderSearchFilter(input) {
   return filters.join(",");
 }
 
-async function searchOrders() {
-  const request = ++listRequest;
-  const raw = document.getElementById("searchInput").value.trim();
+async function searchOrders(scope = "all") {
+  const inTab = scope === "tab";
+  const inputId = inTab ? "tabSearchInput" : "searchInput";
+  document.getElementById(inTab ? "searchInput" : "tabSearchInput").value = "";
+  const raw = document.getElementById(inputId).value.trim();
   if (!raw) return loadOrders(true);
-  updateListHeading(true, "Aranıyor…");
+  const request = ++listRequest;
+  updateListHeading(!inTab, "Aranıyor…");
   try {
-    const { data, error } = await db.from(TABLE).select("*")
-      .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi")
-      .or(buildOrderSearchFilter(raw))
+    let query = db.from(TABLE).select("*")
+      .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
+    if (inTab) query = applyCargoFilter(applyTabFilter(query));
+    const { data, error } = await query.or(buildOrderSearchFilter(raw))
       .order("siparis_no", { ascending: false });
     if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();
-    const matches = cargoFilter==="all" ? data : data.filter(matchesCargoFilter);
+    const matches = inTab || cargoFilter==="all" ? data : data.filter(matchesCargoFilter);
     renderTable(matches, { append: false, hasMore: false });
-    updateListHeading(true, `${matches?.length ?? 0} sonuç · Tüm siparişlerde arama`);
+    updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
   } catch (error) {
-    updateListHeading(true, "Arama tamamlanamadı. Yeniden deneyin.");
+    if (request !== listRequest) return;
+    updateListHeading(!inTab, "Arama tamamlanamadı. Yeniden deneyin.");
     console.error("Arama Hatası:", error);
     toast("Arama yapılırken bir hata oluştu!");
   }
 }
 
-
 function clearSearch(){
   document.getElementById("searchInput").value="";
+  document.getElementById("tabSearchInput").value="";
   loadOrders(true);
 }
 
@@ -1588,6 +1601,7 @@ function updateListHeading(search, summary) {
 
 function setTab(tab){
   document.getElementById("searchInput").value = "";
+  document.getElementById("tabSearchInput").value = "";
   currentTab = tab;
   cargoFilter = "all";
   document.querySelectorAll(".menu li").forEach(li=>li.classList.remove("active"));
@@ -1674,9 +1688,9 @@ document.addEventListener("keydown", (event) => {
     }
     document.querySelector(".sidebar")?.classList.remove("open");
   }
-  if (event.target?.id === "searchInput" && event.key === "Enter" && !event.isComposing) {
+  if (["searchInput", "tabSearchInput"].includes(event.target?.id) && event.key === "Enter" && !event.isComposing) {
     event.preventDefault();
-    searchOrders();
+    searchOrders(event.target.id === "tabSearchInput" ? "tab" : "all");
   }
 });
 

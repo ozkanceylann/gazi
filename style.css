@@ -1138,3 +1138,26 @@ body.login-page {
 }
 .orders-page .btn-ship-order:hover { background:#d6e9dd; }
 .orders-page .btn-ship-order:disabled { opacity:.6; cursor:wait; }
+
+/* Eşit iki arama alanı: tüm siparişler ve açık sekme */
+.orders-page .top-bar.search-split {
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:0; padding:0; overflow:hidden;
+}
+.search-panel { min-width:0; padding:12px; }
+.search-panel label { display:block; margin-bottom:7px; color:#486052; font-size:12px; font-weight:600; }
+.search-panel--tab { background:#eef4fa; border-left:1px solid #d5e1ed; }
+.search-panel--tab label { color:#46617d; }
+.search-panel-controls { display:flex; gap:6px; }
+.orders-page .search-panel-controls input { width:0; flex:1; min-width:0; }
+.orders-page .search-panel-controls button { flex-shrink:0; }
+.orders-page .search-panel--tab input { background:#fff; border-color:#d5e1ed; }
+.orders-page .search-panel--tab .btn-search { background:#466b8e; }
+@media(max-width:700px) {
+  .orders-page .top-bar.search-split { grid-template-columns:minmax(0,1fr); }
+  .search-panel--tab { border-left:0; border-top:1px solid #d5e1ed; }
+}
+@media(max-width:420px) {
+  .search-panel-controls { flex-wrap:wrap; }
+  .orders-page .search-panel-controls input { flex-basis:100%; width:100%; }
+}
