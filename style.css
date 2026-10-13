@@ -1140,21 +1140,27 @@ body.login-page {
 .orders-page .btn-ship-order:disabled { opacity:.6; cursor:wait; }
 
 
-/* Tek uzun arama çubuğu, ince kapsam ayırıcı ve ortak buton */
+
+/* İki oval arama girişi ve tek ortak yeşil buton */
 .orders-page .top-bar.search-slot {
-  display:flex; align-items:center; gap:0; padding:5px;
-  border:1px solid #dce5df; border-radius:10px; background:#fff;
+  display:flex; align-items:center; gap:8px; padding:0;
+  border:0; border-radius:0; background:transparent;
 }
 .orders-page .search-slot input {
-  flex:1 1 0; width:0; min-width:0; padding:10px 12px;
-  border:0; border-radius:0; background:transparent; font-size:13px;
+  flex:1 1 0; width:0; min-width:0; padding:11px 16px;
+  border:1px solid #dce5df; border-radius:999px;
+  background:#fff; font-size:13px; line-height:1.4;
 }
-.orders-page .search-slot #tabSearchInput { border-left:1px solid #dce5df; }
+.orders-page .search-slot #tabSearchInput {
+  background:#f5f8f6; border-color:#dce5df;
+}
+.orders-page .search-slot input::placeholder { color:#718176; opacity:1; }
 .orders-page .search-slot .btn-search {
-  flex:0 0 auto; width:auto; margin-left:5px; padding:10px 20px;
-  background:var(--brand); color:#fff; border-radius:7px; font-weight:600;
+  flex:0 0 auto; width:auto; margin:0; padding:11px 20px;
+  background:var(--brand); color:#fff; border-radius:999px; font-weight:600;
 }
 @media(max-width:520px) {
-  .orders-page .search-slot input { padding:10px 7px; font-size:12px; }
+  .orders-page .top-bar.search-slot { gap:6px; }
+  .orders-page .search-slot input { padding:10px 11px; font-size:12px; }
   .orders-page .search-slot .btn-search { padding:10px 12px; }
 }
