@@ -923,6 +923,13 @@ body.login-page {
 .cargo-status--delivery{color:#864200;background:#fff0d9;border-color:#f4d2a0}
 .cargo-status--delivered{color:#176341;background:#e4f5eb;border-color:#b8dec8}
 .cargo-status--problem{color:#982837;background:#ffe9eb;border-color:#efbec5}
+.cargo-status--return{color:#713a93;background:#f3e7fa;border-color:#d8b8e9}
+.return-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.orders-page .btn-return-label{display:inline-block;width:auto;min-height:32px;box-sizing:border-box;padding:7px 10px;border:1px solid #d1b5e2;border-radius:7px;background:#f2e6fa;color:#653285;font-family:inherit;font-size:12px;font-weight:600;line-height:1.4;text-decoration:none;cursor:pointer;white-space:normal}
+.orders-page .btn-return-label:hover{background:#e8d4f3}
+.orders-page .btn-return-label:disabled{opacity:.6;cursor:wait}
+.return-code{font-size:11px;color:#6b5678;overflow-wrap:anywhere}
+.return-result p,.return-detail p{font-size:13px;line-height:1.6;overflow-wrap:anywhere}
 .cargo-status--unknown{color:#615575;background:#f0ebf8;border-color:#d8cde8}
 .cargo-checked{display:block;font-size:11px;color:#64736b;margin-top:5px}
 .cargo-detail{margin-top:12px}
@@ -1097,3 +1104,4 @@ body.login-page {
 }
 .orders-page .btn-cargo-label:hover { background:#c4e5ce; }
 .orders-page .btn-cargo-label:disabled { opacity:.6; cursor:wait; }
+

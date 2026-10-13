@@ -38,7 +38,7 @@ let currentPage = 1;
 const PAGE_SIZE = 10;
 let selectedOrder = null;
 
-const busy = { kargola: new Set(), barkod: new Set() };
+const busy = { kargola: new Set(), barkod: new Set(), iade: new Set() };
 
 
 
@@ -54,7 +54,7 @@ function shouldShowNoteColumn(tab) {
 }
 
 function shouldShowCargoCode(tab) {
-  return ["kargolandi", "tamamlandi", "sorunlu"].includes(tab);
+  return ["kargolandi", "tamamlandi", "sorunlu", "iade"].includes(tab);
 }
 
 function renderTableHeader(){
@@ -182,7 +182,8 @@ async function loadOrders(reset=false){
   if(currentTab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
   if(currentTab==="kargolandi") q = q.in("kargo_durumu",["Kargolandı","Tamamlandı"]);
   if(currentTab==="tamamlandi") { q = q.or("shipmentStatusCode.eq.5,isDelivered.eq.true"); }
-  if(currentTab==="sorunlu") {  q=q.in("shipmentStatusCode", [6,7]).eq("isDelivered", false); } // 6: sorunlu, 7: iade
+  if(currentTab==="sorunlu") q=q.or([cargoStateFilter("failed"),cargoStateFilter("support")].join(","));
+  if(currentTab==="iade") q=q.or(cargoStateFilter("return")+",iade_kodu.not.is.null");
   if(currentTab==="iptal")      q = q.eq("kargo_durumu","İptal");
 
   q = applyCargoFilter(q);
@@ -237,11 +238,11 @@ function renderTable(rows, { append=false, hasMore } = {}){
   rows.forEach(o=>{
     const tr = document.createElement("tr");
 
-   const durumText = ["kargolandi", "tamamlandi", "sorunlu"].includes(currentTab)
+   const durumText = ["kargolandi", "tamamlandi", "sorunlu", "iade"].includes(currentTab)
     ? (o.shipmentStatus ?? "—")
     : o.kargo_durumu;
 
-    const isTrackingTab = ["kargolandi", "tamamlandi", "sorunlu"].includes(currentTab);
+    const isTrackingTab = ["kargolandi", "tamamlandi", "sorunlu", "iade"].includes(currentTab);
 
     const isPendingTab = currentTab === "bekleyen";
 
@@ -249,7 +250,9 @@ function renderTable(rows, { append=false, hasMore } = {}){
   const retryLabel = isPreparedTab && needsCargoLabelRetry(o);
   if(retryLabel) tr.classList.add("cargo-label-retry");
 
-  const actionBtn = `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
+  const actionBtn = (currentTab === "tamamlandi" || currentTab === "iade")
+    ? returnOrderActions(o)
+    : `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
 
 const errorPreview = isPreparedTab && o.gonder_hata_bilgisi
   ? `<button class="error-chip"
@@ -317,7 +320,7 @@ ${isPreparedTab ? `<td>${retryLabel ? `<button type="button" class="btn-cargo-la
 // Satır tıklama kontrolü (chip'e tıklayınca detay açılmasın)
 tr.addEventListener("click", (e)=>{
   if (
-    e.target.classList.contains("btn-open") ||
+    e.target.closest("button,a") ||
     e.target.closest(".error-chip")
   ) return;
   openOrder(o.siparis_no);
@@ -406,7 +409,62 @@ function openTrackingUrl(url){
   catch { toast("Kargo takip bağlantısı geçersiz."); }
 }
 
-const CARGO_STATES = [{"key":"created","code":1,"label":"Gönderi Hazırlandı","tone":"created","raw":"Gönderi_Hazırlandı"},{"key":"transfer","code":2,"label":"Transfer Aşamasında","tone":"transit","raw":"Transfer_Aşamasında"},{"key":"branch","code":3,"label":"Teslimat Birimine Ulaştı","tone":"transit","raw":"Teslimat_Birimine_Ulaştı"},{"key":"delivery","code":4,"label":"Alıcı Adresine Yönlendirildi","tone":"delivery","raw":"Alıcı_Adresine_Yönlendirildi"},{"key":"delivered","code":5,"label":"Teslim Edildi","tone":"delivered","raw":"Teslim_Edildi"},{"key":"failed","code":6,"label":"Teslim Edilemedi","tone":"problem","raw":"Teslim_Edilemedi"},{"key":"return","code":7,"label":"Geri Geliyor","tone":"problem","raw":"Geri_Geliyor"},{"key":"support","code":8,"label":"Destek Gerekiyor","tone":"problem","raw":"Destek_Gerekiyor"}];
+function returnLabelUrl(value){
+  try {
+    const url=new URL(value);
+    return url.protocol==="https:" && url.hostname==="mn.tc" && !url.username && !url.password && !url.port
+      && url.pathname==="/" && /^[A-Za-z0-9]+$/.test(url.searchParams.get("rtnid")||"") ? url.href : "";
+  } catch { return ""; }
+}
+function returnOrderActions(order){
+  const url=returnLabelUrl(order.iade_etiket_url);
+  if(url)return `<div class="return-actions"><a class="btn-return-label" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">İade Fişini Aç</a><span class="return-code">${escapeHtml(order.iade_kodu)}</span></div>`;
+  if(order.isDelivered===true||Number(order.shipmentStatusCode)===5)
+    return `<button class="btn-return-label" type="button" onclick="event.stopPropagation(); createReturnLabel(${Number(order.siparis_no)}, this)">İADE Etiketi Oluştur</button>`;
+  return `<span class="cargo-checked">Geri dönüş kargosu</span>`;
+}
+function renderReturnDetail(order){
+  const url=returnLabelUrl(order.iade_etiket_url);
+  if(!url)return "";
+  return `<div class="detail-group return-detail"><div class="detail-title">İade Fişi</div><p>İade kodu: <strong>${escapeHtml(order.iade_kodu)}</strong></p><p>${escapeHtml(order.iade_durumu||"Etiket oluşturuldu")} · ${escapeHtml(formatDateTimeTR(order.iade_tarihi))}</p><a class="btn-return-label" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">İade Fişini Aç</a></div>`;
+}
+function showReturnLabel(result){
+  const url=returnLabelUrl(result.url);if(!url)throw new Error("İade fişi bağlantısı doğrulanamadı.");
+  const root=document.getElementById("alertRoot"),wrap=document.createElement("div");
+  wrap.className="alert-backdrop";
+  wrap.innerHTML=`<div class="alert-card return-result" role="dialog" aria-modal="true" aria-label="İade etiketi"><div class="alert-title">İade Etiketi Hazır</div><p>İade kodu: <strong>${escapeHtml(result.reference)}</strong></p><p>Müşteri bu kodla DHL şubesine başvurabilir. Kargo ücreti Gazi hesabına aittir.</p><a class="btn-return-label" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">İade Fişini Aç</a><div class="alert-actions"><button class="btn-ghost" type="button" data-copy-return>Fiş Linkini Kopyala</button><button class="btn-brand" type="button" data-close-return>Kapat</button></div><p role="status" data-copy-status></p></div>`;
+  root.appendChild(wrap);
+  wrap.querySelector("[data-close-return]").onclick=()=>wrap.remove();
+  wrap.querySelector("[data-copy-return]").onclick=async()=>{
+    try{await navigator.clipboard.writeText(url);wrap.querySelector("[data-copy-status]").textContent="İade fişi bağlantısı kopyalandı.";}
+    catch{wrap.querySelector("[data-copy-status]").textContent="Bağlantıyı İade Fişini Aç düğmesinden açıp kopyalayabilirsiniz.";}
+  };
+  wrap.querySelector("a").focus();
+}
+async function createReturnLabel(id,button){
+  id=Number(id);if(!Number.isSafeInteger(id)||id<1||busy.iade.has(id))return;
+  busy.iade.add(id);if(button)button.disabled=true;
+  try {
+    const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
+    if(error||!order)throw new Error("Sipariş okunamadı.");
+    if(returnLabelUrl(order.iade_etiket_url)){showReturnLabel({reference:order.iade_kodu,url:order.iade_etiket_url});return;}
+    const confirmed=await confirmModal({title:"İADE Etiketi Oluştur",text:`${id} numaralı sipariş için iade etiketi oluşturulsun mu?\nKargo ücreti Gazi hesabına yazılır.`,confirmText:"Etiketi Oluştur"});
+    if(!confirmed)return;
+    if(button)button.textContent="İade etiketi hazırlanıyor…";
+    const {data:session}=await db.auth.getSession();
+    if(!session.session?.access_token)throw new Error("Panele yeniden giriş yapın.");
+    const response=await fetch(SUPABASE_URL+"/functions/v1/gazi-return-label",{method:"POST",
+      headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+session.session.access_token,"Content-Type":"application/json"},
+      body:JSON.stringify({siparis_no:id}),signal:AbortSignal.timeout(90000)});
+    const result=await response.json();
+    if(!response.ok||result.success!==true)throw new Error(result.message||"İade etiketi oluşturulamadı.");
+    showReturnLabel(result);
+    if(document.getElementById("searchInput").value.trim())await searchOrders();else await loadOrders(true);
+  }catch(error){toast(error.name==="TimeoutError"?"İade isteğinin sonucu bekleniyor. Tekrar oluşturmadan önce kaydı kontrol edin.":error.message,10000);}
+  finally{busy.iade.delete(id);if(button?.isConnected){button.disabled=false;button.textContent="İADE Etiketi Oluştur";}}
+}
+
+const CARGO_STATES = [{"key":"created","code":1,"label":"Gönderi Hazırlandı","tone":"created","raw":"Gönderi_Hazırlandı"},{"key":"transfer","code":2,"label":"Transfer Aşamasında","tone":"transit","raw":"Transfer_Aşamasında"},{"key":"branch","code":3,"label":"Teslimat Birimine Ulaştı","tone":"transit","raw":"Teslimat_Birimine_Ulaştı"},{"key":"delivery","code":4,"label":"Alıcı Adresine Yönlendirildi","tone":"delivery","raw":"Alıcı_Adresine_Yönlendirildi"},{"key":"delivered","code":5,"label":"Teslim Edildi","tone":"delivered","raw":"Teslim_Edildi"},{"key":"failed","code":6,"label":"Teslim Edilemedi","tone":"problem","raw":"Teslim_Edilemedi"},{"key":"return","code":7,"label":"Geri Geliyor","tone":"return","raw":"Geri_Geliyor"},{"key":"support","code":8,"label":"Destek Gerekiyor","tone":"problem","raw":"Destek_Gerekiyor"}];
 function cargoStatusInfo(order){
   const code=Number(order.shipmentStatusCode);
   const normalized=String(order.shipmentStatus||"").replace(/_/g," ").trim().toLocaleLowerCase("tr-TR");
@@ -452,7 +510,8 @@ function cargoStatusBadge(order){
   const movements=cargoTrackingData(order).movements;
   const latest=Array.isArray(movements)?[...movements].sort((a,b)=>Number(b.eventSequence)-Number(a.eventSequence)||String(b.eventDateTime2||"").localeCompare(String(a.eventDateTime2||"")))[0]:null;
   const contact=cargoStatusInfo(order).key==="failed"&&latest ? `<small style="display:block;margin-top:5px">${cargoBranchContact(latest)}</small>` : "";
-  return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${checked}${contact}`;
+  const returnBadge = order.iade_kodu ? `<small class="cargo-checked"><span class="cargo-status cargo-status--return">İade etiketi oluşturuldu</span></small>` : "";
+  return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${returnBadge}${checked}${contact}`;
 }
 function cargoEnvironment(order){
   try {
@@ -466,17 +525,17 @@ function isLiveShipment(order){
 }
 function syncCargoTools(){
   const tools=document.getElementById("cargoTools");
-  if(tools) tools.hidden=!["kargolandi","tamamlandi","sorunlu"].includes(currentTab);
+  if(tools) tools.hidden=!["kargolandi","tamamlandi","sorunlu","iade"].includes(currentTab);
   document.querySelectorAll("[data-cargo-filter]").forEach(button=>{
     button.setAttribute("aria-pressed",String(button.dataset.cargoFilter===cargoFilter));
   });
 }
-const CARGO_FILTER_GROUPS={created:["created"],transit:["transfer","branch"],delivery:["delivery"],delivered:["delivered"],problem:["failed","return","support"]};
+const CARGO_FILTER_GROUPS={created:["created"],transit:["transfer","branch"],delivery:["delivery"],delivered:["delivered"],return:["return"],problem:["failed","support"]};
 function matchesCargoFilter(order){
   return cargoFilter==="all"||(CARGO_FILTER_GROUPS[cargoFilter]||[]).includes(cargoStatusInfo(order).key);
 }
 function applyCargoFilter(query){
-  if(!["kargolandi","tamamlandi","sorunlu"].includes(currentTab)||cargoFilter==="all")return query;
+  if(!["kargolandi","tamamlandi","sorunlu","iade"].includes(currentTab)||cargoFilter==="all")return query;
   const expression=(CARGO_FILTER_GROUPS[cargoFilter]||[]).map(cargoStateFilter).filter(Boolean).join(',');
   return expression ? query.or(expression) : query;
 }
@@ -790,7 +849,7 @@ document.getElementById("orderDetails").innerHTML = `
 </div>
 `;
 
-  document.getElementById("orderDetails").insertAdjacentHTML("beforeend",renderCargoTracking(d));
+  document.getElementById("orderDetails").insertAdjacentHTML("beforeend",renderCargoTracking(d) + renderReturnDetail(d));
   /* ============================================================
       1) SOR BUTONU — SADECE Bekliyor & Hazırlandı
   ============================================================ */
@@ -1422,7 +1481,7 @@ function buildOrderSearchFilter(input) {
   const raw = input.trim();
   const pattern = value => JSON.stringify("%" + value.replace(/[\\%_]/g, character => "\\" + character) + "%");
   const text = pattern(raw);
-  const filters = ["ad_soyad", "adres", "kargo_takip_kodu"]
+  const filters = ["ad_soyad", "adres", "kargo_takip_kodu", "iade_kodu"]
     .map(column => column + ".ilike." + text);
   const digits = raw.replace(/\D/g, "");
   const phoneInput = /^[+\d\s().-]+$/.test(raw) && digits.length >= 3;
@@ -1473,7 +1532,7 @@ function clearSearch(){
    TAB / LOAD MORE / MOBİL MENÜ
 ============================================================ */
 function updateListHeading(search, summary) {
-  const titles = {bekleyen:"Bekleyen Siparişler", hazirlandi:"Hazırlanan Siparişler", kargolandi:"Kargolanan Siparişler", tamamlandi:"Tamamlanan Siparişler", sorunlu:"Sorunlu Siparişler", iptal:"İptal Edilen Siparişler"};
+  const titles = {bekleyen:"Bekleyen Siparişler", hazirlandi:"Hazırlanan Siparişler", kargolandi:"Kargolanan Siparişler", tamamlandi:"Tamamlanan Siparişler", iade:"İade Siparişleri", sorunlu:"Sorunlu Siparişler", iptal:"İptal Edilen Siparişler"};
   const title = document.getElementById("pageTitle");
   const info = document.getElementById("listSummary");
   if (title) title.textContent = search ? "Arama Sonuçları" : titles[currentTab];
@@ -1597,6 +1656,7 @@ Object.assign(window, {
   sendToCargo,
   printBarcode,
   retryCargoLabel,
+  createReturnLabel,
   connectCargo,
   refreshCargoMovements,
   refreshSelectedCargoMovements,
@@ -1632,8 +1692,9 @@ document.querySelectorAll(".menu li").forEach(item => {
 });
 
 const requestedTab = new URLSearchParams(location.search).get("tab");
-if (["bekleyen","hazirlandi","kargolandi","tamamlandi","sorunlu","iptal"].includes(requestedTab)) {
+if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"].includes(requestedTab)) {
   currentTab = requestedTab;
   document.querySelectorAll(".menu li").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
