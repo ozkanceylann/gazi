@@ -1105,3 +1105,11 @@ body.login-page {
 .orders-page .btn-cargo-label:hover { background:#c4e5ce; }
 .orders-page .btn-cargo-label:disabled { opacity:.6; cursor:wait; }
 
+
+/* Sipariş tarihi: tüm listelerde müşteri adının altında */
+.orders-page .order-customer-name { display:block; font-weight:600; }
+.orders-page .order-date {
+  display:block; margin-top:3px; color:#64736b;
+  font-size:11px; font-weight:400; line-height:1.4; white-space:nowrap;
+}
+.orders-page .order-date > span { color:#718176; }

@@ -223,6 +223,20 @@ function needsCargoLabelRetry(order){
     && cargoEnvironment(order)!=="test";
 }
 
+
+function orderDateMarkup(value) {
+  // The order timestamp has no timezone; retain its recorded calendar date.
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/.exec(String(value ?? "").trim());
+  if (!match) return "";
+  const iso = match.slice(1).join("-");
+  const date = new Date(iso + "T00:00:00Z");
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== iso) return "";
+  const label = date.toLocaleDateString("tr-TR", {
+    day: "2-digit", month: "short", year: "numeric", timeZone: "UTC"
+  });
+  return `<span class="order-date"><span>Sipariş ·</span> <time datetime="${iso}">${escapeHtml(label)}</time></span>`;
+}
+
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -279,7 +293,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     <td>${o.kargo_durumu === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button>` : actionBtn}</td>
     <td>${escapeHtml(o.kargo_adet ?? "—")}</td>
-    <td>${escapeHtml(o.ad_soyad)}</td>
+    <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -293,7 +307,7 @@ tr.innerHTML = isPendingTab
   `
   : `
     <td>${o.siparis_no}</td>
-    <td>${o.ad_soyad}</td>
+    <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
