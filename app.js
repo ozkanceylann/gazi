@@ -57,6 +57,16 @@ function shouldShowCargoCode(tab) {
   return ["kargolandi", "tamamlandi", "sorunlu", "iade"].includes(tab);
 }
 
+
+function cargoCountBadge(value) {
+  const count = Number(value);
+  if (!Number.isSafeInteger(count) || count < 1 || count > 100) {
+    return '<span class="cargo-count cargo-count--empty">—</span>';
+  }
+  const hue = ((count - 1) * 137.508 + 145) % 360;
+  return `<span class="cargo-count" style="--count-hue:${hue.toFixed(3)}" aria-label="${count} paket">${count}</span>`;
+}
+
 function renderTableHeader(){
   const head = document.getElementById("ordersHeadRow");
   if(!head) return;
@@ -65,7 +75,7 @@ function renderTableHeader(){
   ? `
     <th>S.No</th>
     <th>Hazırla</th>
-    <th>Kargo Adet</th>
+    <th class="cargo-count-column" aria-label="Kargo Adet">Kargo<br>Adet</th>
     <th>İsim</th>
     <th>Ürün</th>
     <th>Tutar</th>
@@ -292,7 +302,7 @@ tr.innerHTML = isPendingTab
   ? `
     <td>${o.siparis_no}</td>
     <td>${o.kargo_durumu === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button>` : actionBtn}</td>
-    <td>${escapeHtml(o.kargo_adet ?? "—")}</td>
+    <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
     <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
     <td>
   <span class="order-product-limit"
@@ -835,7 +845,7 @@ document.getElementById("orderDetails").innerHTML = `
   <div class="detail-group">
     <div class="detail-title">📦 Ürün Bilgisi</div>
     <div class="detail-item"><b>Ürün:</b> ${escapeHtml(parseProduct(d.urun_bilgisi))}</div>
-    <div class="detail-item"><b>Adet:</b> ${d.kargo_adet ?? "-"}</div>
+    <div class="detail-item"><b>Adet:</b> ${cargoCountBadge(d.kargo_adet)}</div>
     <div class="detail-item"><b>KG:</b> ${d.kargo_kg ?? "-"}</div>
     <div class="detail-item"><b>Tutar:</b> ${escapeHtml(d.toplam_tutar ?? "—")} TL</div>
     <div class="detail-item"><b>Ödeme:</b> ${escapeHtml(d.odeme_sekli ?? "—")}</div>
