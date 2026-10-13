@@ -256,6 +256,14 @@ function orderDateMarkup(value) {
   return `<span class="order-date"><span>Sipariş ·</span> <time datetime="${iso}">${escapeHtml(label)}</time></span>`;
 }
 
+
+function hasZeroOrderTotal(value) {
+  if (typeof value === "number") return Number.isFinite(value) && value === 0;
+  if (typeof value !== "string" || !value.trim()) return false;
+  const amount = value.trim().replace(/\s*(?:TL|TRY|₺)\s*$/i, "").replace(/\s/g, "");
+  return /^[+-]?0+(?:[.,]0+)*$/.test(amount);
+}
+
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -270,6 +278,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
 
   rows.forEach(o=>{
     const tr = document.createElement("tr");
+    if (hasZeroOrderTotal(o.toplam_tutar)) tr.classList.add("order-zero-total");
 
    const durumText = ["kargolandi", "tamamlandi", "sorunlu", "iade"].includes(currentTab)
     ? (o.shipmentStatus ?? "—")

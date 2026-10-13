@@ -1164,3 +1164,10 @@ body.login-page {
   .orders-page .search-slot input { padding:10px 11px; font-size:12px; }
   .orders-page .search-slot .btn-search { padding:10px 12px; }
 }
+
+/* Fiyatı sıfır olan siparişlerde hafif kırmızı vurgu */
+.orders-page .orders-table tr.order-zero-total td {
+  background:#fff0f0!important; border-color:#f3dddd!important;
+}
+.orders-page .orders-table tr.order-zero-total:hover td { background:#ffe5e5!important; }
+.orders-page .orders-table tr.order-zero-total td:first-child { border-left:3px solid #dda0a0; }
