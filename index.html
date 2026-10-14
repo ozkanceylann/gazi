@@ -15,7 +15,7 @@
   <script src="config.js?v=20261014-cargo-separate-34"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261014-compact-status" />
+  <link rel="stylesheet" href="style.css?v=20261014-compact-cargo-tools" />
 
   <style>
     .btn-mini{
@@ -81,8 +81,8 @@
 
     <section id="cargoTools" class="cargo-tools" hidden aria-label="Kargo işlemleri">
       <div class="cargo-tool-buttons">
-        <button id="refreshCargoBtn" class="btn-primary" type="button" onclick="refreshCargoMovements()">Kargo Hareketlerini Güncelle</button>
-        <button id="connectCargoBtn" class="btn-secondary" type="button" onclick="connectCargo()">DHL Bağlantısını Kontrol Et</button>
+        <button id="refreshCargoBtn" class="btn-primary" type="button" onclick="refreshCargoMovements()" aria-label="Kargo Hareketlerini Güncelle" title="Kargo Hareketlerini Güncelle">Hareketleri Güncelle</button>
+        <button id="connectCargoBtn" class="btn-secondary" type="button" onclick="connectCargo()" aria-label="DHL Bağlantısını Kontrol Et" title="DHL Bağlantısını Kontrol Et">DHL Bağlantısı</button>
       </div>
       <p id="cargoSyncStatus" role="status" aria-live="polite">Canlı DHL gönderilerinin durumları ve hareketleri güncellenir.</p>
       <div class="cargo-legend" role="group" aria-label="Kargo sürecine göre filtrele"><button type="button" class="cargo-status cargo-status--all" data-cargo-filter="all" aria-pressed="true" onclick="filterCargo('all')">Tümü</button><button type="button" class="cargo-status cargo-status--created" data-cargo-filter="created" aria-pressed="false" onclick="filterCargo('created')">Hazırlandı</button><button type="button" class="cargo-status cargo-status--transit" data-cargo-filter="transit" aria-pressed="false" onclick="filterCargo('transit')">Yolda</button><button type="button" class="cargo-status cargo-status--delivery" data-cargo-filter="delivery" aria-pressed="false" onclick="filterCargo('delivery')">Dağıtımda</button><button type="button" class="cargo-status cargo-status--delivered" data-cargo-filter="delivered" aria-pressed="false" onclick="filterCargo('delivered')">Teslim edildi</button><button type="button" class="cargo-status cargo-status--problem" data-cargo-filter="problem" aria-pressed="false" onclick="filterCargo('problem')">Sorun</button><button type="button" class="cargo-status cargo-status--return" data-cargo-filter="return" aria-pressed="false" onclick="filterCargo('return')">Geri Geliyor</button></div>
