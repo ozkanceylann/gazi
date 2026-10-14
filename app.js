@@ -48,7 +48,7 @@ const busy = { kargola: new Set(), barkod: new Set(), iade: new Set() };
    UI HELPERS
 ============================================================ */
 function getColumnCount(){
-  return currentTab === "hazirlandi" ? 10 : currentTab === "bekleyen" ? 8 : 8;
+  return currentTab === "hazirlandi" ? 10 : currentTab === "bekleyen" ? 9 : 8;
 }
 
 function shouldShowNoteColumn(tab) {
@@ -82,6 +82,7 @@ function renderTableHeader(){
     <th>İsim</th>
     <th>Ürün</th>
     <th>Tutar</th>
+    <th>Durum</th>
     <th>Not</th>
     <th>Sipariş Alan</th>
   `
@@ -455,7 +456,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     <td>${orderStage === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button>` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}<span class="order-stage-line">${orderStageBadge(o)}</span></td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div></td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -464,6 +465,7 @@ tr.innerHTML = isPendingTab
 </td>
 
     <td>${o.toplam_tutar} TL</td>
+    <td class="order-status-cell">${orderStageBadge(o)}</td>
     <td>${noteChip}</td>
     <td>${orderTakerMarkup(o)}</td>
   `
@@ -471,7 +473,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
     ${isPreparedTab ? `<td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>` : ""}
-    <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div></td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -480,7 +482,7 @@ tr.innerHTML = isPendingTab
 </td>
 
     <td>${o.toplam_tutar} TL</td>
-<td>${orderStageBadge(o)}${isTrackingTab && ["Kargolandı","Tamamlandı","İade"].includes(orderStage) ? `<br>${cargoStatusBadge(o)}` : ""}</td>
+<td class="order-status-cell">${orderStageBadge(o)}${isTrackingTab && ["Kargolandı","Tamamlandı","İade"].includes(orderStage) ? ` ${cargoStatusBadge(o)}` : ""}</td>
 
 <td>
   ${
