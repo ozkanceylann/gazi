@@ -273,7 +273,7 @@ async function loadOrders(reset=false){
 function needsCargoLabelRetry(order){
   return order?.kargo_durumu==="Kargolandı"
     && !!(order.orderinvoiceid || order.kargo_takip_kodu)
-    && !String(order.zpl_base64||"").startsWith("JVBER")
+    && !hasCargoLabel(order)
     && cargoEnvironment(order)!=="test";
 }
 
@@ -1699,12 +1699,15 @@ async function retryCargoLabel(siparisNo,button){
   w.document.body.textContent="Paket etiketi hazırlanıyor…";
   busy.kargola.add(id);busy.barkod.add(id);
   const label=button.textContent;button.disabled=true;button.textContent="Hazırlanıyor…";
+  let labelReady=false;
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
     if(error)throw error;
+    labelReady=hasCargoLabel(order);
     if(!hasCargoLabel(order)&&!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
     const operation=hasCargoLabel(order)?"print":"create";
     let result=await cargoRequest(WH_BARKOD,{siparis_no:String(id),operation});
+    labelReady ||= !!(result.label_saved || result.pdf_base64);
     if(!result.pdf_base64 && result.label_saved){
       w.document.body.textContent="Etiket kaydedildi. Yazdırma ekranı hazırlanıyor…";
       button.textContent="Yazdırma açılıyor…";
@@ -1718,7 +1721,21 @@ async function retryCargoLabel(siparisNo,button){
     else if(result.label_saved)throw new Error("Etiket kaydedildi; PDF henüz hazır değil. Etiketi Yazdır ile tekrar açabilirsiniz.");
     else throw new Error("Etiket yanıtı doğrulanamadı.");
   }catch(error){if(!w.closed)w.close();toast(error.message||"Kargo etiketi hazırlanamadı.",10000);}
-  finally{busy.kargola.delete(id);busy.barkod.delete(id);button.disabled=false;button.textContent=label;await loadOrders(true);}
+  finally{
+    busy.kargola.delete(id);busy.barkod.delete(id);
+    try{
+      const {data,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
+      if(!error&&data){
+        labelReady=hasCargoLabel(data);
+        if(selectedOrder?.siparis_no===id)selectedOrder={...selectedOrder,...data};
+      }
+    }catch(error){console.error("Etiket durumu yenilenemedi:",error);}
+    button.disabled=false;
+    button.textContent=labelReady?"Etiketi Yazdır":label;
+    const detailButton=document.getElementById("btnBarcode");
+    if(selectedOrder?.siparis_no===id&&detailButton)detailButton.textContent=labelReady?"Etiketi Yazdır":"Etiket Oluştur";
+    await loadOrders(true);
+  }
 }
 
 const referenceLabelBusy = new Set();
@@ -1744,10 +1761,6 @@ async function printBarcode(){
   const id=selectedOrder?.siparis_no;if(!id)return toast("Önce sipariş seçin.");
   const button=document.getElementById("btnBarcode");
   await retryCargoLabel(id,button);
-  if(selectedOrder?.siparis_no===id){
-    const {data,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
-    if(!error&&data){selectedOrder={...selectedOrder,...data};button.textContent=hasCargoLabel(data)?"Etiketi Yazdır":"Etiket Oluştur";}
-  }
 }
 
 function cancelCancelForm(){

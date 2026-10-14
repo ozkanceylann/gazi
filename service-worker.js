@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261015-batch-prepare-print-41"; // örn: 2025-12-15
+const VERSION = "20261015-saved-label-state-42"; // örn: 2025-12-15
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
