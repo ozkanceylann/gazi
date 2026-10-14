@@ -1304,3 +1304,16 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
   .orders-page .cargo-tool-buttons { gap:5px; }
   .orders-page .cargo-tool-buttons button { min-height:32px; padding:5px 8px; }
 }
+
+/* Durum filtreleri, işlem düğmelerinin hemen sağında. */
+.orders-page .cargo-tools { gap:5px 8px; }
+.orders-page .cargo-tool-buttons { order:0; flex:0 0 auto; }
+.orders-page .cargo-tools .cargo-legend {
+  order:1; flex:1 1 420px; align-items:center; gap:5px;
+}
+.orders-page .cargo-tools #cargoSyncStatus {
+  order:2; flex:1 0 100%; font-size:10px; line-height:1.2;
+}
+@media(min-width:1100px) {
+  .orders-page .cargo-tools .cargo-legend { flex-basis:0; flex-wrap:nowrap; }
+}
