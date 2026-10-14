@@ -1317,3 +1317,5 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 @media(min-width:1100px) {
   .orders-page .cargo-tools .cargo-legend { flex-basis:0; flex-wrap:nowrap; }
 }
+
+#referenceCargoBtn[hidden] { display:none!important; }
