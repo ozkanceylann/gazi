@@ -370,6 +370,13 @@ async function openOrderTakerSettings() {
   root.appendChild(wrap);
   wrap.querySelector('input[name="display_name"]')?.focus();
 }
+function orderLifecycleStage(order) {
+  const stage = String(order?.kargo_durumu || "").trim();
+  if (["İptal", "Silindi", "İade"].includes(stage)) return stage;
+  if (order?.isDelivered === true || Number(order?.shipmentStatusCode) === 5) return "Tamamlandı";
+  return stage || "Aşama belirtilmemiş";
+}
+
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -386,9 +393,9 @@ function renderTable(rows, { append=false, hasMore } = {}){
     const tr = document.createElement("tr");
     if (hasZeroOrderTotal(o.toplam_tutar)) tr.classList.add("order-zero-total");
 
-   const durumText = ["kargolandi", "tamamlandi", "sorunlu", "iade"].includes(currentTab)
-    ? (o.shipmentStatus ?? "—")
-    : o.kargo_durumu;
+    const orderStage = orderLifecycleStage(o);
+    const canShip = orderStage === "Hazırlandı";
+    const canLabel = ["Kargolandı", "Tamamlandı"].includes(orderStage) && !!o.orderinvoiceid;
 
     const isTrackingTab = ["kargolandi", "tamamlandi", "sorunlu", "iade"].includes(currentTab);
 
@@ -398,11 +405,11 @@ function renderTable(rows, { append=false, hasMore } = {}){
   const retryLabel = false;
   if(retryLabel) tr.classList.add("cargo-label-retry");
 
-  const actionBtn = (currentTab === "tamamlandi" || currentTab === "iade")
+  const actionBtn = (orderStage === "Tamamlandı" || orderStage === "İade")
     ? returnOrderActions(o)
     : `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
 
-const errorPreview = isPreparedTab && o.gonder_hata_bilgisi
+const errorPreview = isPreparedTab && canShip && o.gonder_hata_bilgisi
   ? `<button class="error-chip"
         data-error="${escapeHtml(o.gonder_hata_bilgisi ?? "")}"
         onclick="event.stopPropagation(); showErrorDetail(this.dataset.error)">
@@ -425,9 +432,9 @@ const noteChip = o.notlar ? `
 tr.innerHTML = isPendingTab
   ? `
     <td>${o.siparis_no}</td>
-    <td>${o.kargo_durumu === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button>` : actionBtn}</td>
+    <td>${orderStage === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button>` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
+    <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}<span class="order-date">${escapeHtml(orderStage)}</span></td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -441,7 +448,7 @@ tr.innerHTML = isPendingTab
   `
   : `
     <td>${o.siparis_no}</td>
-    ${isPreparedTab ? `<td class="order-ship-column"><button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button></td>` : ""}
+    ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `<span>${escapeHtml(orderStage)}</span>`}</td>` : ""}
     ${isPreparedTab ? `<td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>` : ""}
     <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
     <td>
@@ -452,7 +459,7 @@ tr.innerHTML = isPendingTab
 </td>
 
     <td>${o.toplam_tutar} TL</td>
-<td>${isTrackingTab ? cargoStatusBadge(o) : escapeHtml(durumText ?? "—")}</td>
+<td>${escapeHtml(orderStage)}${isTrackingTab && ["Kargolandı","Tamamlandı","İade"].includes(orderStage) ? `<br>${cargoStatusBadge(o)}` : ""}</td>
 
 <td>
   ${
@@ -463,7 +470,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${orderTakerMarkup(o)}</td>
-<td>${errorPreview}${currentTab === "kargolandi" ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${String(o.zpl_base64||"").startsWith("JVBER") ? "Etiketi Yazdır" : "Etiket Oluştur"}</button>` : ""}</td>
+<td>${errorPreview}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${String(o.zpl_base64||"").startsWith("JVBER") ? "Etiketi Yazdır" : "Etiket Oluştur"}</button>` : ""}</td>
 
   `;
 
