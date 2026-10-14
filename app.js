@@ -73,6 +73,7 @@ function renderTableHeader(){
   const head = document.getElementById("ordersHeadRow");
   if(!head) return;
 
+  head.closest("table")?.classList.toggle("orders-table--prepared", currentTab === "hazirlandi");
   head.innerHTML = currentTab === "bekleyen"
   ? `
     <th>S.No</th>
@@ -86,6 +87,7 @@ function renderTableHeader(){
   `
   : `
     <th>S.No</th>
+    ${currentTab === "hazirlandi" ? '<th class="order-ship-column">Kargola</th>' : ""}
     ${currentTab === "hazirlandi" ? '<th class="cargo-count-column" aria-label="Kargo Adet">Kargo<br>Adet</th>' : ""}
     <th>İsim</th>
     <th>Ürün</th>
@@ -94,7 +96,6 @@ function renderTableHeader(){
     <th>${shouldShowNoteColumn(currentTab) ? "Not" : "Kargo Kodu"}</th>
     <th>Sipariş Alan</th>
     <th>${currentTab === "hazirlandi" ? "Hata / İşlem" : "İşlem"}</th>
-    ${currentTab === "hazirlandi" ? "<th>Kargola</th>" : ""}
   `;
 
 }
@@ -440,6 +441,7 @@ tr.innerHTML = isPendingTab
   `
   : `
     <td>${o.siparis_no}</td>
+    ${isPreparedTab ? `<td class="order-ship-column"><button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button></td>` : ""}
     ${isPreparedTab ? `<td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>` : ""}
     <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
     <td>
@@ -462,7 +464,6 @@ tr.innerHTML = isPendingTab
 
 <td>${orderTakerMarkup(o)}</td>
 <td>${errorPreview}${currentTab === "kargolandi" ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${String(o.zpl_base64||"").startsWith("JVBER") ? "Etiketi Yazdır" : "Etiket Oluştur"}</button>` : ""}</td>
-${isPreparedTab ? `<td><button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button></td>` : ""}
 
   `;
 
