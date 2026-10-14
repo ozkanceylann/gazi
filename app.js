@@ -922,6 +922,39 @@ function closeModal(){
   document.getElementById("orderModal").style.display = "none"; 
 }
 
+function renderOriginalMessage(order) {
+  const message = order.whatsapp_message_text;
+  return `<details class="detail-group original-message">
+    <summary>💬 Orijinal Ham Mesaj</summary>
+    <p class="original-message-hint">Sipariş bilgileriyle karşılaştırmak için gelen mesajı açın.</p>
+    <div class="original-message-text">${escapeHtml(message === undefined ? "Mesajı görmek için bölümü açın." : (message || "Bu siparişin orijinal mesajı kayıtlı değil."))}</div>
+  </details>`;
+}
+
+function bindOriginalMessage(order) {
+  const panel = document.querySelector("#orderDetails .original-message");
+  if (!panel) return;
+  let loading = false;
+  panel.addEventListener("toggle", async () => {
+    if (!panel.open || loading || order.whatsapp_message_text !== undefined) return;
+    loading = true;
+    const content = panel.querySelector(".original-message-text");
+    content.textContent = "Orijinal mesaj yükleniyor…";
+    try {
+      const { data, error } = await db.from("tum_siparisler")
+        .select("whatsapp_message_text").eq("siparis_no", order.siparis_no).maybeSingle();
+      if (error) throw error;
+      order.whatsapp_message_text = data?.whatsapp_message_text ?? null;
+      content.textContent = order.whatsapp_message_text || "Bu siparişin orijinal mesajı kayıtlı değil.";
+    } catch (error) {
+      content.textContent = "Orijinal mesaj alınamadı. Bölümü kapatıp yeniden açarak tekrar deneyin.";
+      console.error("Orijinal mesaj alınamadı:", error);
+    } finally {
+      loading = false;
+    }
+  });
+}
+
 function renderDetails() {
   const d = selectedOrder;
 
@@ -998,7 +1031,8 @@ document.getElementById("orderDetails").innerHTML = `
 </div>
 `;
 
-  document.getElementById("orderDetails").insertAdjacentHTML("beforeend",renderCargoTracking(d) + renderReturnDetail(d));
+  document.getElementById("orderDetails").insertAdjacentHTML("beforeend",renderOriginalMessage(d) + renderCargoTracking(d) + renderReturnDetail(d));
+  bindOriginalMessage(d);
   /* ============================================================
       1) SOR BUTONU — SADECE Bekliyor & Hazırlandı
   ============================================================ */
@@ -1258,7 +1292,9 @@ async function enterEditMode(){
         <div class="form-field"><label>Ödeme</label><input id="odeme_sekli" value="${d.odeme_sekli??""}"></div>
         <div class="form-field full-row"><label>Not</label><textarea id="notlar">${d.notlar??""}</textarea></div>
       </div>
-    </div>`;
+    </div>
+    ${renderOriginalMessage(d)}`;
+  bindOriginalMessage(d);
 
   renderOptions(document.getElementById("sehir_select"), cities, {
     placeholder: "Şehir seçiniz",
