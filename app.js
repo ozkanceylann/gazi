@@ -394,7 +394,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
     const isPendingTab = currentTab === "bekleyen";
 
   const isPreparedTab = currentTab === "hazirlandi";
-  const retryLabel = isPreparedTab && needsCargoLabelRetry(o);
+  const retryLabel = false;
   if(retryLabel) tr.classList.add("cargo-label-retry");
 
   const actionBtn = (currentTab === "tamamlandi" || currentTab === "iade")
@@ -1062,7 +1062,8 @@ document.getElementById("orderDetails").innerHTML = `
 
   // Mevcut etiketi tekrar aç; yeni kargo / barkod oluşturma.
   document.getElementById("btnBarcode").style.display =
-    (kargo || tamam || d.isDelivered) && d.zpl_base64 ? "inline-block" : "none";
+    (kargo || tamam || d.isDelivered) && d.orderinvoiceid ? "inline-block" : "none";
+  document.getElementById("btnBarcode").textContent = d.zpl_base64 ? "Etiketi Yazdır" : "Etiket Oluştur";
 
   // Tamamlandı → butonları kapat, sadece kapat butonu açık kalsın
   if (tamam) {
@@ -1510,19 +1511,16 @@ async function shipPreparedFromList(siparisNo, button){
 async function sendToCargo(orderId){
   const siparisNo=Number(orderId ?? selectedOrder?.siparis_no);
   if(!siparisNo)return toast("Önce sipariş seçin.");
-  if(busy.kargola.has(siparisNo))return toast("Kargolama ve etiket hazırlama sürüyor.");
-  const ok=await confirmModal({title:"Siparişi Kargola",text:"Sipariş DHL canlı hesabında kargolanacak. Her paketin ayrı kargo etiketi hazırlanıp açılacak. Devam etmek istiyor musunuz?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
+  if(busy.kargola.has(siparisNo))return toast("Kargolama sürüyor.");
+  const ok=await confirmModal({title:"Siparişi Kargola",text:"DHL sipariş kaydı oluşturulup Kargolandı aşamasına alınacak. Etiketi Kargolandı sekmesinden ayrıca oluşturabilirsiniz. Devam etmek istiyor musunuz?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
   if(!ok)return;
-  const w=window.open("","_blank");if(!w)return toast("Etiket ekranı için açılır pencerelere izin verin.");
-  w.document.body.textContent="Kargolanıyor; her paketin etiketi hazırlanıyor…";
   busy.kargola.add(siparisNo);
   try{
     const result=await cargoRequest(WH_KARGOLA,{operation:"kargola",siparis_no:String(siparisNo)});
-    openCargoPdf(w,result.pdf_base64);
     if(!result.already_created)db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"🚚"}}).then(({error})=>{if(error)toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000);}).catch(()=>toast("WhatsApp emojisi gönderilemedi.",6000));
-    toast((result.kargo_adet||"")+" paket etiketi yazdırmaya hazır.",6000);
-    closeModal();await loadOrders(true);
-  }catch(error){if(!w.closed)w.close();toast(error.message,10000);await loadOrders(true);}
+    toast(result.message||"Sipariş kargolandı. Etiketi ayrıca oluşturabilirsiniz.",6000);
+    closeModal();setTab("kargolandi");
+  }catch(error){toast(error.message,10000);await loadOrders(true);}
   finally{busy.kargola.delete(siparisNo);}
 }
 
@@ -1559,7 +1557,7 @@ async function retryCargoLabel(siparisNo,button){
 async function printBarcode(){
   const id=selectedOrder?.siparis_no;if(!id)return toast("Önce sipariş seçin.");
   if(busy.barkod.has(id))return toast("Paket etiketleri hazırlanıyor.");
-  const ok=await confirmModal({title:"Etiketi Tekrar Yazdır",text:"Her paketin kendi etiketi açılacak. Yeni sipariş oluşturulmaz.",confirmText:"Aç",cancelText:"Vazgeç"});
+  const ok=await confirmModal({title:"Etiketi Tekrar Yazdır",text:"Her paket için kargo etiketi hazırlanıp açılacak. Yeni sipariş oluşturulmaz.",confirmText:"Aç",cancelText:"Vazgeç"});
   if(!ok)return;
   const w=window.open("","_blank");if(!w)return toast("Etiket ekranı için açılır pencerelere izin verin.");
   w.document.body.textContent="Paket etiketleri hazırlanıyor…";busy.barkod.add(id);
