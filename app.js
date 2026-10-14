@@ -925,7 +925,7 @@ function closeModal(){
 function renderOriginalMessage(order) {
   const message = order.whatsapp_message_text;
   return `<details class="detail-group original-message">
-    <summary>💬 Orijinal Ham Mesaj</summary>
+    <summary>Orjinal Ham Mesaj</summary>
     <p class="original-message-hint">Sipariş bilgileriyle karşılaştırmak için gelen mesajı açın.</p>
     <div class="original-message-text">${escapeHtml(message === undefined ? "Mesajı görmek için bölümü açın." : (message || "Bu siparişin orijinal mesajı kayıtlı değil."))}</div>
   </details>`;
@@ -985,7 +985,7 @@ document.getElementById("orderDetails").innerHTML = `
     </div>
   </div>
 
-
+  ${renderOriginalMessage(d)}
 </div>
 <div class="detail-column detail-column-order">
 
@@ -1031,7 +1031,7 @@ document.getElementById("orderDetails").innerHTML = `
 </div>
 `;
 
-  document.getElementById("orderDetails").insertAdjacentHTML("beforeend",renderOriginalMessage(d) + renderCargoTracking(d) + renderReturnDetail(d));
+  document.getElementById("orderDetails").insertAdjacentHTML("beforeend",renderCargoTracking(d) + renderReturnDetail(d));
   bindOriginalMessage(d);
   /* ============================================================
       1) SOR BUTONU — SADECE Bekliyor & Hazırlandı
