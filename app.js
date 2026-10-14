@@ -704,6 +704,8 @@ function isLiveShipment(order){
   catch { return false; }
 }
 function syncCargoTools(){
+  const referenceButton=document.getElementById('referenceCargoBtn');
+  if(referenceButton) referenceButton.hidden=currentTab!=='kargolandi'||!isGaziAdmin;
   const tools=document.getElementById("cargoTools");
   if(tools) tools.hidden=!["kargolandi","tamamlandi","sorunlu","iade"].includes(currentTab);
   document.querySelectorAll("[data-cargo-filter]").forEach(button=>{
@@ -1115,6 +1117,7 @@ document.getElementById("orderDetails").innerHTML = `
 
   const iptal = d.kargo_durumu === "İptal";
   const kargo = d.kargo_durumu === "Kargolandı";
+  document.getElementById("btnReferenceLabel").style.display = kargo && isGaziAdmin ? "inline-block" : "none";
   const tamam = currentTab === "tamamlandi" || d.kargo_durumu === "Tamamlandı" || d.isDelivered === true || Number(d.shipmentStatusCode) === 5;
 
   // Bekleyeni → Hazırla
@@ -1621,6 +1624,32 @@ async function retryCargoLabel(siparisNo,button){
   }
 }
 
+const referenceLabelBusy = new Set();
+function referenceLabelFromToolbar(){
+  const value=window.prompt("Referans barkodu için sipariş numarasını yazın:",selectedOrder?.siparis_no||"");
+  if(value===null)return;
+  const id=Number(value.trim());
+  if(!Number.isSafeInteger(id)||id<1)return toast("Geçerli sipariş numarası yazın.");
+  return printReferenceLabel(id);
+}
+async function printReferenceLabel(orderId){
+  const id=Number(orderId ?? selectedOrder?.siparis_no);
+  if(!isGaziAdmin||!Number.isSafeInteger(id)||id<1)return;
+  if(referenceLabelBusy.has(id))return toast("Referans etiketi hazırlanıyor.");
+  const ok=await confirmModal({title:"Referans Etiketi",text:id+" numaralı mevcut DHL gönderisinin referans etiketi açılacak. Bu çıktı referans barkodudur; normal kargo etiketinden ayrıdır.",confirmText:"Etiketi Aç"});
+  if(!ok)return;
+  const w=window.open("","_blank");if(!w)return toast("Etiket için açılır pencerelere izin verin.");
+  w.document.body.textContent="Referans etiketi hazırlanıyor…";
+  referenceLabelBusy.add(id);
+  try{
+    const result=await cargoRequest(CONFIG.webhooks.referans_etiketi,{siparis_no:String(id)});
+    if(result.label_type!=="reference")throw new Error("Referans etiketi yanıtı doğrulanamadı.");
+    openCargoPdf(w,result.pdf_base64);
+    toast("Referans etiketi yazdırmaya hazır.",5000);
+  }catch(error){if(!w.closed)w.close();toast(error.message||"Referans etiketi alınamadı.",8000);}
+  finally{referenceLabelBusy.delete(id);}
+}
+
 async function printBarcode(){
   const id=selectedOrder?.siparis_no;if(!id)return toast("Önce sipariş seçin.");
   if(busy.barkod.has(id))return toast("Paket etiketleri hazırlanıyor.");
@@ -1914,6 +1943,8 @@ Object.assign(window, {
   sendToCargo,
   shipPreparedFromList,
   printBarcode,
+  printReferenceLabel,
+  referenceLabelFromToolbar,
   retryCargoLabel,
   createReturnLabel,
   connectCargo,
