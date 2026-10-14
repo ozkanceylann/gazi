@@ -12,3 +12,4 @@ for(const raw of ["5++10","5+","0+10","-5+10","5+10+6",""])assert.throws(()=>par
 assert.throws(()=>parse("10",3,false));
 assert.equal(display("5,10",2),"5+10");
 console.log("KG list, decimal, legacy compatibility and invalid package tests passed.");
+assert.equal(normalize('["5","10","5","6"]',4),"5+10+5+6");

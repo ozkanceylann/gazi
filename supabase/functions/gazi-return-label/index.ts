@@ -1,7 +1,12 @@
 function parseCargoWeights(value: unknown, count: number, repeatSingle = true) {
   count = Number(count);
   if (!Number.isSafeInteger(count) || count < 1 || count > 100) throw new Error("Paket adedi 1–100 olmalı.");
-  const raw = String(value ?? "").replace(/kg/gi, "").trim();
+  let raw = String(value ?? "").replace(/kg/gi, "").trim();
+  if (raw.startsWith("[")) {
+    let items; try { items = JSON.parse(raw); } catch { throw new Error("KG listesi geçersiz."); }
+    if (!Array.isArray(items) || !items.length || items.some(x => !["string","number"].includes(typeof x))) throw new Error("KG listesi geçersiz.");
+    raw = items.join("+");
+  }
   if (!raw) throw new Error("Her paket için KG yazın. Örnek: 5+10+5+6");
   const plus = raw.includes("+");
   let parts = plus ? raw.split("+") : count === 1 ? [raw] : raw.split(/[,|/;\s]+|(?<=\d)-(?=\d)/);

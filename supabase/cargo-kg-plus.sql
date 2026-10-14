@@ -1,12 +1,20 @@
 
 create or replace function public.cargo_kg_plus(p_raw text, p_count text)
 returns text language plpgsql immutable set search_path to '' as $$
-declare raw text; n integer; parts text[]; piece text; result text[]:='{}'; weight numeric;
+declare raw text; n integer; parts text[]; piece text; result text[]:='{}'; weight numeric; items jsonb;
 begin
  if p_raw is null or trim(p_raw)='' then return p_raw; end if;
- if coalesce(p_count,'') !~ '^[0-9]{1,3}$' then return p_raw; end if;
- n:=p_count::integer; if n<1 or n>100 then return p_raw; end if;
+ if coalesce(p_count,'') !~ '^[0-9]{1,5}$' then return p_raw; end if;
+ n:=p_count::integer; if n<1 or n>10000 then return p_raw; end if;
  raw:=trim(regexp_replace(p_raw,'kg','','gi'));
+ if left(raw,1)='[' then
+  begin
+   items:=raw::jsonb;
+   if jsonb_typeof(items)<>'array' or jsonb_array_length(items)=0 then return p_raw;end if;
+   select string_agg(value,'+' order by ordinality) into raw from jsonb_array_elements_text(items) with ordinality;
+  exception when others then return p_raw;
+  end;
+ end if;
  if position('+' in raw)>0 then parts:=string_to_array(raw,'+');
  elsif n=1 and raw ~ '^[0-9]+([.,][0-9]+)?$' then parts:=array[raw];
  else parts:=regexp_split_to_array(raw,'[,|/;[:space:]]+|(?<=[0-9])-(?=[0-9])'); end if;
