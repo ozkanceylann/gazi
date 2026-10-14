@@ -493,7 +493,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${orderTakerMarkup(o)}</td>
-<td>${errorPreview}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${String(o.zpl_base64||"").startsWith("JVBER") ? "Etiketi Yazdır" : "Etiket Oluştur"}</button>` : ""}</td>
+<td>${errorPreview}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${hasCargoLabel(o) ? "Etiketi Yazdır" : "Etiket Oluştur"}</button>` : ""}</td>
 
   `;
 
@@ -1129,7 +1129,7 @@ document.getElementById("orderDetails").innerHTML = `
   // Mevcut etiketi tekrar aç; yeni kargo / barkod oluşturma.
   document.getElementById("btnBarcode").style.display =
     (kargo || tamam || d.isDelivered) && d.orderinvoiceid ? "inline-block" : "none";
-  document.getElementById("btnBarcode").textContent = d.zpl_base64 ? "Etiketi Yazdır" : "Etiket Oluştur";
+  document.getElementById("btnBarcode").textContent = hasCargoLabel(d) ? "Etiketi Yazdır" : "Etiket Oluştur";
 
   // Tamamlandı → butonları kapat, sadece kapat butonu açık kalsın
   if (tamam) {
@@ -1592,34 +1592,31 @@ async function sendToCargo(orderId){
   finally{busy.kargola.delete(siparisNo);}
 }
 
+function hasCargoLabel(order){
+  return !!(String(order?.kargo_zpl||"").trim() || String(order?.zpl_base64||"").startsWith("JVBER"));
+}
+
 async function retryCargoLabel(siparisNo,button){
   const id=Number(siparisNo);
   if(!Number.isSafeInteger(id)||id<1)return;
   if(busy.kargola.has(id)||busy.barkod.has(id))return toast("Bu siparişin kargo işlemi sürüyor.");
+  // Open synchronously so the browser permits the eventual PDF window.
   const w=window.open("","_blank");
   if(!w)return toast("Etiket ekranı için açılır pencerelere izin verin.");
-  w.document.body.textContent="Kargo etiketi oluşturuluyor…";
+  w.document.body.textContent="Paket etiketi hazırlanıyor…";
   busy.kargola.add(id);busy.barkod.add(id);
-  const label=button.textContent;button.disabled=true;button.textContent="Oluşturuluyor…";
+  const label=button.textContent;button.disabled=true;button.textContent="Hazırlanıyor…";
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
     if(error)throw error;
-    if(String(order?.zpl_base64||"").startsWith("JVBER")){
-      openCargoPdf(w,order.zpl_base64);
-      return toast("Kayıtlı kargo etiketi açıldı.");
-    }
-    if(!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
-    const result=await cargoRequest(WH_BARKOD,{siparis_no:String(id)});
-    openCargoPdf(w,result.pdf_base64);
-    toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi hazır.",6000);
-  }catch(error){
-    if(!w.closed)w.close();
-    toast(error.message||"Kargo etiketi oluşturulamadı.",10000);
-  }finally{
-    busy.kargola.delete(id);busy.barkod.delete(id);
-    button.disabled=false;button.textContent=label;
-    await loadOrders(true);
-  }
+    if(!hasCargoLabel(order)&&!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
+    const operation=hasCargoLabel(order)?"print":"create";
+    const result=await cargoRequest(WH_BARKOD,{siparis_no:String(id),operation});
+    if(result.pdf_base64){openCargoPdf(w,result.pdf_base64);toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi açıldı.",6000);}
+    else if(result.label_saved){if(!w.closed)w.close();toast(result.message||"Etiket kaydedildi. Etiketi Yazdır düğmesini kullanın.",6000);}
+    else throw new Error("Etiket yanıtı doğrulanamadı.");
+  }catch(error){if(!w.closed)w.close();toast(error.message||"Kargo etiketi hazırlanamadı.",10000);}
+  finally{busy.kargola.delete(id);busy.barkod.delete(id);button.disabled=false;button.textContent=label;await loadOrders(true);}
 }
 
 const referenceLabelBusy = new Set();
@@ -1643,16 +1640,13 @@ async function printReferenceLabel(orderId){
 
 async function printBarcode(){
   const id=selectedOrder?.siparis_no;if(!id)return toast("Önce sipariş seçin.");
-  if(busy.barkod.has(id))return toast("Paket etiketleri hazırlanıyor.");
-  const ok=await confirmModal({title:"Etiketi Tekrar Yazdır",text:"Her paket için kargo etiketi hazırlanıp açılacak. Yeni sipariş oluşturulmaz.",confirmText:"Aç",cancelText:"Vazgeç"});
-  if(!ok)return;
-  const w=window.open("","_blank");if(!w)return toast("Etiket ekranı için açılır pencerelere izin verin.");
-  w.document.body.textContent="Paket etiketleri hazırlanıyor…";busy.barkod.add(id);
-  try{const r=await cargoRequest(WH_BARKOD,{siparis_no:String(id)});openCargoPdf(w,r.pdf_base64);toast(r.kargo_adet+" paket etiketi açıldı.");}
-  catch(error){if(!w.closed)w.close();toast(error.message,10000);}
-  finally{busy.barkod.delete(id);await loadOrders(true);}
+  const button=document.getElementById("btnBarcode");
+  await retryCargoLabel(id,button);
+  if(selectedOrder?.siparis_no===id){
+    const {data,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
+    if(!error&&data){selectedOrder={...selectedOrder,...data};button.textContent=hasCargoLabel(data)?"Etiketi Yazdır":"Etiket Oluştur";}
+  }
 }
-
 
 function cancelCancelForm(){
   document.getElementById("cancelForm").style.display = "none";
