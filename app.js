@@ -197,6 +197,31 @@ function applyTabFilter(q) {
   return q;
 }
 
+// Page through the entire pending-label queue before showing saved labels.
+async function loadCargoLabelQueue(start, end){
+  const query = (head=false) => applyCargoFilter(applyTabFilter(
+    db.from(TABLE).select("*", {count:"exact", head})
+      .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi")
+  ));
+  const pending = await query()
+    .or("kargo_zpl.is.null,kargo_zpl.eq.")
+    .or("zpl_base64.is.null,zpl_base64.not.like.JVBER%")
+    .order("siparis_no", {ascending:false}).range(start,end);
+  if(pending.error)return pending;
+  const remaining = end-start+1-(pending.data?.length||0);
+  let savedQuery = query(remaining===0)
+    .or("and(kargo_zpl.not.is.null,kargo_zpl.neq.),zpl_base64.like.JVBER%");
+  if(remaining>0){
+    const savedStart=Math.max(0,start-(pending.count||0));
+    savedQuery=savedQuery.order("siparis_no",{ascending:false})
+      .range(savedStart,savedStart+remaining-1);
+  }
+  const saved=await savedQuery;
+  if(saved.error)return saved;
+  return {data:[...(pending.data||[]),...(saved.data||[])],error:null,
+    count:(pending.count||0)+(saved.count||0)};
+}
+
 async function loadOrders(reset=false){
   if(document.getElementById("tabSearchInput")?.value.trim()) return searchOrders("tab");
   if(document.getElementById("searchInput")?.value.trim()) return searchOrders();
@@ -221,10 +246,9 @@ async function loadOrders(reset=false){
   const start = (currentPage - 1) * PAGE_SIZE;
   const end   = currentPage * PAGE_SIZE - 1;
 
-  q = q.order("siparis_no", { ascending:false })
-       .range(start, end);
-
-  const { data, error, count } = await q;
+  const { data, error, count } = currentTab === "kargolandi"
+    ? await loadCargoLabelQueue(start, end)
+    : await q.order("siparis_no", { ascending:false }).range(start, end);
   if (request !== listRequest) return;
   if(error){
     tbody.innerHTML = `<tr><td colspan="${getColumnCount()}">HATA: ${error.message}</td></tr>`;
@@ -1611,9 +1635,18 @@ async function retryCargoLabel(siparisNo,button){
     if(error)throw error;
     if(!hasCargoLabel(order)&&!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
     const operation=hasCargoLabel(order)?"print":"create";
-    const result=await cargoRequest(WH_BARKOD,{siparis_no:String(id),operation});
+    let result=await cargoRequest(WH_BARKOD,{siparis_no:String(id),operation});
+    if(!result.pdf_base64 && result.label_saved){
+      w.document.body.textContent="Etiket kaydedildi. Yazdırma ekranı hazırlanıyor…";
+      button.textContent="Yazdırma açılıyor…";
+      try{
+        result=await cargoRequest(WH_BARKOD,{siparis_no:String(id),operation:"print"});
+      }catch(error){
+        throw new Error("Etiket kaydedildi; yazdırma ekranı açılamadı. Etiketi Yazdır ile tekrar açabilirsiniz. " + (error.message||""));
+      }
+    }
     if(result.pdf_base64){openCargoPdf(w,result.pdf_base64);toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi açıldı.",6000);}
-    else if(result.label_saved){if(!w.closed)w.close();toast(result.message||"Etiket kaydedildi. Etiketi Yazdır düğmesini kullanın.",6000);}
+    else if(result.label_saved)throw new Error("Etiket kaydedildi; PDF henüz hazır değil. Etiketi Yazdır ile tekrar açabilirsiniz.");
     else throw new Error("Etiket yanıtı doğrulanamadı.");
   }catch(error){if(!w.closed)w.close();toast(error.message||"Kargo etiketi hazırlanamadı.",10000);}
   finally{busy.kargola.delete(id);busy.barkod.delete(id);button.disabled=false;button.textContent=label;await loadOrders(true);}
@@ -1781,6 +1814,7 @@ async function searchOrders(scope = "all") {
     if (error) throw error;
     renderTableHeader();
     const matches = inTab || cargoFilter==="all" ? data : data.filter(matchesCargoFilter);
+    if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(a))-Number(hasCargoLabel(b))||Number(b.siparis_no)-Number(a.siparis_no));
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
   } catch (error) {
@@ -1973,5 +2007,6 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
