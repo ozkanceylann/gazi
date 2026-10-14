@@ -81,6 +81,7 @@
 
     <section id="cargoTools" class="cargo-tools" hidden aria-label="Kargo işlemleri">
       <div class="cargo-tool-buttons">
+        <button id="referenceCargoBtn" class="btn-secondary" type="button" hidden onclick="referenceLabelFromToolbar()">Referans Barkodu</button>
         <button id="refreshCargoBtn" class="btn-primary" type="button" onclick="refreshCargoMovements()" aria-label="Kargo Hareketlerini Güncelle" title="Kargo Hareketlerini Güncelle">Hareketleri Güncelle</button>
         <button id="connectCargoBtn" class="btn-secondary" type="button" onclick="connectCargo()" aria-label="DHL Bağlantısını Kontrol Et" title="DHL Bağlantısını Kontrol Et">DHL Bağlantısı</button>
       </div>
@@ -124,6 +125,7 @@
     <button id="btnPrepare" class="btn-primary btn-prepare" onclick="markPrepared()">Hazırla</button>
     <button id="btnCargo" class="btn-secondary" onclick="sendToCargo()">Kargola</button>
     <button id="btnWaiting" class="btn-waiting" onclick="setWaiting()">Bekliyor</button>
+    <button id="btnReferenceLabel" class="btn-secondary" type="button" style="display:none;" onclick="printReferenceLabel()">Referans Etiketi</button>
     <button id="btnBarcode" class="btn-primary" style="display:none;" onclick="printBarcode()">Etiket Oluştur / Yazdır</button>
 
     <button class="btn-warning" onclick="enterEditMode()">Düzenle</button>
@@ -181,7 +183,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261014-compact-status");
+      await import("./app.js?v=20261014-reference-label");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");
