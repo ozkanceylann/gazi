@@ -1,3 +1,19 @@
+function parseCargoWeights(value: unknown, count: number, repeatSingle = true) {
+  count = Number(count);
+  if (!Number.isSafeInteger(count) || count < 1 || count > 100) throw new Error("Paket adedi 1–100 olmalı.");
+  const raw = String(value ?? "").replace(/kg/gi, "").trim();
+  if (!raw) throw new Error("Her paket için KG yazın. Örnek: 5+10+5+6");
+  const plus = raw.includes("+");
+  let parts = plus ? raw.split("+") : count === 1 ? [raw] : raw.split(/[,|/;\s]+|(?<=\d)-(?=\d)/);
+  parts = parts.map(part => part.trim());
+  if (parts.some(part => !/^\d+(?:[.,]\d+)?$/.test(part))) throw new Error("KG bilgisi geçersiz. Paketleri + ile ayırın.");
+  let weights = parts.map(part => Number(part.replace(",", ".")));
+  if (weights.some(kg => !Number.isFinite(kg) || kg <= 0)) throw new Error("Paket kilogramları sıfırdan büyük olmalı.");
+  // A historical single weight applied to every parcel. Keep that interpretation on reads.
+  if (!plus && repeatSingle && weights.length === 1 && count > 1) weights = Array(count).fill(weights[0]);
+  if (weights.length !== count) throw new Error("KG sayısı paket adediyle aynı olmalı. Örnek: 5+10");
+  return weights;
+}
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -18,10 +34,7 @@ export function returnPayload(o:any,reference:string) {
   const city=Number(o.sehir_kodu),district=Number(o.ilce_kodu),count=Number(o.kargo_adet||1);
   if(!Number.isSafeInteger(city)||city<1||!Number.isSafeInteger(district)||district<1)throw Error('Şehir/ilçe kodları eksik veya geçersiz');
   if(!Number.isSafeInteger(count)||count<1||count>100)throw Error('Paket adedi geçersiz');
-  const raw=String(o.kargo_kg||'').replace(/kg/gi,'').trim();
-  const weights=(count===1?[raw.replace(',','.')]:raw.split(/[+,|\s/-]+/)).filter(Boolean).map(Number);
-  if(weights.length===1&&count>1)while(weights.length<count)weights.push(weights[0]);
-  if(weights.length!==count||weights.some(x=>!Number.isFinite(x)||x<=0))throw Error('Her paket için kilogram bilgisi gerekli');
+  const weights=parseCargoWeights(o.kargo_kg,count);
   const content=String(o.urun_bilgisi||'').trim();if(!content)throw Error('Ürün bilgisi eksik');
   return {order:{referenceId:reference,barcode:reference,billOfLandingId:'',isCOD:0,codAmount:0,
     shipmentServiceType:1,packagingType:3,content,smsPreference1:0,smsPreference2:0,smsPreference3:0,

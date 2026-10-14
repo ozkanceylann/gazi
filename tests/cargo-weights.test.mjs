@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import "../cargo-weights.js";
+const {parse,normalize,display}=globalThis.CargoWeights;
+assert.deepEqual(parse("5+10+5+6",4),[5,10,5,6]);
+assert.equal(normalize("5,10,5,6",4),"5+10+5+6");
+assert.equal(normalize("5,5",2),"5+5");
+assert.equal(normalize("5,5",1),"5.5");
+assert.equal(normalize("5.5+10",2),"5.5+10");
+assert.equal(normalize("10",3),"10+10+10");
+assert.equal(normalize("5 kg + 10 kg",2),"5+10");
+for(const raw of ["5++10","5+","0+10","-5+10","5+10+6",""])assert.throws(()=>parse(raw,2));
+assert.throws(()=>parse("10",3,false));
+assert.equal(display("5,10",2),"5+10");
+console.log("KG list, decimal, legacy compatibility and invalid package tests passed.");

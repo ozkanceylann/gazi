@@ -964,7 +964,7 @@ document.getElementById("orderDetails").innerHTML = `
     <div class="detail-title">📦 Ürün Bilgisi</div>
     <div class="detail-item"><b>Ürün:</b> ${escapeHtml(parseProduct(d.urun_bilgisi))}</div>
     <div class="detail-item"><b>Adet:</b> ${cargoCountBadge(d.kargo_adet)}</div>
-    <div class="detail-item"><b>KG:</b> ${d.kargo_kg ?? "-"}</div>
+    <div class="detail-item"><b>KG:</b> ${escapeHtml(CargoWeights.display(d.kargo_kg,d.kargo_adet) || "—")}</div>
     <div class="detail-item"><b>Tutar:</b> ${escapeHtml(d.toplam_tutar ?? "—")} TL</div>
     <div class="detail-item"><b>Ödeme:</b> ${escapeHtml(d.odeme_sekli ?? "—")}</div>
   </div>
@@ -1243,7 +1243,7 @@ async function enterEditMode(){
         </div>
 
         <div class="form-field"><label>Kargo Adet</label><input id="kargo_adet" value="${d.kargo_adet??""}"></div>
-        <div class="form-field"><label>Kargo KG</label><input id="kargo_kg" value="${d.kargo_kg??""}"></div>
+        <div class="form-field"><label>Kargo KG</label><input id="kargo_kg" value="${escapeHtml(CargoWeights.display(d.kargo_kg,d.kargo_adet))}" placeholder="5+10+5+6"></div>
 
         <div class="form-field full-row"><label>Ürün</label><textarea id="urun_bilgisi">${d.urun_bilgisi??""}</textarea></div>
         <div class="form-field"><label>Tutar</label><input id="toplam_tutar" value="${d.toplam_tutar??""}"></div>
@@ -1303,11 +1303,14 @@ async function saveEdit(){
   const sehirKoduVal = citySelect?.value || document.getElementById("sehir_kodu")?.value || null;
   const ilceKoduVal  = districtSelect?.selectedOptions?.[0]?.dataset.code || document.getElementById("ilce_kodu")?.value || null;
 
+  let normalizedKg;
+  try { normalizedKg = CargoWeights.normalize(kargo_kg.value, kargo_adet.value); }
+  catch(error) { return toast(error.message,6000); }
   const updated = {
     ad_soyad: ad_soyad.value, siparis_tel: siparis_tel.value, musteri_tel: musteri_tel.value,
     adres: adres.value, sehir: sehirName, ilce: ilceName,
     sehir_kodu: sehirKoduVal, ilce_kodu: ilceKoduVal,
-    kargo_adet: kargo_adet.value, kargo_kg: kargo_kg.value,
+    kargo_adet: kargo_adet.value, kargo_kg: normalizedKg,
     urun_bilgisi: urun_bilgisi.value, toplam_tutar: toplam_tutar.value,
     odeme_sekli: odeme_sekli.value, notlar: notlar.value
   };
@@ -1765,7 +1768,7 @@ function printSiparis(order){
       <div style="margin:6px 0;border-bottom:1px dashed #000;"></div>
       <div><b>Ürünler:</b> ${parseProduct(order.urun_bilgisi)}</div>
       <div><b>Adet:</b> ${order.kargo_adet ?? "-"}</div>
-      <div><b>KG:</b> ${order.kargo_kg ?? "-"}</div>
+      <div><b>KG:</b> ${escapeHtml(CargoWeights.display(order.kargo_kg,order.kargo_adet) || "—")}</div>
       <div><b>Tutar:</b> ${order.toplam_tutar} TL</div>
       <div><b>Ödeme:</b> ${order.odeme_sekli ?? "-"}</div>
       <div><b>Not:</b> ${order.notlar ?? "-"}</div>

@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
-  <script src="config.js?v=20261014-sidebar-more-30"></script>
+  <script src="config.js?v=20261014-kg-plus-32"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261014-sidebar-more-30" />
+  <link rel="stylesheet" href="style.css?v=20261014-kg-plus-32" />
 
   <style>
     .btn-mini{
@@ -30,6 +30,7 @@
     }
   </style>
 
+<script src="cargo-weights.js?v=20261014-kg-plus-32"></script>
 </head>
 
 <body class="orders-page">
@@ -180,7 +181,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261014-sidebar-more-30");
+      await import("./app.js?v=20261014-kg-plus-32");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261014-report-performance-31"; // örn: 2025-12-15
+const VERSION = "20261014-kg-plus-32"; // örn: 2025-12-15
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -12,6 +12,7 @@ const ASSETS = [
   "/style.css",
   "/app.js",
   "/config.js",
+  "/cargo-weights.js",
   "/manifest.json",
   "/logo.png",
   "/favicon.png"
