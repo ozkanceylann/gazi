@@ -1271,3 +1271,12 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .order-stage-badge--unknown { color:#58616b; background:#f1f3f5; border-color:#dce1e6; }
 
 .order-stage-badge--problem { color:#9d4c22; background:#fff0e5; border-color:#f0d3bb; }
+
+/* Kısa satırlar: isim/tarih ve durum/kargo hareketi yan yana. */
+.orders-page #ordersBody td { padding:6px 8px!important; vertical-align:middle; }
+.order-customer-meta { display:flex; align-items:center; gap:7px; flex-wrap:nowrap; }
+.order-customer-meta .order-customer-name { white-space:nowrap; }
+.order-customer-meta .order-date { display:inline-flex; margin:0; white-space:nowrap; }
+.order-status-cell { white-space:nowrap; }
+.order-status-cell > * + * { margin-left:5px; }
+.order-stage-badge { padding:3px 7px; line-height:1.2; }
