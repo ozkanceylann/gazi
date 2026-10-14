@@ -73,6 +73,11 @@
   <main class="content-area">
     <header class="page-header"><div><p class="page-eyebrow">SİPARİŞ YÖNETİMİ</p><h1 id="pageTitle">Bekleyen Siparişler</h1><p id="listSummary" role="status" aria-live="polite">Siparişler yükleniyor…</p></div><button class="btn-refresh" type="button" onclick="clearSearch()">↻ Listeyi Yenile</button></header>
 
+    <section id="batchPrepareTools" class="cargo-tools" hidden aria-label="Toplu sipariş hazırlama">
+      <button id="batchPrepareBtn" class="btn-primary" type="button" onclick="prepareVisibleOrders()">İlk 10 Siparişin Etiketini Yazdır ve Hazırla</button>
+      <p>Ekranda görünen ilk 10 sipariş işleme alınır. Her sipariş için kargo adedi kadar etiket açılır.</p>
+    </section>
+
     <div class="top-bar search-slot">
       <input id="searchInput" type="search" aria-label="Tüm siparişlerde ara" placeholder="Müşteri adı / Müşteri No / Sipariş No / Telefon / Adres" />
       <input id="tabSearchInput" type="search" aria-label="Sekmede ara" placeholder="Bulunduğunuz sekmede ara" />
@@ -222,5 +227,6 @@ document.getElementById("orderModal").addEventListener("click", function(e){
 
 </body>
 </html>
+
 
 

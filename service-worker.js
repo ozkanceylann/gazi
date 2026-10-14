@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261015-label-queue-auto-print-40"; // örn: 2025-12-15
+const VERSION = "20261015-batch-prepare-print-41"; // örn: 2025-12-15
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -78,6 +78,7 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
 
 
 

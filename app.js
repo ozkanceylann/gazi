@@ -437,6 +437,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
 
   rows.forEach(o=>{
     const tr = document.createElement("tr");
+    tr.dataset.orderId=String(o.siparis_no);
     if (hasZeroOrderTotal(o.toplam_tutar)) tr.classList.add("order-zero-total");
 
     const orderStage = orderLifecycleStage(o);
@@ -728,6 +729,8 @@ function isLiveShipment(order){
   catch { return false; }
 }
 function syncCargoTools(){
+  const batchTools=document.getElementById("batchPrepareTools");
+  if(batchTools)batchTools.hidden=currentTab!=="bekleyen";
   const tools=document.getElementById("cargoTools");
   if(tools) tools.hidden=!["kargolandi","tamamlandi","sorunlu","iade"].includes(currentTab);
   document.querySelectorAll("[data-cargo-filter]").forEach(button=>{
@@ -1488,8 +1491,74 @@ async function setWaiting(){
   });
 }
 
+let batchPreparing=false;
+async function prepareVisibleOrders(){
+  if(batchPreparing||currentTab!=="bekleyen")return;
+  const ids=Array.from(document.querySelectorAll("#ordersBody tr[data-order-id]"))
+    .filter(row=>!row.hidden&&row.getClientRects().length>0)
+    .slice(0,10).map(row=>Number(row.dataset.orderId));
+  if(!ids.length)return toast("Ekranda hazırlanacak sipariş yok.");
+  if(ids.some(id=>preparingOrders.has(id)))return toast("Bu siparişlerden birinin hazırlama işlemi sürüyor.");
+  batchPreparing=true;
+  const button=document.getElementById("batchPrepareBtn");
+  button.disabled=true;
+  let printWindow=null;
+  const prepared=[];
+  const key="prepare_batch_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+  try{
+    const ok=await confirmModal({title:"Toplu Etiket Yazdır ve Hazırla",
+      text:`Uyarı: Ekranda görünen ${ids.length} siparişin etiket yazdırma aşaması yapılacaktır. Siparişlerin adet ve fiyat bilgilerini kontrol ettiğinizi onaylıyor musunuz?\n\nSiparişler: ${ids.join(", ")}\nOnayladığınızda etiketler tek yazdırma ekranında açılacak ve siparişler Hazırlandı aşamasına geçecektir.`,
+      confirmText:"Kontrol Ettim, Yazdır ve Hazırla",cancelText:"Vazgeç"});
+    if(!ok)return;
+    printWindow=window.open("","_blank");
+    if(!printWindow)throw new Error("Yazdırma ekranı için açılır pencerelere izin verin.");
+    printWindow.document.body.textContent="Sipariş etiketleri hazırlanıyor…";
+    ids.forEach(id=>preparingOrders.add(id));
+    button.textContent="Siparişler kontrol ediliyor…";
+    const {data:rows,error}=await db.from(TABLE).select("*").in("siparis_no",ids);
+    if(error)throw error;
+    const orders=ids.map(id=>rows?.find(row=>Number(row.siparis_no)===id));
+    for(const order of orders){
+      if(!order||order.kargo_durumu!=="Bekliyor")throw new Error("Siparişlerden birinin durumu değişti. Listeyi yenileyip tekrar deneyin.");
+      const count=Number(order.kargo_adet);
+      if(!Number.isSafeInteger(count)||count<1||count>100)throw new Error(order.siparis_no+" siparişinin kargo adedini düzeltin.");
+    }
+    // Ensure printable data can be stored before changing any order state.
+    localStorage.setItem(key,JSON.stringify(orders));
+    for(const order of orders){
+      if(printWindow.closed)throw new Error("Yazdırma penceresi kapatıldı.");
+      button.textContent=`Hazırlanıyor… ${prepared.length+1}/${orders.length}`;
+      const {data:updated,error}=await db.from(TABLE).update({kargo_durumu:"Hazırlandı"})
+        .eq("siparis_no",order.siparis_no).eq("kargo_durumu","Bekliyor").select("siparis_no");
+      if(error)throw error;
+      if(!updated?.length)throw new Error(order.siparis_no+" artık Bekleyen durumunda değil.");
+      prepared.push(order);
+      db.functions.invoke("whatsapp-reaction",{body:{siparis_no:order.siparis_no,emoji:"📦"}})
+        .then(({error})=>{if(error)console.error("WhatsApp reaksiyon hatası",error);})
+        .catch(error=>console.error("WhatsApp reaksiyon hatası",error));
+    }
+  }catch(error){
+    toast((prepared.length?prepared.length+" sipariş hazırlandı. Kalanlar işlenmedi. ":"")+(error.message||"Toplu hazırlama başarısız."),10000);
+  }finally{
+    try{
+      if(prepared.length){
+        localStorage.setItem(key,JSON.stringify(prepared));
+        if(printWindow&&!printWindow.closed)printWindow.location.replace("printetiket-v2.html?v=20261015-batch&batch="+encodeURIComponent(key));
+        toast(prepared.length+" sipariş hazırlandı; toplam "+prepared.reduce((sum,o)=>sum+Number(o.kargo_adet),0)+" etiket açılıyor.",6000);
+      }else{
+        localStorage.removeItem(key);
+        if(printWindow&&!printWindow.closed)printWindow.close();
+      }
+    }catch(error){toast("Siparişler hazırlandı; yazdırma ekranı açılamadı. Hazırlandı sekmesinden etiketleri açabilirsiniz.",10000);}
+    ids.forEach(id=>preparingOrders.delete(id));
+    batchPreparing=false;button.disabled=false;button.textContent="İlk 10 Siparişin Etiketini Yazdır ve Hazırla";
+    if(prepared.length)await loadOrders(true);
+  }
+}
+window.prepareVisibleOrders=prepareVisibleOrders;
 const preparingOrders = new Set();
 async function prepareFromList(siparisNo, button){
+  if(batchPreparing)return toast("Toplu hazırlama işlemi sürüyor.");
   if(preparingOrders.has(siparisNo)) return;
   const printWindow = window.open("", "_blank");
   if(!printWindow) return toast("Yazdırma ekranı için açılır pencerelere izin verin.");
@@ -1797,6 +1866,7 @@ document.addEventListener("input", (event) => {
 });
 
 async function searchOrders(scope = "all") {
+  syncCargoTools();
   const inTab = scope === "tab";
   const inputId = inTab ? "tabSearchInput" : "searchInput";
   document.getElementById(inTab ? "searchInput" : "tabSearchInput").value = "";
@@ -2007,6 +2077,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 

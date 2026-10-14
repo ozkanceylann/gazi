@@ -177,6 +177,47 @@ body {
 
 
 <script>
+const batchKey=new URLSearchParams(location.search).get("batch");
+if(batchKey){
+  window.addEventListener("load",()=>{
+    try{
+      if(!/^prepare_batch_[a-zA-Z0-9_]+$/.test(batchKey))throw Error("Etiket kaydı geçersiz.");
+      const orders=JSON.parse(localStorage.getItem(batchKey)||"null");
+      if(!Array.isArray(orders)||orders.length<1||orders.length>10)throw Error("Toplu etiket kaydı bulunamadı.");
+      for(const order of orders){
+        const count=Number(order.kargo_adet);
+        if(!Number.isSafeInteger(count)||count<1||count>100)throw Error("Kargo adedi geçersiz.");
+      }
+      const template=document.getElementById("wrap");
+      const pages=document.createDocumentFragment();
+      for(const order of orders){
+        const content=template.cloneNode(true);
+        const set=(id,value)=>content.querySelector("#"+id).textContent=value||"";
+        set("musteri",order.ad_soyad);
+        set("telefon",order.musteri_tel?"Tel: "+order.musteri_tel:"");
+        const address=[order.adres,[order.ilce,order.sehir].filter(Boolean).join(" / ")].filter(Boolean).join(" - ");
+        set("adres",address?"Adres: "+address:"");
+        set("urun",order.urun_bilgisi);
+        set("odeme",order.odeme_sekli?"Ödeme: "+order.odeme_sekli:"");
+        set("tutar",order.toplam_tutar?"Tutar: "+order.toplam_tutar+" TL":"");
+        content.removeAttribute("id");content.className="label-content";
+        content.querySelectorAll("[id]").forEach(node=>node.removeAttribute("id"));
+        for(let i=0;i<Number(order.kargo_adet);i++){
+          const page=document.createElement("section");page.className="label-page";
+          page.appendChild(content.cloneNode(true));pages.appendChild(page);
+        }
+      }
+      template.remove();document.body.appendChild(pages);
+      document.querySelectorAll(".label-content").forEach(content=>{
+        let size=12;content.style.fontSize=size+"px";
+        while(content.getBoundingClientRect().height>34.5*96/25.4&&size>6){size-=0.25;content.style.fontSize=size+"px";}
+      });
+      document.title=orders.length+" Sipariş · Etiket Yazdır";
+      setTimeout(()=>window.print(),300);
+    }catch(error){document.body.textContent=error.message||"Etiketler açılamadı.";}
+  });
+}else{
+
 
 /* =================================
    SİPARİŞ VERİSİNİ AL
@@ -316,7 +357,10 @@ window.addEventListener("load", function () {
 
 });
 
+
+}
 </script>
 
 </body>
 </html>
+
