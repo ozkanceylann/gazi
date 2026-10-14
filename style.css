@@ -1280,3 +1280,27 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .order-status-cell { white-space:nowrap; }
 .order-status-cell > * + * { margin-left:5px; }
 .order-stage-badge { padding:3px 7px; line-height:1.2; }
+
+/* Kargo araçları ince bir şerit; işlemler ve bilgi yan yana. */
+.orders-page .cargo-tools {
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px;
+  padding:8px 10px; margin-bottom:10px; border-radius:9px;
+}
+.orders-page .cargo-tools[hidden] { display:none; }
+.orders-page .cargo-tool-buttons { gap:6px; flex-wrap:wrap; }
+.orders-page .cargo-tool-buttons button {
+  width:auto; min-height:30px; margin:0; padding:5px 10px;
+  font-size:12px; line-height:1.3; border-radius:6px;
+}
+.orders-page .cargo-tools #cargoSyncStatus {
+  flex:1 1 200px; min-width:0; margin:0; font-size:11px; line-height:1.35;
+}
+.orders-page .cargo-tools .cargo-legend { flex:1 0 100%; gap:5px; }
+.orders-page .cargo-tools .cargo-legend .cargo-status {
+  padding:3px 8px; font-size:11px; line-height:1.25; white-space:nowrap;
+}
+@media(max-width:600px) {
+  .orders-page .cargo-tools { padding:7px 8px; gap:5px; }
+  .orders-page .cargo-tool-buttons { gap:5px; }
+  .orders-page .cargo-tool-buttons button { min-height:32px; padding:5px 8px; }
+}
