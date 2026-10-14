@@ -420,7 +420,8 @@ function orderStageBadge(order) {
     "Sorunlu": ["Sorunlu Siparişler", "problem"]
   };
   const [label, tone] = states[stage] || [stage, "unknown"];
-  return `<span class="order-stage-badge order-stage-badge--${tone}" aria-label="Sipariş durumu: ${escapeHtml(label)}">${escapeHtml(label)}</span>`;
+  const delivery = order?.teslim_sekli_kontrol === true ? '<span class="order-stage-badge order-stage-badge--problem">Teslim şekli kontrol</span>' : order?.subeden_teslim === true ? '<span class="order-stage-badge order-stage-badge--prepared">Şubeden teslim</span>' : '';
+  return `<span class="order-stage-badge order-stage-badge--${tone}" aria-label="Sipariş durumu: ${escapeHtml(label)}">${escapeHtml(label)}</span>${delivery}`;
 }
 
 function renderTable(rows, { append=false, hasMore } = {}){
@@ -1032,6 +1033,8 @@ document.getElementById("orderDetails").innerHTML = `
 
   <div class="detail-group">
     <div class="detail-title">📍 Adres Bilgileri</div>
+    <div class="detail-item"><b>Teslim şekli:</b> ${d.subeden_teslim === true ? "Şubeden teslim" : "Adrese teslim"}${d.subeden_teslim === true && d.teslim_subesi ? ` · ${escapeHtml(d.teslim_subesi)}` : ""}</div>
+    ${d.teslim_sekli_kontrol === true ? `<div class="detail-item" role="alert">⚠️ Teslim şeklini kontrol edin.${d.orderinvoiceid || d.kargo_takip_kodu ? " Mevcut DHL kaydı var; teslim şeklini düzeltmek için kargo kaydının yeniden açılması gerekiyor." : " Düzenle bölümünden teslim şeklini seçip kaydedin."}</div>` : ""}
     <div class="detail-item"><b>Adres:</b> ${escapeHtml(d.adres ?? "—")}</div>
     <div class="detail-item">
       <b>Şehir / İlçe:</b> ${escapeHtml(d.sehir ?? "—")} / ${escapeHtml(d.ilce ?? "—")}
@@ -1298,6 +1301,7 @@ async function populateDistrictSelect(cityId, selectedDistrictId){
 ============================================================ */
 async function enterEditMode(){
   const d = selectedOrder;
+  const deliveryLocked = !!(d.orderinvoiceid || d.kargo_takip_kodu);
   const cities = await loadCities();
   const selectedCityId = findCityIdForOrder(d, cities);
   const districts = selectedCityId ? await loadDistricts(selectedCityId) : [];
@@ -1319,6 +1323,19 @@ async function enterEditMode(){
         <div class="form-field"><label>Müşteri Tel</label><input id="musteri_tel" value="${d.musteri_tel??""}"></div>
 
         <div class="form-field full-row"><label>Adres</label><textarea id="adres">${d.adres??""}</textarea></div>
+
+        <div class="form-field">
+          <label for="delivery_select">Teslim şekli</label>
+          <select id="delivery_select" ${deliveryLocked ? "disabled" : ""}>
+            ${d.teslim_sekli_kontrol === true && !deliveryLocked ? '<option value="" selected>Kontrol gerekli — seçim yapın</option>' : ""}
+            <option value="false" ${!d.teslim_sekli_kontrol && d.subeden_teslim !== true || deliveryLocked && d.subeden_teslim !== true ? "selected" : ""}>Adrese teslim</option>
+            <option value="true" ${!d.teslim_sekli_kontrol && d.subeden_teslim === true || deliveryLocked && d.subeden_teslim === true ? "selected" : ""}>Şubeden teslim</option>
+          </select>
+        </div>
+        <div class="form-field" id="delivery_branch_field" ${d.subeden_teslim === true ? "" : "hidden"}>
+          <label for="delivery_branch">Şube adı (varsa)</label><input id="delivery_branch" maxlength="150" value="${escapeHtml(d.teslim_subesi ?? "")}" ${deliveryLocked ? "disabled" : ""}>
+        </div>
+        ${deliveryLocked ? '<div class="form-field full-row"><small>Mevcut DHL kaydı var. Teslim şekli değişikliği için kargo kaydının yeniden açılması gerekir.</small></div>' : ""}
 
         <div class="form-field">
           <label>Şehir</label>
@@ -1353,6 +1370,10 @@ async function enterEditMode(){
     </div>
     ${renderOriginalMessage(d)}`;
   bindOriginalMessage(d);
+
+  document.getElementById("delivery_select").addEventListener("change", event => {
+    document.getElementById("delivery_branch_field").hidden = event.target.value !== "true";
+  });
 
   renderOptions(document.getElementById("sehir_select"), cities, {
     placeholder: "Şehir seçiniz",
@@ -1416,6 +1437,13 @@ async function saveEdit(){
     urun_bilgisi: urun_bilgisi.value, toplam_tutar: toplam_tutar.value,
     odeme_sekli: odeme_sekli.value, notlar: notlar.value
   };
+  if (!(selectedOrder.orderinvoiceid || selectedOrder.kargo_takip_kodu)) {
+    const delivery = document.getElementById("delivery_select")?.value;
+    if (!["true", "false"].includes(delivery)) return toast("Adrese teslim veya Şubeden teslim seçin.", 6000);
+    updated.subeden_teslim = delivery === "true";
+    updated.teslim_subesi = updated.subeden_teslim ? document.getElementById("delivery_branch").value.trim() || null : null;
+    updated.teslim_sekli_kontrol = false;
+  }
   if (!await updateSelectedOrder(updated)) return;
   toast("Kaydedildi");
   closeModal();

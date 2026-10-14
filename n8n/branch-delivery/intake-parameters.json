@@ -1,0 +1,257 @@
+[
+  {
+    "type": "updateNodeParameters",
+    "nodeName": "Json_Kodla",
+    "parameters": {
+      "jsCode": "function parseCargoWeights(value, count, repeatSingle = true) {\n  count = Number(count);\n  if (!Number.isSafeInteger(count) || count < 1 || count > 100) throw new Error(\"Paket adedi 1–100 olmalı.\");\n  let raw = String(value ?? \"\").replace(/kg/gi, \"\").trim();\n  if (raw.startsWith(\"[\")) {\n    let items; try { items = JSON.parse(raw); } catch { throw new Error(\"KG listesi geçersiz.\"); }\n    if (!Array.isArray(items) || !items.length || items.some(x => ![\"string\",\"number\"].includes(typeof x))) throw new Error(\"KG listesi geçersiz.\");\n    raw = items.join(\"+\");\n  }\n  if (!raw) throw new Error(\"Her paket için KG yazın. Örnek: 5+10+5+6\");\n  const plus = raw.includes(\"+\");\n  let parts = plus ? raw.split(\"+\") : count === 1 ? [raw] : raw.split(/[,|/;\\s]+|(?<=\\d)-(?=\\d)/);\n  parts = parts.map(part => part.trim());\n  if (parts.some(part => !/^\\d+(?:[.,]\\d+)?$/.test(part))) throw new Error(\"KG bilgisi geçersiz. Paketleri + ile ayırın.\");\n  let weights = parts.map(part => Number(part.replace(\",\", \".\")));\n  if (weights.some(kg => !Number.isFinite(kg) || kg <= 0)) throw new Error(\"Paket kilogramları sıfırdan büyük olmalı.\");\n  // A historical single weight applied to every parcel. Keep that interpretation on reads.\n  if (!plus && repeatSingle && weights.length === 1 && count > 1) weights = Array(count).fill(weights[0]);\n  if (weights.length !== count) throw new Error(\"KG sayısı paket adediyle aynı olmalı. Örnek: 5+10\");\n  return weights;\n}\nreturn $input.all().map((item, index) => {\n  const defaults = {\n    siparis_alan_isim:\"\", siparis_alan_numara:\"\", musteri_ad_soyad:\"\",\n    musteri_telefon:\"\", adres:\"\", Sehir:\"\", ilce:\"\", urunler:[],\n    toplam:\"\", odeme_yontemi:\"Belirtilmemiş\", notlar:\"\",\n    Siparis:\"Hayır\", firma:\"\", kargo_adet:\"\", kargo_kg:\"\", subeden_teslim:false, teslim_subesi:\"\", teslim_sekli_kontrol:false\n  };\n  const raw = item.json.output ?? item.json.data ?? item.json.text ?? item.json.message ?? item.json;\n  let parsed;\n  let parseError = \"\";\n  try {\n    parsed = typeof raw === \"string\"\n      ? JSON.parse(raw.trim().replace(/^```(?:json)?\\s*/i, \"\").replace(/\\s*```$/, \"\"))\n      : raw;\n    if (typeof parsed === \"string\") parsed = JSON.parse(parsed);\n    if (!parsed || typeof parsed !== \"object\" || Array.isArray(parsed)) throw new Error(\"JSON bir nesne olmalı\");\n    if (![\"Siparis\",\"siparis\",\"musteri_ad_soyad\",\"musteri_ad_soyadi\",\"musteri_telefon\",\"urunler\",\"ürünler\"].some(k => k in parsed)) {\n      throw new Error(\"Beklenen sipariş alanları yok\");\n    }\n  } catch (error) {\n    parseError = error.message;\n    parsed = {};\n  }\n  const aliases = {musteri_ad_soyadi:\"musteri_ad_soyad\",sehir:\"Sehir\",\"şehir\":\"Sehir\",il:\"Sehir\",\"ürünler\":\"urunler\",urun:\"urunler\",siparis:\"Siparis\"};\n  for (const [from,to] of Object.entries(aliases)) {\n    if (parsed[from] != null && (parsed[to] == null || parsed[to] === \"\")) parsed[to] = parsed[from];\n  }\n  const data = {...defaults,...parsed};\n  for (const field of Object.keys(defaults).filter(k => ![\"urunler\",\"subeden_teslim\",\"teslim_sekli_kontrol\"].includes(k))) {\n    data[field] = data[field] == null ? defaults[field] : String(data[field]).trim();\n  }\n  const phone = value => {\n    const s = String(value ?? \"\");\n    if (s.includes(\"@\") && !s.endsWith(\"@s.whatsapp.net\")) return \"\";\n    let digits = s.split(\"@\")[0].replace(/\\D/g,\"\");\n    if (digits.length === 12 && digits.startsWith(\"90\")) digits=digits.slice(2);\n    if (digits.length === 11 && digits.startsWith(\"0\")) digits=digits.slice(1);\n    return /^5\\d{9}$/.test(digits) ? digits : \"\";\n  };\n  const inputPhone = data.musteri_telefon;\n  data.musteri_telefon = phone(inputPhone);\n  const webhook = $(\"MESAJ_HAZIRLA\").item.json;\n\n  const bool = value => value === true || String(value).trim().toLowerCase() === \"true\";\n  const validBool = value => typeof value === \"boolean\" || /^(?:true|false)$/i.test(String(value).trim());\n  data.subeden_teslim = bool(data.subeden_teslim);\n  data.teslim_sekli_kontrol = bool(data.teslim_sekli_kontrol) || !validBool(parsed.subeden_teslim) || !validBool(parsed.teslim_sekli_kontrol);\n  // AI chooses intent. Missing or malformed fields require a human decision.\n  data.teslim_subesi = data.subeden_teslim ? String(data.teslim_subesi || \"\").slice(0,150) : \"\";\n  const deliveryText = String(webhook._message_text || \"\").toLocaleLowerCase(\"tr-TR\").normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g,\"\").replace(/ı/g,\"i\");\n  const branchMention = /\\bsube(?:den|si|sinden)?\\b/.test(deliveryText);\n  const nearOnly = /\\bsube(?:si|sinin)?\\s+(?:yani|yaninda|yakini|yakininda)\\b/.test(deliveryText);\n  const pickup = /\\bsubeden\\s+(?:teslim|al)|\\bsube\\s+teslim(?:ati)?\\b|\\bsubesi(?:nden)?\\s+(?:teslim|al)/.test(deliveryText);\n  const negatedPickup = /\\bsubeden\\s+(?:teslim\\s+(?:degil|olmasin|istemiyor)|alma(?:yacak|yacagim|yin))/.test(deliveryText);\n  const home = /\\b(?:eve|evine|adrese|adresine)\\s+(?:teslim|gelsin|gonder)/.test(deliveryText);\n  if (pickup && !negatedPickup && !nearOnly && !home) data.subeden_teslim = true;\n  if (negatedPickup) { data.subeden_teslim = false; data.teslim_subesi = \"\"; }\n  if (pickup && home && !negatedPickup || branchMention && /\\b(?:veya|yahut|ya da|olmazsa|belki)\\b/.test(deliveryText)) data.teslim_sekli_kontrol = true;\n  if (nearOnly && !pickup && data.subeden_teslim) data.teslim_sekli_kontrol = true;\n  if (data.subeden_teslim && !data.adres) data.adres = data.teslim_subesi ? data.teslim_subesi + \" şubesi, şubeden teslim\" : \"Şubeden teslim\";\n\n  const sender = phone(webhook._sender_phone);\n  data.siparis_alan_numara = sender ? \"0\"+sender : \"\";\n  data.Sehir = data.Sehir.toLocaleUpperCase(\"tr-TR\");\n  data.ilce = data.ilce.toLocaleUpperCase(\"tr-TR\");\n  const productInput = data.urunler;\n  if (Array.isArray(productInput)) {\n    if (productInput.some(p => p != null && typeof p === \"object\")) parseError ||= \"Ürünler metin dizisi olmalı\";\n    data.urunler = productInput.filter(p => typeof p === \"string\" || typeof p === \"number\").map(p => String(p).trim()).filter(Boolean);\n  } else if (typeof productInput === \"string\") {\n    data.urunler = productInput.split(/\\r?\\n|[•●]/).map(p=>p.trim()).filter(Boolean);\n  } else {\n    parseError ||= \"Ürünler metin veya metin dizisi olmalı\";\n    data.urunler = [];\n  }\n  // Explicit payment instructions override only the collection amount.\n  const paymentText=String(webhook._message_text||\"\").toLocaleLowerCase(\"tr-TR\");\n  const freeExchange=/(?:ücretsiz|ucretsiz|bedelsiz|ödemesiz|odemesiz)\\s+(?:değişim|degisim)/i.test(paymentText) || /(?:^|[^a-zçğıöşü])(?:değişim|degisim)(?=$|[^a-zçğıöşü])/i.test(paymentText) && !/(?:ücretli|ucretli|fiyat farkı|fiyat farki|ek ödeme|ek odeme)/i.test(paymentText);\n  const freeProduct=/(?:^|[^a-zçğıöşü])(?:bedelsiz|ödemesiz|odemesiz)(?=$|[^a-zçğıöşü])/i.test(paymentText);\n  const foldedPayment=paymentText.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g,\"\").replace(/ı/g,\"i\");\n  const paymentNotReceived=/\\b(?:odenmedi|odemedi|alinmadi|yapilmadi|yatirilmadi|alinacak|odenecek|yapilacak|yatirilacak)\\b/.test(foldedPayment);\n  const bankPaid=!paymentNotReceived&&(\n    /\\b(?:iban|havale)\\b[^\\n.!?]{0,60}\\b(?:odedi|odendi|yatirdi|yatirildi|yapildi|alindi|odendi)\\b/.test(foldedPayment)||\n    /\\b(?:odeme(?:si)?|tutar|bedel)\\b[^\\n.!?]{0,30}\\b(?:alindi|yapildi|odendi)\\b/.test(foldedPayment)||\n    /\\b(?:pesin odendi|odendi)\\b/.test(foldedPayment));\n  const productFree=/\\bucretsiz\\b/.test(foldedPayment)&&!(/\\bkargo\\s+(?:bedava|ucretsiz)\\b|\\bucretsiz\\s+kargo\\b/.test(foldedPayment)&&!/(?:urun|siparis|degisim|gonderim)\\s+(?:bedelsiz|ucretsiz)|(?:bedelsiz|ucretsiz)\\s+(?:urun|siparis|degisim|gonderim)/.test(foldedPayment));\n  const noCollection=freeExchange || freeProduct || productFree || bankPaid || /(?:^|[^a-zçğıöşü])eft(?=$|[^a-zçğıöşü])/i.test(paymentText);\n  if(noCollection){\n    data.toplam=\"0\";\n    data.odeme_yontemi=bankPaid||/(?:^|[^a-z])eft(?=$|[^a-z])/i.test(paymentText) ? \"EFT\" : \"Bedelsiz\";\n    const originalNotes=data.notlar;\n    const priceMissing=/Eksik bilgi\\s*[–-]\\s*fiyat(?:\\s*\\([^)]*\\))?(?=\\s*(?:[.\\n]|$))/i.test(originalNotes);\n    data.notlar=originalNotes.replace(/Eksik bilgi\\s*[–-]\\s*fiyat(?:\\s*\\([^)]*\\))?\\s*\\.?\\s*/gi,\"\").trim();\n    const priceOnly=priceMissing && !/Eksik bilgi\\s*[–-]/i.test(data.notlar);\n    if(data.Siparis.toLocaleLowerCase(\"tr-TR\")===\"hayır\"&&(priceOnly||freeExchange)&&!parseError&&data.musteri_ad_soyad&&data.musteri_telefon&&data.urunler.length&&data.adres&&data.Sehir&&data.ilce&&!/Eksik bilgi\\s*[–-]\\s*(?!fiyat)/i.test(data.notlar)){\n      data.Siparis=\"Evet\";\n    }\n  }\n  if (data.kargo_kg) {\n    try { data.kargo_kg = parseCargoWeights(data.kargo_kg, data.kargo_adet, false).map(kg => kg <= 8 ? 5 : kg).join(\"+\"); }\n    catch (error) { parseError ||= error.message; }\n  }\n  const status = data.Siparis.toLocaleLowerCase(\"tr-TR\");\n  const missing = [];\n  if (status === \"evet\") data.Siparis = \"Evet\";\n  else if (status === \"hayır\" || status === \"hayir\") data.Siparis = \"Hayır\";\n  else { data.Siparis = \"Hayır\"; parseError ||= \"Siparis alanı Evet veya Hayır olmalı\"; }\n  if (!data.musteri_ad_soyad) missing.push(\"müşteri adı\");\n  if (!data.musteri_telefon) missing.push(inputPhone ? \"geçersiz müşteri telefonu\" : \"müşteri telefonu\");\n  if (!data.urunler.length) missing.push(\"ürün bilgisi\");\n  if (!data.toplam) missing.push(\"fiyat\");\n  if (missing.length) {\n    data.Siparis = \"Hayır\";\n    const reason = \"Eksik bilgi – \" + missing.join(\", \");\n    data.notlar = [data.notlar,reason].filter(Boolean).join(\"\\n\");\n  }\n  if (!data.odeme_yontemi) data.odeme_yontemi = \"Belirtilmemiş\";\n  data.teknik_hata = Boolean(parseError);\n  data.teknik_hata_detay = parseError;\n  if (parseError) {\n    data.Siparis = \"Hayır\";\n    data.notlar = \"AI çıktısı işlenemedi – \" + parseError;\n  }\n  return {json:data,pairedItem:{item:index}};\n});"
+    }
+  },
+  {
+    "type": "updateNodeParameters",
+    "nodeName": "tum_siparisler",
+    "parameters": {
+      "tableId": "whatsapp_siparis_giris",
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "siparis_alan",
+            "fieldValue": "={{ $json.siparis_alan_numara }}"
+          },
+          {
+            "fieldId": "musteri_tel",
+            "fieldValue": "={{ $json.musteri_telefon }}"
+          },
+          {
+            "fieldId": "ad_soyad",
+            "fieldValue": "={{ $json.musteri_ad_soyad }}"
+          },
+          {
+            "fieldId": "adres",
+            "fieldValue": "={{ $json.adres }}"
+          },
+          {
+            "fieldId": "sehir",
+            "fieldValue": "={{ $json.Sehir }}"
+          },
+          {
+            "fieldId": "ilce",
+            "fieldValue": "={{ $json.ilce }}"
+          },
+          {
+            "fieldId": "urun_bilgisi",
+            "fieldValue": "={{ $json.urunler.join('\\n') }}"
+          },
+          {
+            "fieldId": "toplam_tutar",
+            "fieldValue": "={{ $json.toplam }}"
+          },
+          {
+            "fieldId": "odeme_sekli",
+            "fieldValue": "={{ $json.odeme_yontemi }}"
+          },
+          {
+            "fieldId": "notlar",
+            "fieldValue": "={{ $json.notlar }}"
+          },
+          {
+            "fieldId": "firma",
+            "fieldValue": "={{ $json.firma }}"
+          },
+          {
+            "fieldId": "siparis_tel",
+            "fieldValue": "={{ $json.siparis_alan_numara }}"
+          },
+          {
+            "fieldId": "kargo_adet",
+            "fieldValue": "={{ $json.kargo_adet }}"
+          },
+          {
+            "fieldId": "kargo_durumu",
+            "fieldValue": "Bekliyor"
+          },
+          {
+            "fieldId": "kargo_kg",
+            "fieldValue": "={{ $json.kargo_kg }}"
+          },
+          {
+            "fieldId": "whatsapp_jid",
+            "fieldValue": "={{ $('WP_POST_EVO').item.json.body.data.key.remoteJid }}"
+          },
+          {
+            "fieldId": "whatsapp_message_id",
+            "fieldValue": "={{ $('WP_POST_EVO').item.json.body.data.key.id }}"
+          },
+          {
+            "fieldId": "whatsapp_participant",
+            "fieldValue": "={{ $('WP_POST_EVO').item.json.body.data.key.participant }}"
+          },
+          {
+            "fieldId": "whatsapp_participant_alt",
+            "fieldValue": "={{ $('WP_POST_EVO').item.json.body.data.key.participantAlt }}"
+          },
+          {
+            "fieldId": "whatsapp_addressing_mode",
+            "fieldValue": "={{ $('WP_POST_EVO').item.json.body.data.key.addressingMode }}"
+          },
+          {
+            "fieldId": "whatsapp_push_name",
+            "fieldValue": "={{ $('WP_POST_EVO').item.json.body.data.pushName }}"
+          },
+          {
+            "fieldId": "whatsapp_message_text",
+            "fieldValue": "={{ $('MESAJ_HAZIRLA').item.json._message_text }}"
+          },
+          {
+            "fieldId": "isleme_alinma_tarihi",
+            "fieldValue": "={{ $('WP_POST_EVO').item.json.body.date_time }}"
+          },
+          {
+            "fieldId": "whatsapp_from_me",
+            "fieldValue": "={{ $('WP_POST_EVO').item.json.body.data.key.fromMe === true }}"
+          },
+          {
+            "fieldId": "subeden_teslim",
+            "fieldValue": "={{ $json.subeden_teslim }}"
+          },
+          {
+            "fieldId": "teslim_subesi",
+            "fieldValue": "={{ $json.teslim_subesi }}"
+          },
+          {
+            "fieldId": "teslim_sekli_kontrol",
+            "fieldValue": "={{ $json.teslim_sekli_kontrol }}"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "updateNodeParameters",
+    "nodeName": "AI Agent",
+    "parameters": {
+      "promptType": "define",
+      "text": "=Siparis alan no:({{ $('MESAJ_HAZIRLA').item.json._sender_phone }})\nSipariş Firma:({{ $('MESAJ_HAZIRLA').item.json.body?.data?.pushName ?? '' }})\nGelen Mesaj:({{ $('MESAJ_HAZIRLA').item.json._message_text }})",
+      "options": {
+        "systemMessage": "ÖNCELİKLİ KURAL: “EFT”, “havale”, “IBAN’a ödeme alındı”, “ödeme alındı” veya “ödendi” varsa toplam:\"0\", odeme_yontemi:\"EFT\". “Ödemesiz”, “bedelsiz” veya “ücretsiz” varsa toplam:\"0\", odeme_yontemi:\"Bedelsiz\"; EFT de varsa \"EFT\" kullan. Yazım farklılıklarını tanı; “alınmadı/alınacak” ödeme sayılmaz. Pozitif tutar yazsa bile toplam 0; tutarı notlarda koru. Fiyat eksikliği siparişi engellemez; diğer bilgiler tamsa Siparis:\"Evet\". Mevcut odeme_yontemi alanını kullan. 10 kg siyah zeytin: kargo_adet:\"1\", kargo_kg:\"10\"; yeşilin ağırlık kuralını siyaha uygulama.\n\nSen bir WhatsApp Sipariş Dönüştürücü AI’sın.\n\nGörevin, serbest WhatsApp sipariş mesajını eksiksiz analiz edip aşağıdaki JSON formatına dönüştürmektir. SADECE GEÇERLİ JSON döndür.\n\nKURALLAR:\n\n- `Siparis` SADECE `Evet` veya `Hayır` olabilir.\n- Gerekli bilgiler eksikse `Siparis:\"Hayır\"` ve `notlar:\"Eksik bilgi – (neden)\"` yaz.\n- Eksik alanları boş bırak.\n- Sipariş için yeterli bilgi varsa `Siparis:\"Evet\"`.\n- Sipariş alınan numara webhook formatında `905xxxxxxxxx@s.whatsapp.net` gelir. Çıktıda `05xxxxxxxxx` formatına çevir. Eksik olması Siparis'i Hayır yapmaz.\n- Müşteri ad soyadını mesajdan al.\n- Müşteri telefonunu +90/05, boşluk, parantez ve `-` karakterlerinden temizle → `5xxxxxxxxx`.(10 Hane olmalı)\n- Adres; mahalle, cadde, no, ilçe ve il içermelidir. Kargo şubesinden teslim alınacaksa adres zorunlu değildir.\n- `Sehir` ve `ilce` TÜRKÇE KARAKTERLERLE ve TAMAMEN BÜYÜK HARF yazılır.\n- `urunler` ürünleri miktarlarıyla alt alta içerir.\n- `toplam`: Mesajdaki açık tutarı kullan; `1300₺`, `1300 TL` ve `1.300 TL` → `1300`. Para simgesine bitişik tutarı atlama. Birim fiyat ve miktar açıkça belirtilmişse hesapla; ürünün fiyatını tahmin etme. Fiyat hiç belirtilmemişse toplam boş, Siparis:\"Hayır\", notlar:\"Eksik bilgi – fiyat\" yaz. 0 yalnızca mesajda açıkça sıfır/bedelsiz belirtilmişse yaz.\n- `odeme_yontemi`: `Kapıda Nakit`, `Kapıda Kart`, `Peşin`, `Bedelsiz`, `Belirtilmemiş`.\n- Ürünler açıkça bedelsiz/hediye olarak veya kapıda tahsilat yapılmayacak şekilde gönderiliyorsa `toplam:\"0\"`, `odeme_yontemi:\"Bedelsiz\"` yaz. Açık bedelsiz talimatı varsa yanında yazılan ürün değerini tahsilat tutarı olarak alma; ürün değerini notlara ekle. Yalnızca \"kargo ücretsiz\" ifadesi ürün bedelini sıfırlamaz. Ücretsiz/bedelsiz bilgisi yoksa pozitif tutarı sıfırlama.\n- `notlar`: Özel ifadeler, uyarılar, ❗ vb. yazılır.\n- Sipariş alan kişi, firma bilgisinin sonunda belirtilen kişidir. İlk harfi büyük yaz.\n- `firma`: `Queen`, `Esin`, `Tad`, `Bilinmeyen`.\n- Kargo hesabı: Her ayrı ürün kabı/tenekesi/kova ayrı pakettir. Farklı ürünleri toplam ağırlığa bakıp tek pakette birleştirme. 10 kg zeytin=1 paket, 5 kg zeytin=1 paket, 5 lt zeytinyağı=1 paket ve kargo_kg için 5 kabul edilir. 5 lt zeytinyağı + 5 kg zeytin → kargo_adet:\"2\", kargo_kg:\"5+5\". 10 kg zeytin + 5 lt zeytinyağı → \"2\" ve \"10+5\". Açıkça birlikte tek paket dendiğinde bunu uygula; toplu/tanışma paketlerinin özel kuralları geçerlidir.\n- `kargo_kg`: Paket başına kiloları tek tek + ile ayırarak yaz. Örn: `5+10+10+5`. Son kontrol: kargo_adet, kargo_kg listesinin eleman sayısına eşit olmalı ve tüm ürün kapları hesaba katılmalı.\n- Kargo KG: Her pakette 8 kg ve altını 5 kg yaz; 8 kg üstünü koru. 1 turşu paketi (6'lı dahil) veya 1 tanışma paketi = 1 kargo, 5 kg. Ürün miktarını değiştirme.\n- Yaprak bidon=5 kg.\n- 10 kg yeşil zeytin =16kg  1 adet\n- Kg belirtilmemişse her kova=10 kg kabul edilir.\n- Ürün/kova ayrımını fiyata göre mantıksal belirle:\n  - `20 siyah zeytin 2600-2000` → 20 kg\n  - `20 siyah zeytin 20000` civarı → 20 kova\n  - `1300 kampanyalı` → `Kampanyalı Zeytin`\n- `urunler` alanına mesajdaki tüm ürünleri miktarlarıyla yaz.\n\nÇIKTI:\n\n{\n\"siparis_alan_isim\":\"\",\n\"siparis_alan_numara\":\"\",\n\"musteri_ad_soyad\":\"\",\n\"musteri_telefon\":\"\",\n\"adres\":\"\",\n\"Sehir\":\"\",\n\"ilce\":\"\",\n\"urunler\":\"\",\n\"toplam\":\"\",\n\"odeme_yontemi\":\"\",\n\"notlar\":\"\",\n\"Siparis\":\"\",\n\"firma\":\"\",\n\"kargo_adet\":\"\",\n\"kargo_kg\":\"\"\n}\n\nKARGO KG FORMAT KURALI: Paket ayırıcı yalnızca + işaretidir. Dört paket örneği: kargo_adet:\"4\", kargo_kg:\"5+10+5+5\". Listeyi toplama; her değer ayrı bir pakettir. Tek paket yalnızca \"10\" olarak yazılır. Ondalıklı KG için nokta kullan (9.5+10). Paketleri virgülle ayırma. Liste eleman sayısı kargo_adet ile birebir aynı olmalı.\n\nTESLİM ŞEKLİ — ZORUNLU JSON ALANLARI:\nÇıktıya subeden_teslim (boolean true/false), teslim_subesi (metin veya boş), teslim_sekli_kontrol (boolean true/false) ekle. String \"true\"/\"false\" kullanma.\nMesaj açıkça şubeden teslim/alım, şubeden alacağım/alacak, şube teslimatı diyorsa subeden_teslim:true. Aynı mesajda ev adresi bulunması bu açık talimatı değiştirmez. Örneğin \"Kocatepe şubesi DHL kargo şube teslimatı\" → true, \"Kocatepe\", false.\nAdrese/evine teslim veya normal ev adresi için false. \"Şubeye yakın\", \"şube yanı\" tek başına şubeden teslim değildir. Olumsuz ifadeleri dikkate al: \"şubeden teslim değil, eve gelsin\" → false.\nŞube adını yalnızca mesajda varsa yaz; şube adı/kodu veya konum uydurma. Şube adı belirtilmeden açıkça şubeden teslim isteniyorsa true, boş teslim_subesi, false. İl ve ilçe yine gereklidir; adres eksikse mesajda açıkça geçen şube/teslim bilgisini adres alanında koru.\nBirbiriyle çelişen teslim talimatı, alternatif talep (\"şubeden veya evden\"), belirsiz teslim yeri varsa teslim_sekli_kontrol:true; tahmin ederek kesinleştirme. Normal adres ve açık şubeden alım çelişki sayılmaz. Teslim şekli belirsizliği tek başına Siparis:Hayır yapmaz; panelde kontrol edilecektir.\n"
+      }
+    }
+  },
+  {
+    "type": "updateNodeParameters",
+    "nodeName": "GAZİ",
+    "parameters": {
+      "tableId": "gazi_siparisler_giris",
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "siparis_no",
+            "fieldValue": "={{ $json.siparis_no }}"
+          },
+          {
+            "fieldId": "siparis_tel",
+            "fieldValue": "={{ $json.siparis_tel }}"
+          },
+          {
+            "fieldId": "ad_soyad",
+            "fieldValue": "={{ $json.ad_soyad }}"
+          },
+          {
+            "fieldId": "musteri_tel",
+            "fieldValue": "={{ $json.musteri_tel }}"
+          },
+          {
+            "fieldId": "adres",
+            "fieldValue": "={{ $json.adres }}"
+          },
+          {
+            "fieldId": "urun_bilgisi",
+            "fieldValue": "={{ $json.urun_bilgisi }}"
+          },
+          {
+            "fieldId": "sehir",
+            "fieldValue": "={{ $json.sehir }}"
+          },
+          {
+            "fieldId": "toplam_tutar",
+            "fieldValue": "={{ $json.toplam_tutar }}"
+          },
+          {
+            "fieldId": "odeme_sekli",
+            "fieldValue": "={{ $json.odeme_sekli }}"
+          },
+          {
+            "fieldId": "notlar",
+            "fieldValue": "={{ $json.notlar }}"
+          },
+          {
+            "fieldId": "tarih",
+            "fieldValue": "={{ $json.tarih }}"
+          },
+          {
+            "fieldId": "musteri_no",
+            "fieldValue": "={{ $json.musteri_no }}"
+          },
+          {
+            "fieldId": "firma",
+            "fieldValue": "=Gazi"
+          },
+          {
+            "fieldId": "siparis_alan",
+            "fieldValue": "={{ $json.siparis_tel }}"
+          },
+          {
+            "fieldId": "ilce",
+            "fieldValue": "={{ $json.ilce }}"
+          },
+          {
+            "fieldId": "kargo_durumu",
+            "fieldValue": "={{ $json.kargo_durumu }}"
+          },
+          {
+            "fieldId": "kargo_adet",
+            "fieldValue": "={{ $json.kargo_adet }}"
+          },
+          {
+            "fieldId": "sehir_kodu",
+            "fieldValue": "={{ $json.sehir_kodu }}"
+          },
+          {
+            "fieldId": "ilce_kodu",
+            "fieldValue": "={{ $json.ilce_kodu }}"
+          },
+          {
+            "fieldId": "kargo_siparis_no",
+            "fieldValue": "={{ $json.kargo_siparis_no }}"
+          },
+          {
+            "fieldId": "kargo_kg",
+            "fieldValue": "={{ $json.kargo_kg }}"
+          },
+          {
+            "fieldId": "subeden_teslim",
+            "fieldValue": "={{ $json.subeden_teslim }}"
+          },
+          {
+            "fieldId": "teslim_subesi",
+            "fieldValue": "={{ $json.teslim_subesi }}"
+          },
+          {
+            "fieldId": "teslim_sekli_kontrol",
+            "fieldValue": "={{ $json.teslim_sekli_kontrol }}"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "updateNodeParameters",
+    "nodeName": "AI Agent1",
+    "parameters": {
+      "promptType": "define",
+      "text": "=Siparis alan no:({{ $('MESAJ_HAZIRLA').item.json._sender_phone }})\nSipariş Firma:({{ $('MESAJ_HAZIRLA').item.json.body?.data?.pushName ?? '' }})\nGelen Mesaj:({{ $('MESAJ_HAZIRLA').item.json._message_text }})",
+      "options": {
+        "systemMessage": "ÖNCELİKLİ KURAL: “EFT”, “havale”, “IBAN’a ödeme alındı”, “ödeme alındı” veya “ödendi” varsa toplam:\"0\", odeme_yontemi:\"EFT\". “Ödemesiz”, “bedelsiz” veya “ücretsiz” varsa toplam:\"0\", odeme_yontemi:\"Bedelsiz\"; EFT de varsa \"EFT\" kullan. Yazım farklılıklarını tanı; “alınmadı/alınacak” ödeme sayılmaz. Pozitif tutar yazsa bile toplam 0; tutarı notlarda koru. Fiyat eksikliği siparişi engellemez; diğer bilgiler tamsa Siparis:\"Evet\". Mevcut odeme_yontemi alanını kullan. 10 kg siyah zeytin: kargo_adet:\"1\", kargo_kg:\"10\"; yeşilin ağırlık kuralını siyaha uygulama.\n\nSen bir WhatsApp Sipariş Dönüştürücü AI’sın.\n\nGörevin, serbest WhatsApp sipariş mesajını eksiksiz analiz edip aşağıdaki JSON formatına dönüştürmektir. SADECE GEÇERLİ JSON döndür.\n\nKURALLAR:\n\n- `Siparis` SADECE `Evet` veya `Hayır` olabilir.\n- Gerekli bilgiler eksikse `Siparis:\"Hayır\"` ve `notlar:\"Eksik bilgi – (neden)\"` yaz.\n- Eksik alanları boş bırak.\n- Sipariş için yeterli bilgi varsa `Siparis:\"Evet\"`.\n- Sipariş alınan numara webhook formatında `905xxxxxxxxx@s.whatsapp.net` gelir. Çıktıda `05xxxxxxxxx` formatına çevir. Eksik olması Siparis'i Hayır yapmaz.\n- Müşteri ad soyadını mesajdan al.\n- Müşteri telefonunu +90/05, boşluk, parantez ve `-` karakterlerinden temizle → `5xxxxxxxxx`.(10 Hane olmalı)\n- Adres; mahalle, cadde, no, ilçe ve il içermelidir. Kargo şubesinden teslim alınacaksa adres zorunlu değildir.\n- `Sehir` ve `ilce` TÜRKÇE KARAKTERLERLE ve TAMAMEN BÜYÜK HARF yazılır.\n- `urunler` ürünleri miktarlarıyla alt alta içerir.\n- `toplam`: Mesajdaki açık tutarı kullan; `1300₺`, `1300 TL` ve `1.300 TL` → `1300`. Para simgesine bitişik tutarı atlama. Birim fiyat ve miktar açıkça belirtilmişse hesapla; ürünün fiyatını tahmin etme. Fiyat hiç belirtilmemişse toplam boş, Siparis:\"Hayır\", notlar:\"Eksik bilgi – fiyat\" yaz. 0 yalnızca mesajda açıkça sıfır/bedelsiz belirtilmişse yaz.\n- `odeme_yontemi`: `Kapıda Nakit`, `Kapıda Kart`, `Peşin`, `Bedelsiz`, `Belirtilmemiş`.\n- Ürünler açıkça bedelsiz/hediye olarak veya kapıda tahsilat yapılmayacak şekilde gönderiliyorsa `toplam:\"0\"`, `odeme_yontemi:\"Bedelsiz\"` yaz. Açık bedelsiz talimatı varsa yanında yazılan ürün değerini tahsilat tutarı olarak alma; ürün değerini notlara ekle. Yalnızca \"kargo ücretsiz\" ifadesi ürün bedelini sıfırlamaz. Ücretsiz/bedelsiz bilgisi yoksa pozitif tutarı sıfırlama.\n- `notlar`: Özel ifadeler, uyarılar, ❗ vb. yazılır.\n- Sipariş alan kişi, firma bilgisinin sonunda belirtilen kişidir. İlk harfi büyük yaz.\n- `firma`: `Queen`, `Esin`, `Tad`, `Bilinmeyen`.\n- Kargo hesabı: Her ayrı ürün kabı/tenekesi/kova ayrı pakettir. Farklı ürünleri toplam ağırlığa bakıp tek pakette birleştirme. 10 kg zeytin=1 paket, 5 kg zeytin=1 paket, 5 lt zeytinyağı=1 paket ve kargo_kg için 5 kabul edilir. 5 lt zeytinyağı + 5 kg zeytin → kargo_adet:\"2\", kargo_kg:\"5+5\". 10 kg zeytin + 5 lt zeytinyağı → \"2\" ve \"10+5\". Açıkça birlikte tek paket dendiğinde bunu uygula; toplu/tanışma paketlerinin özel kuralları geçerlidir.\n- `kargo_kg`: Paket başına kiloları tek tek + ile ayırarak yaz. Örn: `5+10+10+5`. Son kontrol: kargo_adet, kargo_kg listesinin eleman sayısına eşit olmalı ve tüm ürün kapları hesaba katılmalı.\n- Kargo KG: Her pakette 8 kg ve altını 5 kg yaz; 8 kg üstünü koru. 1 turşu paketi (6'lı dahil) veya 1 tanışma paketi = 1 kargo, 5 kg. Ürün miktarını değiştirme.\n- Yaprak bidon=5 kg.\n- 10 kg yeşil zeytin =16kg  1 adet\n- Kg belirtilmemişse her kova=10 kg kabul edilir.\n- Ürün/kova ayrımını fiyata göre mantıksal belirle:\n  - `20 siyah zeytin 2600-2000` → 20 kg\n  - `20 siyah zeytin 20000` civarı → 20 kova\n  - `1300 kampanyalı` → `Kampanyalı Zeytin`\n- `urunler` alanına mesajdaki tüm ürünleri miktarlarıyla yaz.\n\nÇIKTI:\n\n{\n\"siparis_alan_isim\":\"\",\n\"siparis_alan_numara\":\"\",\n\"musteri_ad_soyad\":\"\",\n\"musteri_telefon\":\"\",\n\"adres\":\"\",\n\"Sehir\":\"\",\n\"ilce\":\"\",\n\"urunler\":\"\",\n\"toplam\":\"\",\n\"odeme_yontemi\":\"\",\n\"notlar\":\"\",\n\"Siparis\":\"\",\n\"firma\":\"\",\n\"kargo_adet\":\"\",\n\"kargo_kg\":\"\"\n}\n\nKARGO KG FORMAT KURALI: Paket ayırıcı yalnızca + işaretidir. Dört paket örneği: kargo_adet:\"4\", kargo_kg:\"5+10+5+5\". Listeyi toplama; her değer ayrı bir pakettir. Tek paket yalnızca \"10\" olarak yazılır. Ondalıklı KG için nokta kullan (9.5+10). Paketleri virgülle ayırma. Liste eleman sayısı kargo_adet ile birebir aynı olmalı.\n\nTESLİM ŞEKLİ — ZORUNLU JSON ALANLARI:\nÇıktıya subeden_teslim (boolean true/false), teslim_subesi (metin veya boş), teslim_sekli_kontrol (boolean true/false) ekle. String \"true\"/\"false\" kullanma.\nMesaj açıkça şubeden teslim/alım, şubeden alacağım/alacak, şube teslimatı diyorsa subeden_teslim:true. Aynı mesajda ev adresi bulunması bu açık talimatı değiştirmez. Örneğin \"Kocatepe şubesi DHL kargo şube teslimatı\" → true, \"Kocatepe\", false.\nAdrese/evine teslim veya normal ev adresi için false. \"Şubeye yakın\", \"şube yanı\" tek başına şubeden teslim değildir. Olumsuz ifadeleri dikkate al: \"şubeden teslim değil, eve gelsin\" → false.\nŞube adını yalnızca mesajda varsa yaz; şube adı/kodu veya konum uydurma. Şube adı belirtilmeden açıkça şubeden teslim isteniyorsa true, boş teslim_subesi, false. İl ve ilçe yine gereklidir; adres eksikse mesajda açıkça geçen şube/teslim bilgisini adres alanında koru.\nBirbiriyle çelişen teslim talimatı, alternatif talep (\"şubeden veya evden\"), belirsiz teslim yeri varsa teslim_sekli_kontrol:true; tahmin ederek kesinleştirme. Normal adres ve açık şubeden alım çelişki sayılmaz. Teslim şekli belirsizliği tek başına Siparis:Hayır yapmaz; panelde kontrol edilecektir.\n"
+      }
+    }
+  }
+]
