@@ -1254,3 +1254,20 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .original-message summary { cursor: pointer; font-weight: 700; color: #23734f; }
 .original-message-hint { margin: 10px 0; color: #64756b; font-size: 12px; }
 .original-message-text { white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; font: inherit; line-height: 1.6; padding: 12px; border-radius: 8px; background: #f3f6f4; }
+
+/* Siparişin paneldeki aşaması; kargo hareketinden ayrı, her listede görünür. */
+.order-stage-line { display:block; margin-top:5px; }
+.order-stage-badge {
+  display:inline-flex; align-items:center; padding:4px 9px;
+  border:1px solid transparent; border-radius:999px;
+  font-size:11px; font-weight:700; line-height:1.3; white-space:nowrap;
+}
+.order-stage-badge--waiting { color:#8a5b12; background:#fff5da; border-color:#f2dfaa; }
+.order-stage-badge--prepared { color:#245a99; background:#eaf2ff; border-color:#cedef5; }
+.order-stage-badge--shipped { color:#23623e; background:#e9f5ed; border-color:#c9e5d1; }
+.order-stage-badge--completed { color:#365443; background:#edf3ef; border-color:#d7e4dc; }
+.order-stage-badge--return { color:#75459a; background:#f4ebfa; border-color:#e5d4f1; }
+.order-stage-badge--cancelled { color:#a34545; background:#fff0f0; border-color:#f2d4d4; }
+.order-stage-badge--unknown { color:#58616b; background:#f1f3f5; border-color:#dce1e6; }
+
+.order-stage-badge--problem { color:#9d4c22; background:#fff0e5; border-color:#f0d3bb; }
