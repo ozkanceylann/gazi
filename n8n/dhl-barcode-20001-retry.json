@@ -1,0 +1,806 @@
+{
+  "workflowId": "9xmX2j7NIEsR0G19",
+  "publishedVersion": "ac7e6197-adab-474e-aae8-7efe57b2d7a4",
+  "initialDelaySeconds": 2,
+  "retryDelaySeconds": [
+    2,
+    4
+  ],
+  "operations": [
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Kargola Etiket · Şube İçin Kısa Bekleme",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "parameters": {
+          "resume": "timeInterval",
+          "amount": 2,
+          "unit": "seconds"
+        },
+        "position": [
+          4528,
+          2028
+        ]
+      }
+    },
+    {
+      "type": "removeConnection",
+      "source": "Kargola Etiket · ZPL Kayıtlı mı",
+      "target": "Kargola Etiket · DHL Paket Etiketleri",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "removeConnection",
+      "source": "Kargola Etiket · DHL Paket Etiketleri",
+      "target": "Kargola Etiket · Paket Etiketlerini Doğrula",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · ZPL Kayıtlı mı",
+      "target": "Kargola Etiket · Şube İçin Kısa Bekleme",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · Şube İçin Kısa Bekleme",
+      "target": "Kargola Etiket · DHL Paket Etiketleri",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Kargola Etiket · 20001 Tekrar 1 mı",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "leftValue": "={{ (() => { const b=Array.isArray($json.body)?$json.body[0]:$json.body; const e=b?.error; return !$json.error && !b?.shipmentId && Number($json.statusCode)>=400 && Number($json.statusCode)<500 && String(e?.Code ?? e?.code ?? '')==='20001'; })() }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "position": [
+          4748,
+          2028
+        ]
+      }
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Kargola Etiket · 20001 Bekleme 1",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "parameters": {
+          "resume": "timeInterval",
+          "amount": 2,
+          "unit": "seconds"
+        },
+        "position": [
+          4968,
+          2028
+        ]
+      }
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Kargola Etiket · DHL Barkod Tekrar 1",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.mngkargo.com.tr/mngapi/api/barcodecmdapi/createbarcode",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/json"
+              },
+              {
+                "name": "x-api-version",
+                "value": "v1"
+              },
+              {
+                "name": "X-IBM-Client-Id",
+                "value": "={{ $('Kargola Etiket · Canlı Token Oku').first().json.X_IBM_Client_Id }}"
+              },
+              {
+                "name": "X-IBM-Client-Secret",
+                "value": "={{ $('Kargola Etiket · Canlı Token Oku').first().json.X_IBM_Client_Secret }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $('Kargola Etiket · Canlı Token Oku').first().json.jwt }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ (() => { const p=$('Kargola Etiket · Barkod İsteğini Hazırla').first().json; return {referenceId:p.order.referenceId,billOfLandingId:'',isCOD:p.order.isCOD,codAmount:p.order.codAmount,printReferenceBarcodeOnError:0,packagingType:3,orderPieceList:p.orderPieceList}; })() }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          },
+          "contentType": "json"
+        },
+        "position": [
+          5188,
+          2028
+        ]
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Kargola Etiket · DHL Barkod Tekrar 1",
+      "settings": {
+        "onError": "continueErrorOutput",
+        "retryOnFail": false
+      }
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · DHL Barkod Tekrar 1",
+      "target": "Kargola · İşlem Hatası",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · DHL Paket Etiketleri",
+      "target": "Kargola Etiket · 20001 Tekrar 1 mı",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · 20001 Tekrar 1 mı",
+      "target": "Kargola Etiket · Paket Etiketlerini Doğrula",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · 20001 Tekrar 1 mı",
+      "target": "Kargola Etiket · 20001 Bekleme 1",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · 20001 Bekleme 1",
+      "target": "Kargola Etiket · DHL Barkod Tekrar 1",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Kargola Etiket · 20001 Tekrar 2 mı",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "leftValue": "={{ (() => { const b=Array.isArray($json.body)?$json.body[0]:$json.body; const e=b?.error; return !$json.error && !b?.shipmentId && Number($json.statusCode)>=400 && Number($json.statusCode)<500 && String(e?.Code ?? e?.code ?? '')==='20001'; })() }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "position": [
+          5408,
+          2028
+        ]
+      }
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Kargola Etiket · 20001 Bekleme 2",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "parameters": {
+          "resume": "timeInterval",
+          "amount": 4,
+          "unit": "seconds"
+        },
+        "position": [
+          5628,
+          2028
+        ]
+      }
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Kargola Etiket · DHL Barkod Tekrar 2",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.mngkargo.com.tr/mngapi/api/barcodecmdapi/createbarcode",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/json"
+              },
+              {
+                "name": "x-api-version",
+                "value": "v1"
+              },
+              {
+                "name": "X-IBM-Client-Id",
+                "value": "={{ $('Kargola Etiket · Canlı Token Oku').first().json.X_IBM_Client_Id }}"
+              },
+              {
+                "name": "X-IBM-Client-Secret",
+                "value": "={{ $('Kargola Etiket · Canlı Token Oku').first().json.X_IBM_Client_Secret }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $('Kargola Etiket · Canlı Token Oku').first().json.jwt }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ (() => { const p=$('Kargola Etiket · Barkod İsteğini Hazırla').first().json; return {referenceId:p.order.referenceId,billOfLandingId:'',isCOD:p.order.isCOD,codAmount:p.order.codAmount,printReferenceBarcodeOnError:0,packagingType:3,orderPieceList:p.orderPieceList}; })() }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          },
+          "contentType": "json"
+        },
+        "position": [
+          5848,
+          2028
+        ]
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Kargola Etiket · DHL Barkod Tekrar 2",
+      "settings": {
+        "onError": "continueErrorOutput",
+        "retryOnFail": false
+      }
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · DHL Barkod Tekrar 2",
+      "target": "Kargola · İşlem Hatası",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · DHL Barkod Tekrar 1",
+      "target": "Kargola Etiket · 20001 Tekrar 2 mı",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · 20001 Tekrar 2 mı",
+      "target": "Kargola Etiket · Paket Etiketlerini Doğrula",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · 20001 Tekrar 2 mı",
+      "target": "Kargola Etiket · 20001 Bekleme 2",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · 20001 Bekleme 2",
+      "target": "Kargola Etiket · DHL Barkod Tekrar 2",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Kargola Etiket · DHL Barkod Tekrar 2",
+      "target": "Kargola Etiket · Paket Etiketlerini Doğrula",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "updateNodeGroup",
+      "groupName": "Kargola",
+      "nodeNames": [
+        "Kargola · Panel İsteği",
+        "Kargola · Oturumu Doğrula",
+        "Kargola · Gazi Yetkisi",
+        "Kargola · Siparişi Oku",
+        "Kargola · Siparişi Kontrol Et",
+        "Kargola · DHL Kaydı Var mı",
+        "Kargola · Mevcut Kayıt",
+        "Kargola · Canlı Token Oku",
+        "Kargola · DHL İsteğini Hazırla",
+        "Kargola · DHL Sipariş Oluştur",
+        "Kargola · DHL Yanıtını Hazırla",
+        "Kargola · Gazi Kaydet",
+        "Kargola · Panele Yanıt",
+        "Kargola · İşlem Hatası",
+        "Kargola · Hata Kaydet",
+        "Kargola · İşlem Hata Yanıtı",
+        "Kargola · Oturum Hata Yanıtı",
+        "Kargola · Kayıt Hata Yanıtı",
+        "Kargola · Etiket Adımını Hazırla",
+        "Kargola · DHL Başarısız mı",
+        "Kargola · Etiket Yanıtı",
+        "Kargola Etiket · Etiket Siparişini Oku",
+        "Kargola Etiket · Etiket Kontrol",
+        "Kargola Etiket · PDF Kayıtlı mı",
+        "Kargola Etiket · Canlı Token Oku",
+        "Kargola Etiket · Barkod İsteğini Hazırla",
+        "Kargola Etiket · ZPL Kayıtlı mı",
+        "Kargola Etiket · Kayıtlı ZPL",
+        "Kargola Etiket · Etiket PDF",
+        "Kargola Etiket · DHL Paket Etiketleri",
+        "Kargola Etiket · Paket Etiketlerini Doğrula",
+        "Kargola Etiket · Paket Barkodlarını Kaydet",
+        "Kargola Etiket · PDF İçeriği",
+        "Kargola Etiket · PDF Base64",
+        "Kargola Etiket · PDF Kontrol",
+        "Kargola Etiket · PDF Kaydet",
+        "Kargola Etiket · Etiket Sonucu",
+        "Kargola Etiket · Kayıtlı PDF",
+        "Kargola Etiket · Mevcut Gönderiyi Kurtar mı",
+        "Kargola Etiket · Mevcut DHL Durumu",
+        "Kargola Etiket · Kurtarma Kaydı",
+        "Kargola Etiket · Kurtarılan Gönderiyi Kaydet",
+        "Kargola Etiket · Kurtarılan Etiket Sonucu",
+        "Kargola Etiket · Şube İçin Kısa Bekleme",
+        "Kargola Etiket · 20001 Tekrar 1 mı",
+        "Kargola Etiket · 20001 Bekleme 1",
+        "Kargola Etiket · DHL Barkod Tekrar 1",
+        "Kargola Etiket · 20001 Tekrar 2 mı",
+        "Kargola Etiket · 20001 Bekleme 2",
+        "Kargola Etiket · DHL Barkod Tekrar 2"
+      ]
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Barkod Etiket · Şube İçin Kısa Bekleme",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "parameters": {
+          "resume": "timeInterval",
+          "amount": 2,
+          "unit": "seconds"
+        },
+        "position": [
+          2288,
+          3552
+        ]
+      }
+    },
+    {
+      "type": "removeConnection",
+      "source": "Barkod Etiket · ZPL Kayıtlı mı",
+      "target": "Barkod Etiket · DHL Paket Etiketleri",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "removeConnection",
+      "source": "Barkod Etiket · DHL Paket Etiketleri",
+      "target": "Barkod Etiket · Paket Etiketlerini Doğrula",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · ZPL Kayıtlı mı",
+      "target": "Barkod Etiket · Şube İçin Kısa Bekleme",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · Şube İçin Kısa Bekleme",
+      "target": "Barkod Etiket · DHL Paket Etiketleri",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Barkod Etiket · 20001 Tekrar 1 mı",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "leftValue": "={{ (() => { const b=Array.isArray($json.body)?$json.body[0]:$json.body; const e=b?.error; return !$json.error && !b?.shipmentId && Number($json.statusCode)>=400 && Number($json.statusCode)<500 && String(e?.Code ?? e?.code ?? '')==='20001'; })() }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "position": [
+          2508,
+          3552
+        ]
+      }
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Barkod Etiket · 20001 Bekleme 1",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "parameters": {
+          "resume": "timeInterval",
+          "amount": 2,
+          "unit": "seconds"
+        },
+        "position": [
+          2728,
+          3552
+        ]
+      }
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Barkod Etiket · DHL Barkod Tekrar 1",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.mngkargo.com.tr/mngapi/api/barcodecmdapi/createbarcode",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/json"
+              },
+              {
+                "name": "x-api-version",
+                "value": "v1"
+              },
+              {
+                "name": "X-IBM-Client-Id",
+                "value": "={{ $('Barkod Etiket · Canlı Token Oku').first().json.X_IBM_Client_Id }}"
+              },
+              {
+                "name": "X-IBM-Client-Secret",
+                "value": "={{ $('Barkod Etiket · Canlı Token Oku').first().json.X_IBM_Client_Secret }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $('Barkod Etiket · Canlı Token Oku').first().json.jwt }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ (() => { const p=$('Barkod Etiket · Barkod İsteğini Hazırla').first().json; return {referenceId:p.order.referenceId,billOfLandingId:'',isCOD:p.order.isCOD,codAmount:p.order.codAmount,printReferenceBarcodeOnError:0,packagingType:3,orderPieceList:p.orderPieceList}; })() }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          },
+          "contentType": "json"
+        },
+        "position": [
+          2948,
+          3552
+        ]
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Barkod Etiket · DHL Barkod Tekrar 1",
+      "settings": {
+        "onError": "continueErrorOutput",
+        "retryOnFail": false
+      }
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · DHL Barkod Tekrar 1",
+      "target": "Barkod · İşlem Hatası",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · DHL Paket Etiketleri",
+      "target": "Barkod Etiket · 20001 Tekrar 1 mı",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · 20001 Tekrar 1 mı",
+      "target": "Barkod Etiket · Paket Etiketlerini Doğrula",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · 20001 Tekrar 1 mı",
+      "target": "Barkod Etiket · 20001 Bekleme 1",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · 20001 Bekleme 1",
+      "target": "Barkod Etiket · DHL Barkod Tekrar 1",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Barkod Etiket · 20001 Tekrar 2 mı",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "leftValue": "={{ (() => { const b=Array.isArray($json.body)?$json.body[0]:$json.body; const e=b?.error; return !$json.error && !b?.shipmentId && Number($json.statusCode)>=400 && Number($json.statusCode)<500 && String(e?.Code ?? e?.code ?? '')==='20001'; })() }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "position": [
+          3168,
+          3552
+        ]
+      }
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Barkod Etiket · 20001 Bekleme 2",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "parameters": {
+          "resume": "timeInterval",
+          "amount": 4,
+          "unit": "seconds"
+        },
+        "position": [
+          3388,
+          3552
+        ]
+      }
+    },
+    {
+      "type": "addNode",
+      "node": {
+        "name": "Barkod Etiket · DHL Barkod Tekrar 2",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.mngkargo.com.tr/mngapi/api/barcodecmdapi/createbarcode",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/json"
+              },
+              {
+                "name": "x-api-version",
+                "value": "v1"
+              },
+              {
+                "name": "X-IBM-Client-Id",
+                "value": "={{ $('Barkod Etiket · Canlı Token Oku').first().json.X_IBM_Client_Id }}"
+              },
+              {
+                "name": "X-IBM-Client-Secret",
+                "value": "={{ $('Barkod Etiket · Canlı Token Oku').first().json.X_IBM_Client_Secret }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $('Barkod Etiket · Canlı Token Oku').first().json.jwt }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ (() => { const p=$('Barkod Etiket · Barkod İsteğini Hazırla').first().json; return {referenceId:p.order.referenceId,billOfLandingId:'',isCOD:p.order.isCOD,codAmount:p.order.codAmount,printReferenceBarcodeOnError:0,packagingType:3,orderPieceList:p.orderPieceList}; })() }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          },
+          "contentType": "json"
+        },
+        "position": [
+          3608,
+          3552
+        ]
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Barkod Etiket · DHL Barkod Tekrar 2",
+      "settings": {
+        "onError": "continueErrorOutput",
+        "retryOnFail": false
+      }
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · DHL Barkod Tekrar 2",
+      "target": "Barkod · İşlem Hatası",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · DHL Barkod Tekrar 1",
+      "target": "Barkod Etiket · 20001 Tekrar 2 mı",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · 20001 Tekrar 2 mı",
+      "target": "Barkod Etiket · Paket Etiketlerini Doğrula",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · 20001 Tekrar 2 mı",
+      "target": "Barkod Etiket · 20001 Bekleme 2",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · 20001 Bekleme 2",
+      "target": "Barkod Etiket · DHL Barkod Tekrar 2",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Barkod Etiket · DHL Barkod Tekrar 2",
+      "target": "Barkod Etiket · Paket Etiketlerini Doğrula",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "updateNodeGroup",
+      "groupName": "Barkod",
+      "nodeNames": [
+        "Barkod · Panel İsteği",
+        "Barkod · Oturumu Doğrula",
+        "Barkod · Gazi Yetkisi",
+        "Barkod · Barkod Yanıtı",
+        "Barkod · Oturum Hata Yanıtı",
+        "Barkod · İşlem Hatası",
+        "Barkod · Hata Kaydet",
+        "Barkod · İşlem Hata Yanıtı",
+        "Barkod Etiket · Etiket Siparişini Oku",
+        "Barkod Etiket · Etiket Kontrol",
+        "Barkod Etiket · PDF Kayıtlı mı",
+        "Barkod Etiket · Canlı Token Oku",
+        "Barkod Etiket · Barkod İsteğini Hazırla",
+        "Barkod Etiket · ZPL Kayıtlı mı",
+        "Barkod Etiket · Kayıtlı ZPL",
+        "Barkod Etiket · Etiket PDF",
+        "Barkod Etiket · DHL Paket Etiketleri",
+        "Barkod Etiket · Paket Etiketlerini Doğrula",
+        "Barkod Etiket · Paket Barkodlarını Kaydet",
+        "Barkod Etiket · PDF İçeriği",
+        "Barkod Etiket · PDF Base64",
+        "Barkod Etiket · PDF Kontrol",
+        "Barkod Etiket · PDF Kaydet",
+        "Barkod Etiket · Etiket Sonucu",
+        "Barkod Etiket · Kayıtlı PDF",
+        "Barkod Etiket · Mevcut Gönderiyi Kurtar mı",
+        "Barkod Etiket · Mevcut DHL Durumu",
+        "Barkod Etiket · Kurtarma Kaydı",
+        "Barkod Etiket · Kurtarılan Gönderiyi Kaydet",
+        "Barkod Etiket · Kurtarılan Etiket Sonucu",
+        "Barkod Etiket · Şube İçin Kısa Bekleme",
+        "Barkod Etiket · 20001 Tekrar 1 mı",
+        "Barkod Etiket · 20001 Bekleme 1",
+        "Barkod Etiket · DHL Barkod Tekrar 1",
+        "Barkod Etiket · 20001 Tekrar 2 mı",
+        "Barkod Etiket · 20001 Bekleme 2",
+        "Barkod Etiket · DHL Barkod Tekrar 2"
+      ]
+    }
+  ]
+}
