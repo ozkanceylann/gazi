@@ -12,6 +12,8 @@ const SUPABASE_KEY =
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const sessionUser = await window.requireSession(db);
+const { installLabelScanner } = await import('./label-scanner.js?v=20261015-label-scanner-44');
+installLabelScanner({ db, table: CONFIG.table, openOrder, toast });
 
 
 /* ============================================================

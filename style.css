@@ -1326,3 +1326,31 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
   cursor:pointer;
 }
 #orderDetails .btn-reference-mini:hover { background:#e6eee8; }
+/* Camera label lookup */
+.label-scan-toolbar { margin:0 0 12px; }
+.label-scan-launch { display:flex; align-items:center; justify-content:center; gap:10px; background:#18553c; color:#fff; border:1px solid #2b7155; border-radius:12px; padding:12px 18px; min-height:48px; cursor:pointer; font:700 16px system-ui; }
+.label-scan-launch:disabled { opacity:.6; cursor:wait; }
+.label-scan-launch:hover { background:#236c4d; }
+.label-scan-caption { font-size:12px; font-weight:400; opacity:.85; }
+.label-scan-backdrop { position:fixed; inset:0; z-index:1250; display:flex; align-items:center; justify-content:center; padding:16px; background:#071d16bf; }
+.label-scan-card { width:min(100%,520px); max-height:calc(100dvh - 32px); overflow:auto; padding:20px; border-radius:18px; background:#fff; color:#173d2c; box-shadow:0 20px 80px #0005; box-sizing:border-box; }
+.label-scan-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.label-scan-heading h2 { margin:0; font-size:22px; }
+.label-scan-close { width:44px; height:44px; flex-shrink:0; border:0; border-radius:50%; background:#edf3ef; cursor:pointer; font-size:20px; color:#173d2c; }
+.label-scan-help { font-size:14px; line-height:1.5; color:#577164; margin:8px 0 14px; }
+.label-scan-preview { position:relative; width:100%; aspect-ratio:4/3; overflow:hidden; border-radius:12px; background:#10251c; }
+.label-scan-preview video { width:100%; height:100%; object-fit:cover; }
+.label-scan-guide { position:absolute; inset:26% 7%; border:2px solid #ffd87c; border-radius:8px; box-shadow:0 0 0 100px #0003; pointer-events:none; }
+.label-scan-status { font-size:14px; line-height:1.5; min-height:42px; margin:12px 0; }
+.label-scan-controls { display:flex; gap:8px; margin-bottom:18px; }
+.label-scan-card [hidden] { display:none!important; }
+.label-scan-card button { min-height:44px; cursor:pointer; }
+.label-scan-form { border-top:1px solid #dce8df; padding-top:16px; }
+.label-scan-form label { display:block; font-size:13px; font-weight:600; margin-bottom:8px; }
+.label-scan-form>div { display:flex; gap:8px; }
+.label-scan-form input { width:0; min-width:0; flex:1; border:1px solid #c8d9ce; border-radius:8px; padding:10px; font:16px system-ui; }
+.label-scan-form button { flex-shrink:0; padding:10px 12px; }
+.label-scan-results { display:grid; gap:8px; margin-top:12px; }
+.label-scan-choice { width:100%; text-align:left; border:1px solid #c8d9ce; border-radius:8px; background:#f1f7f3; color:#173d2c; padding:12px; font:14px system-ui; line-height:1.5; }
+.label-scan-card :focus-visible,.label-scan-launch:focus-visible { outline:3px solid #d69b25; outline-offset:3px; }
+@media(max-width:600px) { .label-scan-launch { width:100%; } .label-scan-backdrop { padding:10px; } .label-scan-card { padding:16px; max-height:calc(100dvh - 20px); } .label-scan-caption { margin-left:auto; } }

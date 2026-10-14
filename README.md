@@ -2,6 +2,14 @@
 
 Ana sipariş hazırlama ve kargo paneli: https://gazi.ozkanceylan.uk
 
+## Etiket okutma
+
+Ana ekrandaki **Etiket Okut** düğmesi arka kamerayı açar. DHL paket barkodu, gönderi takip numarası, sipariş referansı veya elle girilen sipariş numarası mevcut oturumun erişebildiği kayıtlarla eşleştirilir. Tek eşleşmede sipariş detayı açılır; birden fazla eşleşmede seçim gösterilir. Okutma sipariş durumunu değiştirmez. Kamera kapanışta, arka plana geçişte veya bir barkod okunduğunda durur.
+
+Kamera HTTPS ve kullanıcı izni gerektirir. Kamera kullanılamadığında elle numara girişi çalışır. Görüntü cihazda ZXing ile çözülür; sunucuya yalnızca arama kodu gönderilir. Sabitlenmiş `@zxing/browser` 0.1.5 dosyası ve lisansları `vendor/` altında bulunur.
+
+Kontroller: `node tests/label-scanner.test.mjs`. Playwright kuruluyken `node tests/label-scanner-browser.cjs` kamera izin hatası, eşleşme, mobil taşma ve kamera kapanışını sahte kamera ile doğrular. Test dosyaları tarayıcıya bellekten sunulur; sunucu gerekmez.
+
 ## İade etiketi
 
 Tamamlananlar ekranındaki **İADE Etiketi Oluştur** düğmesiyle, teslim edilmiş bir sipariş için iade fişi hazırlanır. Fiş bağlantısı kaydedilir; sonraki tıklamalar aynı fişi açar. İade listesinde **İade Fişini Aç** ve iade kodu gösterilir.

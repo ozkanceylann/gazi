@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261015-branch-delivery-43"; // örn: 2025-12-15
+const VERSION = "20261015-label-scanner-44";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -13,6 +13,7 @@ const ASSETS = [
   "/app.js",
   "/config.js",
   "/cargo-weights.js",
+  "/label-scanner.js",
   "/manifest.json",
   "/logo.png",
   "/favicon.png"
