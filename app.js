@@ -180,8 +180,14 @@ let listRequest = 0;
 function applyTabFilter(q) {
   if(currentTab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
   if(currentTab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
-  if(currentTab==="kargolandi") q = q.in("kargo_durumu",["Kargolandı","Tamamlandı"]);
-  if(currentTab==="tamamlandi") { q = q.or("shipmentStatusCode.eq.5,isDelivered.eq.true"); }
+  const deliveredFilter = "shipmentStatusCode.eq.5,isDelivered.eq.true,shipmentStatus.eq.Teslim_Edildi,shipmentStatus.eq.Teslim Edildi";
+  if(currentTab==="kargolandi") {
+    q = q.in("kargo_durumu",["Kargolandı","Tamamlandı"])
+      .or("isDelivered.is.null,isDelivered.eq.false")
+      .or("shipmentStatusCode.is.null,shipmentStatusCode.neq.5")
+      .or("shipmentStatus.is.null,and(shipmentStatus.neq.Teslim_Edildi,shipmentStatus.neq.Teslim Edildi)");
+  }
+  if(currentTab==="tamamlandi") q = q.or(deliveredFilter);
   if(currentTab==="sorunlu") q=q.or([cargoStateFilter("failed"),cargoStateFilter("support")].join(","));
   if(currentTab==="iade") q=q.or(cargoStateFilter("return")+",iade_kodu.not.is.null");
   if(currentTab==="iptal")      q = q.eq("kargo_durumu","İptal");
