@@ -377,6 +377,27 @@ function orderLifecycleStage(order) {
   return stage || "Aşama belirtilmemiş";
 }
 
+function orderStageBadge(order) {
+  let stage = orderLifecycleStage(order);
+  const code = Number(order?.shipmentStatusCode);
+  const movement = String(order?.shipmentStatus || "").replace(/_/g, " ").trim();
+  if (!["İptal", "Silindi"].includes(stage)) {
+    if (order?.iade_kodu || code === 7 || movement === "Geri Geliyor") stage = "İade";
+    else if (stage === "Kargolandı" && ([6, 8].includes(code) || ["Teslim Edilemedi", "Destek Gerekiyor"].includes(movement))) stage = "Sorunlu";
+  }
+  const states = {
+    "Bekliyor": ["Bekleyenler", "waiting"],
+    "Hazırlandı": ["Hazırlandı", "prepared"],
+    "Kargolandı": ["Kargolandı", "shipped"],
+    "Tamamlandı": ["Tamamlananlar", "completed"],
+    "İade": ["İade", "return"],
+    "İptal": ["İptal", "cancelled"],
+    "Sorunlu": ["Sorunlu Siparişler", "problem"]
+  };
+  const [label, tone] = states[stage] || [stage, "unknown"];
+  return `<span class="order-stage-badge order-stage-badge--${tone}" aria-label="Sipariş durumu: ${escapeHtml(label)}">${escapeHtml(label)}</span>`;
+}
+
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -407,7 +428,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
 
   const actionBtn = (orderStage === "Tamamlandı" || orderStage === "İade")
     ? returnOrderActions(o)
-    : `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Aç</button>`;
+    : `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Detay</button>`;
 
 const errorPreview = isPreparedTab && canShip && o.gonder_hata_bilgisi
   ? `<button class="error-chip"
@@ -434,7 +455,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     <td>${orderStage === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button>` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}<span class="order-date">${escapeHtml(orderStage)}</span></td>
+    <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}<span class="order-stage-line">${orderStageBadge(o)}</span></td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -448,7 +469,7 @@ tr.innerHTML = isPendingTab
   `
   : `
     <td>${o.siparis_no}</td>
-    ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `<span>${escapeHtml(orderStage)}</span>`}</td>` : ""}
+    ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
     ${isPreparedTab ? `<td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>` : ""}
     <td><span class="order-customer-name">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</td>
     <td>
@@ -459,7 +480,7 @@ tr.innerHTML = isPendingTab
 </td>
 
     <td>${o.toplam_tutar} TL</td>
-<td>${escapeHtml(orderStage)}${isTrackingTab && ["Kargolandı","Tamamlandı","İade"].includes(orderStage) ? `<br>${cargoStatusBadge(o)}` : ""}</td>
+<td>${orderStageBadge(o)}${isTrackingTab && ["Kargolandı","Tamamlandı","İade"].includes(orderStage) ? `<br>${cargoStatusBadge(o)}` : ""}</td>
 
 <td>
   ${
