@@ -704,8 +704,6 @@ function isLiveShipment(order){
   catch { return false; }
 }
 function syncCargoTools(){
-  const referenceButton=document.getElementById('referenceCargoBtn');
-  if(referenceButton) referenceButton.hidden=currentTab!=='kargolandi'||!isGaziAdmin;
   const tools=document.getElementById("cargoTools");
   if(tools) tools.hidden=!["kargolandi","tamamlandi","sorunlu","iade"].includes(currentTab);
   document.querySelectorAll("[data-cargo-filter]").forEach(button=>{
@@ -1015,6 +1013,7 @@ document.getElementById("orderDetails").innerHTML = `
     <div class="detail-item">
       <small>Kodlar: ${d.sehir_kodu ?? "-"} / ${d.ilce_kodu ?? "-"}</small>
     </div>
+    ${d.kargo_durumu === "Kargolandı" && isGaziAdmin ? '<button id="btnReferenceLabel" class="btn-reference-mini" type="button" onclick="printReferenceLabel()">Referans Etiketi</button>' : ""}
   </div>
 
   ${renderOriginalMessage(d)}
@@ -1117,7 +1116,6 @@ document.getElementById("orderDetails").innerHTML = `
 
   const iptal = d.kargo_durumu === "İptal";
   const kargo = d.kargo_durumu === "Kargolandı";
-  document.getElementById("btnReferenceLabel").style.display = kargo && isGaziAdmin ? "inline-block" : "none";
   const tamam = currentTab === "tamamlandi" || d.kargo_durumu === "Tamamlandı" || d.isDelivered === true || Number(d.shipmentStatusCode) === 5;
 
   // Bekleyeni → Hazırla
@@ -1625,13 +1623,6 @@ async function retryCargoLabel(siparisNo,button){
 }
 
 const referenceLabelBusy = new Set();
-function referenceLabelFromToolbar(){
-  const value=window.prompt("Referans barkodu için sipariş numarasını yazın:",selectedOrder?.siparis_no||"");
-  if(value===null)return;
-  const id=Number(value.trim());
-  if(!Number.isSafeInteger(id)||id<1)return toast("Geçerli sipariş numarası yazın.");
-  return printReferenceLabel(id);
-}
 async function printReferenceLabel(orderId){
   const id=Number(orderId ?? selectedOrder?.siparis_no);
   if(!isGaziAdmin||!Number.isSafeInteger(id)||id<1)return;
@@ -1944,7 +1935,6 @@ Object.assign(window, {
   shipPreparedFromList,
   printBarcode,
   printReferenceLabel,
-  referenceLabelFromToolbar,
   retryCargoLabel,
   createReturnLabel,
   connectCargo,
