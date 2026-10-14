@@ -94,7 +94,7 @@ function renderTableHeader(){
     <th>${shouldShowNoteColumn(currentTab) ? "Not" : "Kargo Kodu"}</th>
     <th>Sipariş Alan</th>
     <th>${currentTab === "hazirlandi" ? "Hata / İşlem" : "İşlem"}</th>
-    ${currentTab === "hazirlandi" ? "<th>Kargola / Etiket</th>" : ""}
+    ${currentTab === "hazirlandi" ? "<th>Kargola</th>" : ""}
   `;
 
 }
@@ -245,8 +245,8 @@ async function loadOrders(reset=false){
 }
 
 function needsCargoLabelRetry(order){
-  return order?.kargo_durumu==="Hazırlandı"
-    && !!String(order.gonder_hata_bilgisi||"").trim()
+  return order?.kargo_durumu==="Kargolandı"
+    && !!(order.orderinvoiceid || order.kargo_takip_kodu)
     && !String(order.zpl_base64||"").startsWith("JVBER")
     && cargoEnvironment(order)!=="test";
 }
@@ -461,8 +461,8 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${orderTakerMarkup(o)}</td>
-<td>${errorPreview}</td>
-${isPreparedTab ? `<td>${retryLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">Kargo Etiketi Oluştur</button>` : `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>`}</td>` : ""}
+<td>${errorPreview}${currentTab === "kargolandi" ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${String(o.zpl_base64||"").startsWith("JVBER") ? "Etiketi Yazdır" : "Etiket Oluştur"}</button>` : ""}</td>
+${isPreparedTab ? `<td><button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button></td>` : ""}
 
   `;
 
@@ -1541,7 +1541,7 @@ async function retryCargoLabel(siparisNo,button){
       return toast("Kayıtlı kargo etiketi açıldı.");
     }
     if(!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
-    const result=await cargoRequest(WH_KARGOLA,{operation:"kargola",siparis_no:String(id)});
+    const result=await cargoRequest(WH_BARKOD,{siparis_no:String(id)});
     openCargoPdf(w,result.pdf_base64);
     toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi hazır.",6000);
   }catch(error){
