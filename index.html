@@ -15,7 +15,7 @@
   <script src="config.js?v=20261014-cargo-separate-34"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261015-label-scanner-44" />
+  <link rel="stylesheet" href="style.css?v=20261016-responsive-cargo-45" />
 
   <style>
     .btn-mini{
@@ -71,12 +71,12 @@
 
   <!-- ANA İÇERİK -->
   <main class="content-area">
-    <header class="page-header"><div><p class="page-eyebrow">SİPARİŞ YÖNETİMİ</p><h1 id="pageTitle">Bekleyen Siparişler</h1><p id="listSummary" role="status" aria-live="polite">Siparişler yükleniyor…</p></div><button class="btn-refresh" type="button" onclick="clearSearch()">↻ Listeyi Yenile</button></header>
+    <header class="page-header"><div><p class="page-eyebrow">SİPARİŞ YÖNETİMİ</p><h1 id="pageTitle">Bekleyen Siparişler</h1><p id="listSummary" role="status" aria-live="polite">Siparişler yükleniyor…</p></div><div class="page-header-actions"><button id="scanLabelBtn" class="label-scan-launch" type="button" disabled aria-label="Kamerayla etiket okut">📷 Okut</button><button class="btn-refresh" type="button" onclick="clearSearch()" aria-label="Listeyi yenile" title="Listeyi yenile">↻ Yenile</button></div></header>
 
-    <div class="label-scan-toolbar"><button id="scanLabelBtn" class="label-scan-launch" type="button" disabled><span aria-hidden="true">📷</span> Etiket Okut <span class="label-scan-caption">Barkodla siparişi aç</span></button></div>
+
 
     <section id="batchPrepareTools" class="cargo-tools" hidden aria-label="Toplu sipariş hazırlama">
-      <button id="batchPrepareBtn" class="btn-primary" type="button" onclick="prepareVisibleOrders()">İlk 10 Siparişin Etiketini Yazdır ve Hazırla</button>
+      <button id="batchPrepareBtn" class="btn-primary" type="button" onclick="prepareVisibleOrders()">İlk 10 Siparişi Yazdır ve Hazırla</button>
       <p>Ekranda görünen ilk 10 sipariş işleme alınır. Her sipariş için kargo adedi kadar etiket açılır.</p>
     </section>
 
@@ -188,7 +188,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261016-movements-newest-first");
+      await import("./app.js?v=20261016-responsive-cargo-45");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");
@@ -229,6 +229,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
 
 </body>
 </html>
+
 
 
 
