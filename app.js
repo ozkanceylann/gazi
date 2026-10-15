@@ -71,6 +71,17 @@ function cargoCountBadge(value) {
   return `<span class="cargo-count" style="--count-hue:${hue.toFixed(3)}" aria-label="${count} paket">${count}</span>`;
 }
 
+function orderColumnRoles(){
+  if(currentTab==="bekleyen")return ["number","primary","count","customer","product","total","status","note","taker"];
+  if(currentTab==="hazirlandi")return ["number","primary","count","customer","product","total","status","note","taker","actions"];
+  return ["number","customer","product","total","status","code","taker","actions"];
+}
+function labelOrderCells(row){
+  const roles=orderColumnRoles();
+  const labels={number:"Sipariş",primary:"İşlem",count:"Paket",customer:"Müşteri",product:"Ürün",total:"Tutar",status:"Durum",note:"Not",taker:"Sipariş alan",code:"Takip no",actions:"İşlemler"};
+  [...row.children].forEach((cell,i)=>{cell.classList.add("order-cell--"+roles[i]);cell.dataset.label=labels[roles[i]];});
+}
+
 function renderTableHeader(){
   const head = document.getElementById("ordersHeadRow");
   if(!head) return;
@@ -101,6 +112,7 @@ function renderTableHeader(){
     <th>${currentTab === "hazirlandi" ? "Hata / İşlem" : "İşlem"}</th>
   `;
 
+  labelOrderCells(head);
 }
 
 function toast(msg, ms=2500){
@@ -181,6 +193,7 @@ function formatDateTimeTR(iso) {
    LİSTELEME
 ============================================================ */
 let listRequest = 0;
+let listLoading = false;
 function applyTabFilter(q) {
   if(currentTab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
   if(currentTab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
@@ -199,29 +212,32 @@ function applyTabFilter(q) {
   return q;
 }
 
-// Page through the entire pending-label queue before showing saved labels.
+// Count each queue before applying its range: an exhausted queue must never
+// receive an offset beyond its last row (PostgREST PGRST103 / HTTP 416).
 async function loadCargoLabelQueue(start, end){
-  const query = (head=false) => applyCargoFilter(applyTabFilter(
-    db.from(TABLE).select("*", {count:"exact", head})
-      .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi")
-  ));
-  const pending = await query()
-    .or("kargo_zpl.is.null,kargo_zpl.eq.")
-    .or("zpl_base64.is.null,zpl_base64.not.like.JVBER%")
-    .order("siparis_no", {ascending:false}).range(start,end);
-  if(pending.error)return pending;
-  const remaining = end-start+1-(pending.data?.length||0);
-  let savedQuery = query(remaining===0)
-    .or("and(kargo_zpl.not.is.null,kargo_zpl.neq.),zpl_base64.like.JVBER%");
-  if(remaining>0){
-    const savedStart=Math.max(0,start-(pending.count||0));
-    savedQuery=savedQuery.order("siparis_no",{ascending:false})
-      .range(savedStart,savedStart+remaining-1);
-  }
-  const saved=await savedQuery;
-  if(saved.error)return saved;
-  return {data:[...(pending.data||[]),...(saved.data||[])],error:null,
-    count:(pending.count||0)+(saved.count||0)};
+  const query = (saved, head=false) => {
+    let q=applyCargoFilter(applyTabFilter(db.from(TABLE)
+      .select("*", {count:"exact", head})
+      .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi")));
+    return saved
+      ? q.or("and(kargo_zpl.not.is.null,kargo_zpl.neq.),zpl_base64.like.JVBER%")
+      : q.or("kargo_zpl.is.null,kargo_zpl.eq.")
+          .or("zpl_base64.is.null,zpl_base64.not.like.JVBER%");
+  };
+  // Capture the current tab/filter before the first await.
+  const pendingRows=query(false), savedRows=query(true);
+  const [pending,saved]=await Promise.all([query(false,true),query(true,true)]);
+  if(pending.error||saved.error)return {error:pending.error||saved.error};
+  const pendingCount=pending.count||0, savedCount=saved.count||0;
+  const pendingTake=Math.max(0,Math.min(end+1,pendingCount)-start);
+  const savedStart=Math.max(0,start-pendingCount);
+  const savedTake=Math.max(0,Math.min(end-start+1-pendingTake,savedCount-savedStart));
+  const requests=[];
+  if(pendingTake)requests.push(pendingRows.order("siparis_no",{ascending:false}).range(start,start+pendingTake-1));
+  if(savedTake)requests.push(savedRows.order("siparis_no",{ascending:false}).range(savedStart,savedStart+savedTake-1));
+  const pages=await Promise.all(requests);
+  const error=pages.find(page=>page.error)?.error;
+  return {data:pages.flatMap(page=>page.data||[]),error:error||null,count:pendingCount+savedCount};
 }
 
 async function loadOrders(reset=false){
@@ -229,6 +245,10 @@ async function loadOrders(reset=false){
   if(document.getElementById("searchInput")?.value.trim()) return searchOrders();
   syncCargoTools();
   const request = ++listRequest;
+  const loadButton=document.getElementById("loadMoreBtn");
+  listLoading=true;
+  if(loadButton){loadButton.disabled=true;loadButton.textContent="Yükleniyor…";}
+  try {
   const tbody = document.getElementById("ordersBody");
   if(reset){
     currentPage = 1;
@@ -253,7 +273,9 @@ async function loadOrders(reset=false){
     : await q.order("siparis_no", { ascending:false }).range(start, end);
   if (request !== listRequest) return;
   if(error){
-    tbody.innerHTML = `<tr><td colspan="${getColumnCount()}">HATA: ${error.message}</td></tr>`;
+    if(!reset)currentPage=Math.max(1,currentPage-1);
+    if(reset)tbody.innerHTML = `<tr><td colspan="${getColumnCount()}">Liste yüklenemedi. Yeniden deneyin.</td></tr>`;
+    toast("Liste yüklenemedi: " + error.message,6000);
     toggleLoadMore(false);
     updateListHeading(false, "Liste yüklenemedi. Yeniden deneyin.");
     return;
@@ -270,6 +292,16 @@ async function loadOrders(reset=false){
 
   renderTable(data, { append: !reset, hasMore });
   updateListHeading(false, `${tbody.children.length} sipariş gösteriliyor · Toplam ${count ?? data.length} kayıt`);
+  } catch(error) {
+    if(request!==listRequest)return;
+    if(!reset)currentPage=Math.max(1,currentPage-1);
+    toast("Liste yüklenemedi. Yeniden deneyin.",6000);
+  } finally {
+    if(request===listRequest){
+      listLoading=false;
+      if(loadButton){loadButton.disabled=false;loadButton.textContent="Daha Fazla";}
+    }
+  }
 }
 
 function needsCargoLabelRetry(order){
@@ -445,7 +477,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
 
     const orderStage = orderLifecycleStage(o);
     const canShip = orderStage === "Hazırlandı";
-    const canLabel = ["Kargolandı", "Tamamlandı"].includes(orderStage) && !!o.orderinvoiceid;
+    const canLabel = canPrintCargoLabel(o);
 
     const isTrackingTab = ["kargolandi", "tamamlandi", "sorunlu", "iade"].includes(currentTab);
 
@@ -482,7 +514,7 @@ const noteChip = o.notlar ? `
 tr.innerHTML = isPendingTab
   ? `
     <td>${o.siparis_no}</td>
-    <td>${orderStage === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button>` : actionBtn}</td>
+    <td>${orderStage === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button> ${actionBtn}` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
     <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div></td>
     <td>
@@ -525,6 +557,7 @@ tr.innerHTML = isPendingTab
 
   `;
 
+labelOrderCells(tr);
 // Satır tıklama kontrolü (chip'e tıklayınca detay açılmasın)
 tr.addEventListener("click", (e)=>{
   if (
@@ -679,9 +712,20 @@ function cargoStatusInfo(order){
   const state=CARGO_STATES.find(s=>s.code===code)
     ||CARGO_STATES.find(s=>s.label.toLocaleLowerCase("tr-TR")===normalized)
     ||(order.isDelivered===true ? CARGO_STATES.find(s=>s.key==="delivered") : null);
-  return state ? {...state} : {key:"unknown",tone:"unknown",label:String(order.shipmentStatus||"Durum bekleniyor").replace(/_/g," ")};
+  if(isCargoAwaitingHandover(order))return {key:"created",tone:"created",label:hasCargoLabel(order)?"Etiket hazır · DHL teslim alımı bekleniyor":"Etiket oluşturulacak"};
+  return state ? {...state} : {key:"unknown",tone:"unknown",label:String(order.shipmentStatus||"DHL durumu henüz alınmadı").replace(/_/g," ")};
+}
+function isCargoAwaitingHandover(order){
+  const code=Number(order?.shipmentStatusCode);
+  const status=String(order?.shipmentStatus||"").replace(/_/g," ").trim();
+  return order?.kargo_durumu==="Kargolandı" && order?.isDelivered!==true
+    && (!code||code===1) && ["","Gönderi Hazırlandı"].includes(status);
+}
+function canPrintCargoLabel(order){
+  return isCargoAwaitingHandover(order) && !!order?.orderinvoiceid;
 }
 function cargoStateFilter(key){
+  if(key==="created")return 'and(kargo_durumu.eq.Kargolandı,or(isDelivered.is.null,isDelivered.eq.false),or(shipmentStatusCode.is.null,shipmentStatusCode.eq.1),or(shipmentStatus.is.null,shipmentStatus.eq.,shipmentStatus.eq.Gönderi_Hazırlandı,shipmentStatus.eq.Gönderi Hazırlandı))';
   const state=CARGO_STATES.find(s=>s.key===key);
   if(!state)return "";
   const fallback=`or(shipmentStatus.is.null,shipmentStatus.eq.),isDelivered.eq.true`;
@@ -779,6 +823,7 @@ function syncCargoTools(){
 }
 const CARGO_FILTER_GROUPS={created:["created"],transit:["transfer","branch"],delivery:["delivery"],delivered:["delivered"],return:["return"],problem:["failed","support"]};
 function matchesCargoFilter(order){
+  if(cargoFilter==="created")return isCargoAwaitingHandover(order);
   return cargoFilter==="all"||(CARGO_FILTER_GROUPS[cargoFilter]||[]).includes(cargoStatusInfo(order).key);
 }
 function applyCargoFilter(query){
@@ -1197,7 +1242,7 @@ document.getElementById("orderDetails").innerHTML = `
 
   // Mevcut etiketi tekrar aç; yeni kargo / barkod oluşturma.
   document.getElementById("btnBarcode").style.display =
-    (kargo || tamam || d.isDelivered) && d.orderinvoiceid ? "inline-block" : "none";
+    canPrintCargoLabel(d) ? "inline-block" : "none";
   document.getElementById("btnBarcode").textContent = hasCargoLabel(d) ? "Etiketi Yazdır" : "Etiket Oluştur";
 
   // Tamamlandı → butonları kapat, sadece kapat butonu açık kalsın
@@ -1770,6 +1815,7 @@ async function retryCargoLabel(siparisNo,button){
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
     if(error)throw error;
+    if(!canPrintCargoLabel(order))throw new Error("Bu gönderi kargo hareketine geçmiş. Etiket işlemi kapatıldı.");
     labelReady=hasCargoLabel(order);
     if(!hasCargoLabel(order)&&!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
     const operation=hasCargoLabel(order)?"print":"create";
@@ -1953,6 +1999,10 @@ async function searchOrders(scope = "all") {
   const raw = document.getElementById(inputId).value.trim();
   if (!raw) return loadOrders(true);
   const request = ++listRequest;
+  listLoading=false;
+  const loadButton=document.getElementById("loadMoreBtn");
+  if(loadButton){loadButton.disabled=false;loadButton.textContent="Daha Fazla";}
+  toggleLoadMore(false);
   updateListHeading(!inTab, "Aranıyor…");
   try {
     let query = db.from(TABLE).select("*")
@@ -1963,7 +2013,7 @@ async function searchOrders(scope = "all") {
     if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();
-    const matches = inTab || cargoFilter==="all" ? data : data.filter(matchesCargoFilter);
+    const matches = data;
     if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(a))-Number(hasCargoLabel(b))||Number(b.siparis_no)-Number(a.siparis_no));
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
@@ -1996,7 +2046,7 @@ function setTab(tab){
   document.getElementById("searchInput").value = "";
   document.getElementById("tabSearchInput").value = "";
   currentTab = tab;
-  cargoFilter = "all";
+  cargoFilter = tab === "kargolandi" ? "created" : "all";
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(li=>li.classList.remove("active"));
   const el = document.getElementById(`tab_${tab}`);
   if(el) el.classList.add("active");
@@ -2004,6 +2054,7 @@ function setTab(tab){
 }
 
 function loadMore(){
+  if(listLoading)return;
   currentPage++;
   loadOrders(false);
 }
@@ -2157,6 +2208,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
