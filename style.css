@@ -1354,3 +1354,103 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .label-scan-choice { width:100%; text-align:left; border:1px solid #c8d9ce; border-radius:8px; background:#f1f7f3; color:#173d2c; padding:12px; font:14px system-ui; line-height:1.5; }
 .label-scan-card :focus-visible,.label-scan-launch:focus-visible { outline:3px solid #d69b25; outline-offset:3px; }
 @media(max-width:600px) { .label-scan-launch { width:100%; } .label-scan-backdrop { padding:10px; } .label-scan-card { padding:16px; max-height:calc(100dvh - 20px); } .label-scan-caption { margin-left:auto; } }
+
+
+/* Responsive order list: compact desktop table, touch friendly cards. */
+.orders-page .content-area { min-width:0; box-sizing:border-box; }
+.orders-page .page-header { gap:10px; margin-bottom:12px; }
+.page-header-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.orders-page .label-scan-launch { width:auto; min-height:36px; padding:7px 10px; gap:5px; border-radius:9px; font-size:12px; }
+.orders-page .label-scan-caption,.orders-page .page-eyebrow { display:none; }
+.orders-page .btn-refresh { min-height:36px; padding:7px 10px; font-size:12px; }
+.orders-page #batchPrepareTools p { display:none; }
+.orders-page #batchPrepareBtn { width:auto; padding:7px 10px; min-height:36px; font-size:12px; }
+.orders-page .cargo-tools .cargo-legend { min-width:0; flex-wrap:wrap; }
+.orders-page .table-wrapper { box-sizing:border-box; overflow:visible; }
+.orders-page .orders-table { min-width:0; table-layout:fixed; }
+.orders-page .orders-table :is(th,td) { white-space:normal; overflow-wrap:anywhere; height:auto!important; }
+.orders-page .orders-table th { padding:8px 6px!important; }
+.orders-page .orders-table .order-cell--number { width:54px; }
+.orders-page .orders-table .order-cell--count { width:44px; min-width:0; }
+.orders-page .orders-table .order-cell--total { width:65px; }
+.orders-page .orders-table .order-cell--taker { width:78px; }
+.orders-page .orders-table .order-cell--primary { width:85px; min-width:0; position:static; box-shadow:none; }
+.orders-page .orders-table .order-cell--actions { width:110px; }
+.orders-page .order-customer-meta { flex-wrap:wrap; gap:3px 6px; }
+.orders-page .order-customer-meta .order-customer-name { white-space:normal; overflow-wrap:anywhere; }
+.orders-page .order-product-limit { max-width:100%; white-space:normal; overflow:visible; }
+.orders-page .orders-table :is(.error-chip,.order-taker,.order-taker-name) { max-width:100%!important; box-sizing:border-box; }
+.orders-page .orders-table :is(.order-stage-badge,.cargo-status) { white-space:normal; max-width:100%; box-sizing:border-box; }
+.orders-page .order-status-cell > * { margin:2px 3px 2px 0; }
+.orders-page .orders-table td button { max-width:100%; white-space:normal; margin:3px 2px 3px 0; }
+.orders-page .orders-table .btn-cargo-label { padding:6px 8px; }
+.orders-page .cargo-checked { white-space:normal; }
+
+@media(max-width:1200px) {
+  .orders-page .content-area { padding:18px; }
+  .orders-page .table-wrapper { border:0; border-radius:0; background:transparent; }
+  .orders-page .orders-table,.orders-page .orders-table tbody { display:block; width:100%; background:transparent; overflow:visible; }
+  .orders-page .orders-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .orders-page .orders-table #ordersBody tr { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px 12px; padding:12px; margin-bottom:10px; border:1px solid #dce5df; border-radius:12px; background:#fff; box-shadow:0 2px 4px #163c2505; }
+  .orders-page .orders-table #ordersBody td { display:block; width:auto; min-width:0; padding:0!important; border:0; background:transparent!important; height:auto!important; text-align:left; }
+  .orders-page .orders-table #ordersBody tr:hover td { background:transparent!important; }
+  .orders-page .orders-table #ordersBody tr.order-zero-total { background:#fff1f1; border-color:#edcccc; }
+  .orders-page .orders-table #ordersBody tr.order-zero-total td:first-child { border:0; }
+  .orders-page #ordersBody td::before { content:attr(data-label); display:block; margin:0 0 2px; font-size:10px; line-height:1.3; color:#728377; font-weight:500; }
+  .orders-page #ordersBody .order-cell--number { order:0; font-size:14px!important; }
+  .orders-page #ordersBody .order-cell--number::before { content:'Sipariş #'; display:inline; margin-right:3px; }
+  .orders-page #ordersBody .order-cell--total { order:1; text-align:right!important; font-weight:700; font-size:14px!important; }
+  .orders-page #ordersBody .order-cell--total::before { display:none; }
+  .orders-page #ordersBody .order-cell--customer { order:2; grid-column:1/-1; }
+  .orders-page #ordersBody .order-cell--customer::before { display:none; }
+  .orders-page #ordersBody .order-customer-meta { justify-content:space-between; align-items:baseline; }
+  .orders-page #ordersBody .order-customer-name { font-size:15px; line-height:1.4; }
+  .orders-page #ordersBody .order-date { font-size:11px; }
+  .orders-page #ordersBody .order-cell--status { order:3; grid-column:1/-1; }
+  .orders-page #ordersBody .order-cell--status::before { display:none; }
+  .orders-page #ordersBody .order-cell--product { order:4; grid-column:1/-1; padding:6px 0!important; }
+  .orders-page #ordersBody .order-cell--count { order:5; }
+  .orders-page #ordersBody .order-cell--taker { order:6; }
+  .orders-page #ordersBody .order-cell--note,.orders-page #ordersBody .order-cell--code { order:7; grid-column:1/-1; }
+  .orders-page #ordersBody .order-cell--primary { order:8; grid-column:1/-1; }
+  .orders-page #ordersBody .order-cell--actions { order:9; grid-column:1/-1; display:flex!important; flex-wrap:wrap; gap:6px; }
+  .orders-page #ordersBody :is(.order-cell--actions,.order-cell--primary)::before { display:none; }
+  .orders-page #ordersBody td button:not(.error-chip) { min-height:40px!important; height:auto!important; padding:8px 12px!important; font-size:12px!important; border-radius:8px; }
+  .orders-page #ordersBody td.order-cell--actions button { flex:1 1 auto; margin:0; }
+  .orders-page #ordersBody .order-cell--primary button { min-width:100px; width:auto; }
+  .orders-page #ordersBody .order-cell--primary .btn-ship-order { width:100%; }
+  .orders-page #ordersBody .cargo-checked { display:inline; font-size:10px; }
+  .orders-page .orders-table .error-chip { height:auto!important; min-height:32px; }
+  .orders-page .orders-table .error-chip__text { white-space:normal; }
+  .orders-page .btn-load-more { width:100%; min-height:44px; margin:12px 0; }
+}
+@media(max-width:900px) {
+  .orders-page .content-area { margin-left:0; padding:62px 12px 18px; }
+  .orders-page .page-header { align-items:flex-start; }
+  .orders-page .page-header h1 { font-size:21px; }
+  .orders-page #listSummary { font-size:11px; margin-top:5px; }
+  .orders-page .page-header-actions { gap:5px; }
+  .orders-page .btn-refresh { font-size:0; width:36px; padding:0; }
+  .orders-page .btn-refresh::before { content:'↻'; font-size:22px; }
+  .orders-page .label-scan-launch { font-size:11px; }
+  .orders-page .top-bar.search-slot { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px; margin-bottom:10px; }
+  .orders-page .search-slot input { width:100%; box-sizing:border-box; font-size:16px; padding:10px 12px; }
+  .orders-page .search-slot #searchInput { grid-column:1; grid-row:1; }
+  .orders-page .search-slot #tabSearchInput { grid-column:1; grid-row:2; }
+  .orders-page .search-slot .btn-search { grid-column:2; grid-row:1/3; align-self:stretch; min-width:52px; border-radius:18px; }
+  .orders-page .cargo-tools { padding:8px; gap:7px; }
+  .orders-page .cargo-tool-buttons { width:100%; display:flex; }
+  .orders-page .cargo-tool-buttons button { flex:1; min-height:36px; }
+  .orders-page .cargo-tools .cargo-legend { flex:1 1 100%; gap:6px; }
+  .orders-page .cargo-tools .cargo-legend .cargo-status { min-height:34px; padding:7px 10px; }
+  .orders-page #cargoSyncStatus { display:none; }
+  .orders-page .modal-content { width:calc(100% - 20px)!important; max-width:calc(100% - 20px)!important; box-sizing:border-box; margin:10px!important; }
+  .orders-page #orderDetails .detail-grid { grid-template-columns:minmax(0,1fr); }
+  .orders-page .modal-btns { flex-wrap:wrap; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+  .orders-page .modal-btns button { flex:1 1 42%; min-width:0; min-height:42px; margin:0!important; }
+}
+.orders-page .orders-table :is(th,td).cargo-count-column { width:48px; min-width:0; max-width:none; }
+.orders-page .error-chip__label { flex-shrink:0; white-space:nowrap; }
+@media(max-width:1200px) {
+  .orders-page .orders-table #ordersBody td.cargo-count-column { width:auto; padding:0!important; text-align:left; }
+}
