@@ -708,6 +708,43 @@ function cargoBranchContact(movement){
   const phones=cargoBranchPhones(movement.locationPhone);
   return `<span class="cargo-branch-contact">${escapeHtml(name)}${phones.map(phone=>` · <a href="tel:${phone.number}" onclick="event.stopPropagation()" aria-label="${escapeHtml(name)} şubesini ara: ${phone.label}" style="color:inherit;text-decoration:underline;white-space:nowrap">☎ ${phone.label}</a>`).join("")}</span>`;
 }
+function cargoMovementTime(event) {
+  function parse(value) {
+    let text = String(value ?? "").trim();
+    const local = text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})(.*)$/);
+    if (local) text = local[3] + "-" + local[2].padStart(2, "0") + "-" + local[1].padStart(2, "0") + local[4];
+    const m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?(Z|[+-]\d{2}:?\d{2})?$/i);
+    if (!m) return null;
+    const [year, month, day, hour, minute, second] = [m[1], m[2], m[3], m[4] || 0, m[5] || 0, m[6] || 0].map(Number);
+    const ms = Number((m[7] || "").padEnd(3, "0"));
+    const utc = Date.UTC(year, month - 1, day, hour, minute, second, ms);
+    const date = new Date(utc);
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day ||
+        date.getUTCHours() !== hour || date.getUTCMinutes() !== minute || date.getUTCSeconds() !== second) return null;
+    // DHL dates without an offset are recorded in Türkiye time.
+    let offset = 180;
+    if (m[8]) {
+      if (m[8].toUpperCase() === "Z") offset = 0;
+      else {
+        const zone = m[8].replace(":", "");
+        const hours = Number(zone.slice(1, 3)), minutes = Number(zone.slice(3, 5));
+        if (hours > 23 || minutes > 59) return null;
+        offset = (hours * 60 + minutes) * (zone[0] === "-" ? -1 : 1);
+      }
+    }
+    return { time: utc - offset * 60000, hasTime: m[4] !== undefined };
+  }
+  const dates = [event?.eventDateTime2, event?.eventDateTime].map(parse).filter(Boolean);
+  return (dates.find(date => date.hasTime) || dates[0])?.time ?? -Infinity;
+}
+
+function sortCargoMovements(movements) {
+  if (!Array.isArray(movements)) return [];
+  return movements.map((event, index) => ({event, index, time: cargoMovementTime(event)}))
+    .sort((a, b) => b.time - a.time || a.index - b.index)
+    .map(item => item.event);
+}
+
 function cargoTrackingData(order){
   try{const response=typeof order.kargo_api_yanit==="string"?JSON.parse(order.kargo_api_yanit||"{}"):order.kargo_api_yanit;return response?.tracking||{};}catch{return {};}
 }
@@ -716,7 +753,7 @@ function cargoStatusBadge(order){
   const {tone,label}=cargoStatusInfo(order);
   const checked=order.kargo_gunc_saat ? `<small class="cargo-checked">${escapeHtml(formatDateTimeTR(order.kargo_gunc_saat))}</small>` : "";
   const movements=cargoTrackingData(order).movements;
-  const latest=Array.isArray(movements)?[...movements].sort((a,b)=>Number(b.eventSequence)-Number(a.eventSequence)||String(b.eventDateTime2||"").localeCompare(String(a.eventDateTime2||"")))[0]:null;
+  const latest=sortCargoMovements(movements)[0] || null;
   const contact=cargoStatusInfo(order).key==="failed"&&latest ? `<small style="display:block;margin-top:5px">${cargoBranchContact(latest)}</small>` : "";
   const returnBadge = order.iade_kodu ? `<small class="cargo-checked"><span class="cargo-status cargo-status--return">İade etiketi oluşturuldu</span></small>` : "";
   return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${returnBadge}${checked}${contact}`;
@@ -815,7 +852,7 @@ async function refreshSelectedCargoMovements(id){
 function renderCargoTracking(order){
   if(!order.kargo_takip_kodu)return "";
   const tracking=cargoTrackingData(order);
-  const movements=Array.isArray(tracking?.movements)?[...tracking.movements].sort((a,b)=>Number(b.eventSequence)-Number(a.eventSequence)):[];
+  const movements=sortCargoMovements(tracking?.movements);
   const timeline=movements.map(m=>`<li><strong>${escapeHtml(m.eventStatus||"Kargo hareketi")}</strong><span>${escapeHtml(m.eventDateTime||m.eventDateTime2||"")} · ${cargoBranchContact(m)}</span>${m.description?`<span>${escapeHtml(m.description)}</span>`:""}</li>`).join("");
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
