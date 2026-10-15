@@ -87,6 +87,7 @@ function renderTableHeader(){
   if(!head) return;
 
   head.closest("table")?.classList.toggle("orders-table--prepared", currentTab === "hazirlandi");
+  head.closest("table")?.classList.toggle("orders-table--pending", currentTab === "bekleyen");
   head.innerHTML = currentTab === "bekleyen"
   ? `
     <th>S.No</th>
@@ -546,7 +547,7 @@ const noteChip = o.notlar ? `
 tr.innerHTML = isPendingTab
   ? `
     <td>${o.siparis_no}</td>
-    <td>${orderStage === "Bekliyor" ? `<button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button> ${actionBtn}` : actionBtn}</td>
+    <td>${orderStage === "Bekliyor" ? `<div class="order-primary-actions"><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button><button type="button" class="btn-direct-cargo" onclick="event.stopPropagation(); directShipFromList(${Number(o.siparis_no)}, this)">Direkt Kargola</button></div> ${actionBtn}` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
     <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div></td>
     <td>
@@ -1894,20 +1895,51 @@ async function shipPreparedFromList(siparisNo, button){
   }
 }
 
-async function sendToCargo(orderId){
+async function directShipFromList(siparisNo, button){
+  const id=Number(siparisNo);
+  if(button.disabled||preparingOrders.has(id)||busy.kargola.has(id)||batchPreparing)return;
+  const label=button.textContent;
+  button.disabled=true;button.textContent="Kontrol ediliyor…";
+  try{await sendToCargo(id,{prepareFirst:true});}
+  finally{button.disabled=false;button.textContent=label;}
+}
+
+async function sendToCargo(orderId,{prepareFirst=false}={}){
   const siparisNo=Number(orderId ?? selectedOrder?.siparis_no);
   if(!siparisNo)return toast("Önce sipariş seçin.");
   if(busy.kargola.has(siparisNo))return toast("Kargolama sürüyor.");
-  const ok=await confirmModal({title:"Siparişi Kargola",text:"DHL sipariş kaydı oluşturulup Kargolandı aşamasına alınacak. Etiketi Kargolandı sekmesinden ayrıca oluşturabilirsiniz. Devam etmek istiyor musunuz?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
-  if(!ok)return;
+  if(prepareFirst&&preparingOrders.has(siparisNo))return toast("Sipariş hazırlanıyor.");
+  const ok=await confirmModal({title:prepareFirst?"Hazırla ve Kargola":"Siparişi Kargola",text:prepareFirst?"Sipariş önce Hazırlandı aşamasına alınacak, ardından mevcut DHL kargolama işlemi çalışacak. Etiketi Kargolandı sekmesinden ayrıca oluşturabilirsiniz. Devam edilsin mi?":"DHL sipariş kaydı oluşturulup Kargolandı aşamasına alınacak. Etiketi Kargolandı sekmesinden ayrıca oluşturabilirsiniz. Devam etmek istiyor musunuz?",confirmText:"Evet, Kargola",cancelText:"Vazgeç"});
+  if(!ok||busy.kargola.has(siparisNo)||preparingOrders.has(siparisNo))return;
   busy.kargola.add(siparisNo);
+  let preparedHere=false;
+  if(prepareFirst)preparingOrders.add(siparisNo);
   try{
+    if(prepareFirst){
+      const {data:order,error:readError}=await db.from(TABLE).select("*").eq("siparis_no",siparisNo).single();
+      if(readError)throw readError;
+      if(!["Bekliyor","Hazırlandı"].includes(order?.kargo_durumu))throw new Error("Siparişin aşaması değişmiş. Listeyi yenileyin.");
+      if(cargoEnvironment(order)==="test")throw new Error("Test gönderisi canlı bağlantıyla kargolanamaz.");
+      if(order.teslim_sekli_kontrol===true)throw new Error("Önce siparişin teslim şeklini kontrol edin.");
+      CargoWeights.parse(order.kargo_kg,order.kargo_adet);
+      if(order.kargo_durumu==="Bekliyor"){
+        const {data:updated,error}=await db.from(TABLE).update({kargo_durumu:"Hazırlandı"})
+          .eq("siparis_no",siparisNo).eq("kargo_durumu","Bekliyor").select("siparis_no");
+        if(error)throw error;
+        if(!updated?.length)throw new Error("Siparişin aşaması değişmiş. Listeyi yenileyin.");
+        preparedHere=true;
+        try{
+          const {error:reactionError}=await db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"📦"}});
+          if(reactionError)toast("Hazırlandı; WhatsApp emojisi gönderilemedi.",6000);
+        }catch{toast("Hazırlandı; WhatsApp emojisi gönderilemedi.",6000);}
+      }
+    }
     const result=await cargoRequest(WH_KARGOLA,{operation:"kargola",siparis_no:String(siparisNo)});
     if(!result.already_created)db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"🚚"}}).then(({error})=>{if(error)toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000);}).catch(()=>toast("WhatsApp emojisi gönderilemedi.",6000));
     toast(result.message||"Sipariş kargolandı. Etiketi ayrıca oluşturabilirsiniz.",6000);
     closeModal();setTab("kargolandi");
-  }catch(error){toast(error.message,10000);await loadOrders(true);}
-  finally{busy.kargola.delete(siparisNo);}
+  }catch(error){toast((preparedHere?"Sipariş hazırlandı; kargolama tamamlanamadı: ":"")+error.message,10000);await loadOrders(true);}
+  finally{busy.kargola.delete(siparisNo);if(prepareFirst)preparingOrders.delete(siparisNo);}
 }
 
 function hasCargoLabel(order){
@@ -2277,6 +2309,7 @@ Object.assign(window, {
   markPrepared,
   sendToCargo,
   shipPreparedFromList,
+  directShipFromList,
   printBarcode,
   printReferenceLabel,
   retryCargoLabel,
@@ -2323,6 +2356,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
