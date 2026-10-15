@@ -469,7 +469,7 @@ function mobileOrderInfo(order){
   const field=(label,value)=>value?`<div class="order-mobile-field"><span>${label}</span><strong>${value}</strong></div>`:"";
   return `<div class="order-mobile-info">${field("Telefon",phone?`<a href="tel:${escapeHtml(dial)}">${escapeHtml(phone)}</a>`:"")}${field("İl / İlçe",escapeHtml(place))}${field("Paket / KG",escapeHtml(packInfo))}${field("Ödeme",escapeHtml(order.odeme_sekli||"Belirtilmemiş"))}</div>
     ${order.adres?`<p class="order-mobile-address">${escapeHtml(order.adres)}</p>`:""}
-    <span class="order-mobile-delivery">${order.subeden_teslim===true?"Şubeden teslim"+(order.teslim_subesi?" · "+escapeHtml(order.teslim_subesi):""):"Adrese teslim"}</span>
+    <span class="order-mobile-delivery${order.subeden_teslim===true?" order-mobile-delivery--branch":""}">${order.subeden_teslim===true?"Şubeden teslim"+(order.teslim_subesi?" · "+escapeHtml(order.teslim_subesi):""):"Adrese teslim"}</span>
     <details class="card-original-message"><summary>Ham mesaj <span>Sağa kaydır →</span></summary><div class="original-message-text">${escapeHtml(order.whatsapp_message_text===undefined?"Mesajı görmek için açın.":order.whatsapp_message_text||"Bu siparişin orijinal mesajı kayıtlı değil.")}</div></details>`;
 }
 function bindOrderCardSwipe(row){
@@ -2323,6 +2323,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
