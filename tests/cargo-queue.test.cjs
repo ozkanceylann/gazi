@@ -22,6 +22,11 @@ const context={db:{from:()=>new Query()},TABLE:'orders',applyCargoFilter:q=>q,ap
  const a=source.slice(source.indexOf('function isCargoAwaitingHandover('),source.indexOf('function cargoStateFilter('));
  vm.runInContext(a+'\nthis.waits=isCargoAwaitingHandover;this.prints=canPrintCargoLabel;',context);
  const base={kargo_durumu:'Kargolandı',orderinvoiceid:'123'};
+ const registered={...base,shipmentStatusCode:null,shipmentStatus:"DHL sipariş kaydı oluşturuldu; barkod bekleniyor",kargo_takip_kodu:null,kargo_zpl:null,zpl_base64:null};
+ assert(context.waits(registered),"Registered DHL order belongs in prepared filter");
+ assert(context.prints(registered),"Registered DHL order can create its first label");
+ assert(!context.prints({...registered,shipmentStatusCode:2}),"Later carrier status still blocks label action");
+ assert(source.includes("shipmentStatus.eq.DHL sipariş kaydı oluşturuldu; barkod bekleniyor"),"Server prepared filter includes registered orders");
  for(const code of [null,1])assert(context.prints({...base,shipmentStatusCode:code}));
  for(const code of [2,3,4,5,6,7,8])assert(!context.prints({...base,shipmentStatusCode:code}));
  for(const kargo_durumu of ['Bekliyor','Hazırlandı','Tamamlandı','İptal','İade'])assert(!context.prints({...base,kargo_durumu}));
