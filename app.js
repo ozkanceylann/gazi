@@ -727,13 +727,13 @@ function isCargoAwaitingHandover(order){
   const code=Number(order?.shipmentStatusCode);
   const status=String(order?.shipmentStatus||"").replace(/_/g," ").trim();
   return order?.kargo_durumu==="Kargolandı" && order?.isDelivered!==true
-    && (!code||code===1) && ["","Gönderi Hazırlandı"].includes(status);
+    && (!code||code===1) && ["","Gönderi Hazırlandı","DHL sipariş kaydı oluşturuldu; barkod bekleniyor"].includes(status);
 }
 function canPrintCargoLabel(order){
   return isCargoAwaitingHandover(order) && !!order?.orderinvoiceid;
 }
 function cargoStateFilter(key){
-  if(key==="created")return 'and(kargo_durumu.eq.Kargolandı,or(isDelivered.is.null,isDelivered.eq.false),or(shipmentStatusCode.is.null,shipmentStatusCode.eq.1),or(shipmentStatus.is.null,shipmentStatus.eq.,shipmentStatus.eq.Gönderi_Hazırlandı,shipmentStatus.eq.Gönderi Hazırlandı))';
+  if(key==="created")return 'and(kargo_durumu.eq.Kargolandı,or(isDelivered.is.null,isDelivered.eq.false),or(shipmentStatusCode.is.null,shipmentStatusCode.eq.1),or(shipmentStatus.is.null,shipmentStatus.eq.,shipmentStatus.eq.Gönderi_Hazırlandı,shipmentStatus.eq.Gönderi Hazırlandı,shipmentStatus.eq.DHL sipariş kaydı oluşturuldu; barkod bekleniyor))';
   const state=CARGO_STATES.find(s=>s.key===key);
   if(!state)return "";
   const fallback=`or(shipmentStatus.is.null,shipmentStatus.eq.),isDelivered.eq.true`;
