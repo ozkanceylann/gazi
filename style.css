@@ -1454,3 +1454,10 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 @media(max-width:1200px) {
   .orders-page .orders-table #ordersBody td.cargo-count-column { width:auto; padding:0!important; text-align:left; }
 }
+
+
+/* Satıra dokunarak detay açılır; boş işlem alanı yer kaplamaz. */
+.orders-page .orders-table:not(:has(tbody .order-cell--actions > *)) .order-cell--actions { display:none!important; }
+.orders-page .orders-table #ordersBody td.order-cell--actions:empty { display:none!important; }
+.orders-page .orders-table #ordersBody tr[data-order-id] { cursor:pointer!important; }
+.orders-page .orders-table #ordersBody tr[data-order-id]:focus-visible { outline:2px solid #699f80; outline-offset:-2px; }
