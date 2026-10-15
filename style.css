@@ -1461,3 +1461,33 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .orders-page .orders-table #ordersBody td.order-cell--actions:empty { display:none!important; }
 .orders-page .orders-table #ordersBody tr[data-order-id] { cursor:pointer!important; }
 .orders-page .orders-table #ordersBody tr[data-order-id]:focus-visible { outline:2px solid #699f80; outline-offset:-2px; }
+
+
+/* More useful mobile cards, with a lazy original-message drawer. */
+.orders-page .orders-table td.order-mobile-extra { display:none; }
+@media(max-width:1200px) {
+  .orders-page .orders-table #ordersBody tr { background:#e7eee9; border-color:#b8cdbf; box-shadow:0 2px 5px #244b3210; touch-action:pan-y; gap:7px 12px; }
+  .orders-page .orders-table #ordersBody tr:nth-child(even) { background:#e1ebe4; }
+  .orders-page .orders-table #ordersBody tr.order-zero-total { background:#f8e5e5; border-color:#dfb6b6; }
+  .orders-page #ordersBody .order-product-limit { font-size:15px; font-weight:750; line-height:1.5; color:#163e2c; }
+  .orders-page #ordersBody .order-cell--product { padding:5px 0!important; }
+  .orders-page .orders-table #ordersBody td.order-mobile-extra { display:block; grid-column:1/-1; order:7; padding:6px 0 0!important; border-top:1px solid #c8d8cc; }
+  .orders-page #ordersBody td.order-mobile-extra::before { display:none; }
+  .order-mobile-info { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px 12px; }
+  .order-mobile-field { min-width:0; }
+  .order-mobile-field>span { display:block; font-size:10px; color:#526c5c; margin-bottom:2px; }
+  .order-mobile-field>strong { display:block; font-size:12px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; color:#244b34; }
+  .order-mobile-field a { color:#21583b; text-decoration:none; }
+  .order-mobile-address { margin:8px 0 4px; font-size:12px; line-height:1.5; color:#3f5a48; overflow-wrap:anywhere; }
+  .order-mobile-delivery { font-size:11px; color:#4f6757; }
+  .card-original-message { margin:8px 0 0; border:1px solid #b9cfc0; border-radius:8px; background:#d7e5dc; overflow:hidden; }
+  .card-original-message summary { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:36px; box-sizing:border-box; padding:8px 10px; font-size:12px; font-weight:650; color:#234f37; cursor:pointer; list-style:none; }
+  .card-original-message summary::-webkit-details-marker { display:none; }
+  .card-original-message summary>span { font-size:10px; font-weight:400; color:#506d5a; }
+  .card-original-message[open] summary>span { display:none; }
+  .card-original-message[open] summary::after { content:'⌃'; }
+  .card-original-message .original-message-text { border-top:1px solid #bed1c4; border-radius:0; margin:0; padding:10px; background:#eef3ef; color:#2c4334; font-size:12px; line-height:1.6; }
+}
+@media(min-width:1201px) {
+  .orders-page #ordersBody .order-product-limit { font-size:13px; font-weight:700; line-height:1.45; color:#163e2c; }
+}
