@@ -164,6 +164,7 @@ function confirmModal({title, text, confirmText="Onayla", cancelText="Vazgeç"})
 async function logout(){
   const { error } = await db.auth.signOut({ scope: "local" });
   if (error) return toast("Çıkış yapılamadı. Yeniden deneyin.");
+  if(window.caches)await caches.delete("gazi-pdf-previews-v1").catch(()=>{});
   ["session", "firma", "rol", "print_order"].forEach(key => localStorage.removeItem(key));
   location.href = "login.html";
 }
@@ -1758,15 +1759,69 @@ async function markPrepared(){
   setTimeout(() => loadOrders(true), 1000);
 }
 
-function openCargoPdf(w, base64){
+function cargoPdfFilename(order) {
+  const clean=value=>String(value??"").normalize("NFC")
+    .replace(/[<>:"/\\|?*\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/g," ")
+    .replace(/\s+/g," ").trim().replace(/[. ]+$/g,"");
+  const name=Array.from(clean(order?.ad_soyad)||"Sipariş").slice(0,140).join("");
+  const number=clean(order?.siparis_no)||"Numarasız";
+  return `${name} - ${number}.pdf`;
+}
+
+async function openCargoPdf(w, base64, order){
   if(!base64?.startsWith("JVBER")) throw new Error("Geçerli etiket PDF'si alınamadı.");
+  if(w.closed)throw new Error("Etiket penceresi kapatıldı. Etiketi Yazdır ile tekrar açabilirsiniz.");
+  const filename=cargoPdfFilename(order);
   const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
-  const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
-  if(w.closed){URL.revokeObjectURL(url);throw new Error("Etiket penceresi kapatıldı. Barkod Kes ile tekrar açabilirsiniz.");}
-  w.document.body.innerHTML='<iframe title="Paket Etiketleri" style="border:0;width:100%;height:100vh" src="'+url+'#view=FitH"></iframe>';
+  const blob=new Blob([bytes],{type:"application/pdf"});
+  let url,cleanup,named=false;
+  try {
+    if(!navigator.serviceWorker?.controller || !window.caches)throw Error("Named preview unavailable");
+    // The current worker must support named responses; an old worker may still
+    // control the page briefly while an update is activating.
+    await new Promise((resolve,reject)=>{
+      const channel=new MessageChannel();
+      const timeout=setTimeout(()=>{channel.port1.close();reject(Error("Worker not ready"));},1500);
+      channel.port1.onmessage=event=>{clearTimeout(timeout);channel.port1.close();event.data===true?resolve():reject(Error("Unsupported worker"));};
+      navigator.serviceWorker.controller.postMessage({type:"gazi-cargo-pdf-support"},[channel.port2]);
+    });
+    const cache=await caches.open("gazi-pdf-previews-v1");
+    for(const request of await cache.keys()){
+      const previous=await cache.match(request);
+      if(Number(previous?.headers.get("X-Preview-Expires"))<=Date.now())await cache.delete(request);
+    }
+    url=new URL(`/__cargo_pdf__/${crypto.randomUUID()}/${encodeURIComponent(filename)}`,location.origin).href;
+    const ascii=filename.replace(/ı/g,"i").replace(/İ/g,"I").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\x20-\x7e]/g,"_");
+    const encoded=encodeURIComponent(filename).replace(/['()*]/g,c=>"%"+c.charCodeAt(0).toString(16).toUpperCase());
+    await cache.put(url,new Response(blob,{headers:{
+      "Content-Type":"application/pdf",
+      "Content-Disposition":`inline; filename="${ascii}"; filename*=UTF-8''${encoded}`,
+      "Cache-Control":"no-store",
+      "X-Preview-Expires":String(Date.now()+60*60*1000)
+    }}));
+    cleanup=()=>{cache.delete(url).catch(()=>{});};
+    named=true;
+  } catch {
+    // Without a controlling worker, provide an explicitly named download link.
+    url=URL.createObjectURL(blob);
+    cleanup=()=>URL.revokeObjectURL(url);
+  }
+  if(w.closed){cleanup();throw new Error("Etiket penceresi kapatıldı. Etiketi Yazdır ile tekrar açabilirsiniz.");}
+  w.document.title=filename.replace(/\.pdf$/i,"");
+  w.document.body.replaceChildren();
   w.document.body.style.cssText="margin:0";
+  if(!named){
+    const download=w.document.createElement("a");
+    download.href=url;download.download=filename;download.textContent="PDF İndir · "+filename;
+    download.style.cssText="display:block;box-sizing:border-box;height:42px;padding:10px;background:#e6f1ea;color:#20543b;font:14px system-ui;text-decoration:none";
+    w.document.body.appendChild(download);
+  }
+  const frame=w.document.createElement("iframe");
+  frame.title=filename;frame.src=url+"#view=FitH";
+  frame.style.cssText=`display:block;border:0;width:100%;height:${named?"100vh":"calc(100vh - 42px)"}`;
+  w.document.body.appendChild(frame);
   w.document.addEventListener("keydown",event=>{if(event.key==="Escape"){event.preventDefault();w.close();}});
-  w.addEventListener("unload",()=>URL.revokeObjectURL(url),{once:true});
+  w.addEventListener("unload",cleanup,{once:true});
 }
 
 async function shipPreparedFromList(siparisNo, button){
@@ -1838,7 +1893,7 @@ async function retryCargoLabel(siparisNo,button){
         throw new Error("Etiket kaydedildi; yazdırma ekranı açılamadı. Etiketi Yazdır ile tekrar açabilirsiniz. " + (error.message||""));
       }
     }
-    if(result.pdf_base64){openCargoPdf(w,result.pdf_base64);toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi açıldı.",6000);}
+    if(result.pdf_base64){await openCargoPdf(w,result.pdf_base64,order);toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi açıldı.",6000);}
     else if(result.label_saved)throw new Error("Etiket kaydedildi; PDF henüz hazır değil. Etiketi Yazdır ile tekrar açabilirsiniz.");
     else throw new Error("Etiket yanıtı doğrulanamadı.");
   }catch(error){if(!w.closed)w.close();toast(error.message||"Kargo etiketi hazırlanamadı.",10000);}
@@ -1872,7 +1927,9 @@ async function printReferenceLabel(orderId){
   try{
     const result=await cargoRequest(CONFIG.webhooks.referans_etiketi,{siparis_no:String(id)});
     if(result.label_type!=="reference")throw new Error("Referans etiketi yanıtı doğrulanamadı.");
-    openCargoPdf(w,result.pdf_base64);
+    const {data:labelOrder,error:labelOrderError}=await db.from(TABLE).select("siparis_no,ad_soyad").eq("siparis_no",id).single();
+    if(labelOrderError)throw labelOrderError;
+    await openCargoPdf(w,result.pdf_base64,labelOrder);
     toast("Referans etiketi yazdırmaya hazır.",5000);
   }catch(error){if(!w.closed)w.close();toast(error.message||"Referans etiketi alınamadı.",8000);}
   finally{referenceLabelBusy.delete(id);}
@@ -2216,6 +2273,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
