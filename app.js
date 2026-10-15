@@ -459,6 +459,37 @@ function orderStageBadge(order) {
   return `<span class="order-stage-badge order-stage-badge--${tone}" aria-label="Sipariş durumu: ${escapeHtml(label)}">${escapeHtml(label)}</span>${delivery}`;
 }
 
+function mobileOrderInfo(order){
+  const phone=String(order.musteri_tel||order.siparis_tel||"").trim();
+  const dial=phone.replace(/[^\d+]/g,"");
+  const place=[order.sehir,order.ilce].filter(Boolean).join(" / ");
+  const kg=CargoWeights.display(order.kargo_kg,order.kargo_adet);
+  const packs=["bekleyen","hazirlandi"].includes(currentTab)?"":`${Number(order.kargo_adet)||"—"} paket`;
+  const packInfo=[packs,kg?`${kg} kg`:""].filter(Boolean).join(" · ");
+  const field=(label,value)=>value?`<div class="order-mobile-field"><span>${label}</span><strong>${value}</strong></div>`:"";
+  return `<div class="order-mobile-info">${field("Telefon",phone?`<a href="tel:${escapeHtml(dial)}">${escapeHtml(phone)}</a>`:"")}${field("İl / İlçe",escapeHtml(place))}${field("Paket / KG",escapeHtml(packInfo))}${field("Ödeme",escapeHtml(order.odeme_sekli||"Belirtilmemiş"))}</div>
+    ${order.adres?`<p class="order-mobile-address">${escapeHtml(order.adres)}</p>`:""}
+    <span class="order-mobile-delivery">${order.subeden_teslim===true?"Şubeden teslim"+(order.teslim_subesi?" · "+escapeHtml(order.teslim_subesi):""):"Adrese teslim"}</span>
+    <details class="card-original-message"><summary>Ham mesaj <span>Sağa kaydır →</span></summary><div class="original-message-text">${escapeHtml(order.whatsapp_message_text===undefined?"Mesajı görmek için açın.":order.whatsapp_message_text||"Bu siparişin orijinal mesajı kayıtlı değil.")}</div></details>`;
+}
+function bindOrderCardSwipe(row){
+  let start=null;
+  row.addEventListener("pointerdown",event=>{
+    if(!window.matchMedia("(max-width: 1200px)").matches||event.button>0||event.target.closest("button,a,details,input,textarea,select"))return;
+    start={x:event.clientX,y:event.clientY,time:Date.now()};
+  },{passive:true});
+  row.addEventListener("pointercancel",()=>{start=null;},{passive:true});
+  row.addEventListener("pointerup",event=>{
+    const from=start;start=null;if(!from)return;
+    const dx=event.clientX-from.x,dy=event.clientY-from.y;
+    if(dx>=65&&dx>Math.abs(dy)*2&&Date.now()-from.time<800){
+      row.dataset.swipeUntil=String(Date.now()+500);
+      const panel=row.querySelector(".card-original-message");
+      if(panel)panel.open=true;
+    }
+  },{passive:true});
+}
+
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -559,6 +590,12 @@ tr.innerHTML = isPendingTab
   `;
 
 labelOrderCells(tr);
+const mobileInfo=document.createElement("td");
+mobileInfo.className="order-mobile-extra";
+mobileInfo.innerHTML=mobileOrderInfo(o);
+tr.appendChild(mobileInfo);
+bindOriginalMessage(o,mobileInfo.querySelector(".card-original-message"));
+bindOrderCardSwipe(tr);
 tr.tabIndex=0;
 tr.setAttribute("aria-label", `${o.siparis_no} numaralı siparişin detayını aç`);
 tr.addEventListener("keydown", (event)=>{
@@ -569,8 +606,9 @@ tr.addEventListener("keydown", (event)=>{
 });
 // Satır tıklama kontrolü (chip'e tıklayınca detay açılmasın)
 tr.addEventListener("click", (e)=>{
+  if(Number(tr.dataset.swipeUntil||0)>Date.now())return;
   if (
-    e.target.closest("button,a") ||
+    e.target.closest("button,a,details,input,textarea,select") ||
     e.target.closest(".error-chip")
   ) return;
   openOrder(o.siparis_no);
@@ -824,6 +862,8 @@ function isLiveShipment(order){
 function syncCargoTools(){
   const batchTools=document.getElementById("batchPrepareTools");
   if(batchTools)batchTools.hidden=currentTab!=="bekleyen";
+  const batchButton=document.getElementById("batchPrepareBtn");
+  if(batchButton&&!batchPreparing)batchButton.textContent=isMobilePreparation()?"İlk 10 Siparişi Hazırla":"İlk 10 Siparişi Yazdır ve Hazırla";
   const tools=document.getElementById("cargoTools");
   if(tools) tools.hidden=!["kargolandi","tamamlandi","sorunlu","iade"].includes(currentTab);
   document.querySelectorAll("[data-cargo-filter]").forEach(button=>{
@@ -1082,8 +1122,7 @@ function renderOriginalMessage(order) {
   </details>`;
 }
 
-function bindOriginalMessage(order) {
-  const panel = document.querySelector("#orderDetails .original-message");
+function bindOriginalMessage(order, panel = document.querySelector("#orderDetails .original-message")) {
   if (!panel) return;
   let loading = false;
   panel.addEventListener("toggle", async () => {
@@ -1620,6 +1659,7 @@ async function prepareVisibleOrders(){
     .slice(0,10).map(row=>Number(row.dataset.orderId));
   if(!ids.length)return toast("Ekranda hazırlanacak sipariş yok.");
   if(ids.some(id=>preparingOrders.has(id)))return toast("Bu siparişlerden birinin hazırlama işlemi sürüyor.");
+  const mobile=isMobilePreparation();
   batchPreparing=true;
   const button=document.getElementById("batchPrepareBtn");
   button.disabled=true;
@@ -1627,13 +1667,15 @@ async function prepareVisibleOrders(){
   const prepared=[];
   const key="prepare_batch_"+Date.now()+"_"+Math.random().toString(36).slice(2);
   try{
-    const ok=await confirmModal({title:"Toplu Etiket Yazdır ve Hazırla",
-      text:`Uyarı: Ekranda görünen ${ids.length} siparişin etiket yazdırma aşaması yapılacaktır. Siparişlerin adet ve fiyat bilgilerini kontrol ettiğinizi onaylıyor musunuz?\n\nSiparişler: ${ids.join(", ")}\nOnayladığınızda etiketler tek yazdırma ekranında açılacak ve siparişler Hazırlandı aşamasına geçecektir.`,
-      confirmText:"Kontrol Ettim, Yazdır ve Hazırla",cancelText:"Vazgeç"});
+    const ok=await confirmModal({title:mobile?"İlk 10 Siparişi Hazırla":"Toplu Etiket Yazdır ve Hazırla",
+      text:mobile?`Ekrandaki ${ids.length} sipariş Hazırlandı aşamasına geçecek.\n\nSiparişler: ${ids.join(", ")}`:`Uyarı: Ekranda görünen ${ids.length} siparişin etiket yazdırma aşaması yapılacaktır. Siparişlerin adet ve fiyat bilgilerini kontrol ettiğinizi onaylıyor musunuz?\n\nSiparişler: ${ids.join(", ")}\nOnayladığınızda etiketler tek yazdırma ekranında açılacak ve siparişler Hazırlandı aşamasına geçecektir.`,
+      confirmText:mobile?"Kontrol Ettim, Hazırla":"Kontrol Ettim, Yazdır ve Hazırla",cancelText:"Vazgeç"});
     if(!ok)return;
-    printWindow=window.open("","_blank");
-    if(!printWindow)throw new Error("Yazdırma ekranı için açılır pencerelere izin verin.");
-    printWindow.document.body.textContent="Sipariş etiketleri hazırlanıyor…";
+    if(!mobile){
+      printWindow=window.open("","_blank");
+      if(!printWindow)throw new Error("Yazdırma ekranı için açılır pencerelere izin verin.");
+      printWindow.document.body.textContent="Sipariş etiketleri hazırlanıyor…";
+    }
     ids.forEach(id=>preparingOrders.add(id));
     button.textContent="Siparişler kontrol ediliyor…";
     const {data:rows,error}=await db.from(TABLE).select("*").in("siparis_no",ids);
@@ -1645,9 +1687,9 @@ async function prepareVisibleOrders(){
       if(!Number.isSafeInteger(count)||count<1||count>100)throw new Error(order.siparis_no+" siparişinin kargo adedini düzeltin.");
     }
     // Ensure printable data can be stored before changing any order state.
-    localStorage.setItem(key,JSON.stringify(orders));
+    if(!mobile)localStorage.setItem(key,JSON.stringify(orders));
     for(const order of orders){
-      if(printWindow.closed)throw new Error("Yazdırma penceresi kapatıldı.");
+      if(printWindow?.closed)throw new Error("Yazdırma penceresi kapatıldı.");
       button.textContent=`Hazırlanıyor… ${prepared.length+1}/${orders.length}`;
       const {data:updated,error}=await db.from(TABLE).update({kargo_durumu:"Hazırlandı"})
         .eq("siparis_no",order.siparis_no).eq("kargo_durumu","Bekliyor").select("siparis_no");
@@ -1663,27 +1705,33 @@ async function prepareVisibleOrders(){
   }finally{
     try{
       if(prepared.length){
-        localStorage.setItem(key,JSON.stringify(prepared));
-        if(printWindow&&!printWindow.closed)printWindow.location.replace("printetiket-v2.html?v=20261015-batch&batch="+encodeURIComponent(key));
-        toast(prepared.length+" sipariş hazırlandı; toplam "+prepared.reduce((sum,o)=>sum+Number(o.kargo_adet),0)+" etiket açılıyor.",6000);
+        if(!mobile){
+          localStorage.setItem(key,JSON.stringify(prepared));
+          if(printWindow&&!printWindow.closed)printWindow.location.replace("printetiket-v2.html?v=20261015-batch&batch="+encodeURIComponent(key));
+        }
+        toast(mobile?prepared.length+" sipariş hazırlandı 📦":prepared.length+" sipariş hazırlandı; toplam "+prepared.reduce((sum,o)=>sum+Number(o.kargo_adet),0)+" etiket açılıyor.",6000);
       }else{
         localStorage.removeItem(key);
         if(printWindow&&!printWindow.closed)printWindow.close();
       }
     }catch(error){toast("Siparişler hazırlandı; yazdırma ekranı açılamadı. Hazırlandı sekmesinden etiketleri açabilirsiniz.",10000);}
     ids.forEach(id=>preparingOrders.delete(id));
-    batchPreparing=false;button.disabled=false;button.textContent="İlk 10 Siparişin Etiketini Yazdır ve Hazırla";
+    batchPreparing=false;button.disabled=false;button.textContent=mobile?"İlk 10 Siparişi Hazırla":"İlk 10 Siparişi Yazdır ve Hazırla";
     if(prepared.length)await loadOrders(true);
   }
 }
 window.prepareVisibleOrders=prepareVisibleOrders;
+function isMobilePreparation(){
+  return window.matchMedia("(max-width: 900px), (hover: none) and (pointer: coarse)").matches;
+}
 const preparingOrders = new Set();
 async function prepareFromList(siparisNo, button){
   if(batchPreparing)return toast("Toplu hazırlama işlemi sürüyor.");
   if(preparingOrders.has(siparisNo)) return;
-  const printWindow = window.open("", "_blank");
-  if(!printWindow) return toast("Yazdırma ekranı için açılır pencerelere izin verin.");
-  printWindow.document.body.textContent="Sipariş hazırlanıyor…";
+  const mobile=isMobilePreparation();
+  const printWindow = mobile?null:window.open("", "_blank");
+  if(!mobile&&!printWindow) return toast("Yazdırma ekranı için açılır pencerelere izin verin.");
+  if(printWindow)printWindow.document.body.textContent="Sipariş hazırlanıyor…";
   preparingOrders.add(siparisNo);
   button.disabled=true;
   try {
@@ -1696,12 +1744,14 @@ async function prepareFromList(siparisNo, button){
     if(!updated?.length) throw new Error("Sipariş artık Bekleyen durumunda değil.");
     const {error:reactionError}=await db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"📦"}});
     if(reactionError) toast("Hazırlandı; WhatsApp emojisi gönderilemedi.",6000);
-    localStorage.setItem("prepare_print_"+siparisNo,JSON.stringify(order));
-    if(!printWindow.closed) printWindow.location.replace("printetiket-v2.html?v=20261011-prepared-label&order="+encodeURIComponent(siparisNo));
-    toast("Sipariş hazırlandı. "+count+" paket barkodu açıldı.");
+    if(!mobile){
+      localStorage.setItem("prepare_print_"+siparisNo,JSON.stringify(order));
+      if(!printWindow.closed) printWindow.location.replace("printetiket-v2.html?v=20261011-prepared-label&order="+encodeURIComponent(siparisNo));
+    }
+    toast(mobile?"Sipariş hazırlandı 📦":"Sipariş hazırlandı. "+count+" paket barkodu açıldı.");
     await loadOrders(true);
   } catch(error){
-    if(!printWindow.closed) printWindow.close();
+    if(printWindow&&!printWindow.closed) printWindow.close();
     toast(error.message||"Sipariş hazırlanamadı.",6000);
   } finally {preparingOrders.delete(siparisNo);button.disabled=false;}
 }
@@ -1749,8 +1799,8 @@ async function markPrepared(){
     console.error("WhatsApp reaksiyon hatası:", err);
   }
 
-  // Yazdırma seçimi
-  openPrintChooser();
+  // Telefonda yalnızca hazırlama; masaüstünde yazdırma seçimi.
+  if(!isMobilePreparation())openPrintChooser();
 
   toast("Sipariş Hazırlandı 📦");
 
@@ -2273,6 +2323,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
