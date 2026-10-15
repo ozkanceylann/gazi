@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Giriş Yap</title>
+  <title>Sipariş Operasyon · Giriş</title>
   <script src="config.js"></script>
   <style>
     :root{color-scheme:light;--green:#133d2d;--gold:#e8c875;--ink:#183c2d}
@@ -32,13 +32,24 @@
     @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
   </style>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/siparis-operasyon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/siparis-operasyon-192.png">
+  <meta name="application-name" content="Sipariş Operasyon">
+  <meta name="theme-color" content="#123e33">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Sipariş Operasyon">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="/install-app.css?v=20261016-pwa-52">
+  <script src="/install-app.js?v=20261016-pwa-52" defer></script>
 </head>
 <body>
   <div class="login-box">
     <img id="brandLogo" class="logo" alt="Logo">
     <p class="brand-caption">SİPARİŞ YÖNETİMİ</p>
     <h2 id="brandTitle">Gazi</h2>
-    <p class="login-subtitle">Sipariş Sistemi</p>
+    <p class="login-subtitle">Sipariş Operasyon</p>
     <div class="ornament" aria-hidden="true">◆</div>
 
     <div class="form-group">
@@ -52,6 +63,7 @@
 
     <button class="btn-login" onclick="login()">Giriş Yap</button>
     <div id="errorBox" class="error" role="alert"></div>
+    <button id="installAppBtn" type="button" hidden><img src="/icons/siparis-operasyon-192.png" alt="">Ana Ekrana Ekle</button>
     <p class="login-footer">Gazioğulları · Sipariş Takip Paneli</p>
   </div>
 
@@ -119,3 +131,4 @@
   </script>
 </body>
 </html>
+

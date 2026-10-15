@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261016-direct-cargo-51";
+const VERSION = "20261016-pwa-52";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -15,6 +15,11 @@ const ASSETS = [
   "/cargo-weights.js",
   "/label-scanner.js",
   "/manifest.json",
+  "/install-app.js",
+  "/install-app.css",
+  "/icons/siparis-operasyon-180.png",
+  "/icons/siparis-operasyon-192.png",
+  "/icons/siparis-operasyon-512.png",
   "/logo.png",
   "/favicon.png"
 ];
@@ -94,6 +99,7 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
 
 
 

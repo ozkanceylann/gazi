@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="manifest" href="manifest.json">
 
 
-  <title>Sipariş Sistemi</title>
+
+  <title>Sipariş Operasyon</title>
 
   <!-- ✔ FAVICON DÜZELTİLDİ -->
-  <link rel="icon" type="image/png" href="favicon.png" />
+
 
   <!-- ✔ CONFIG ÖNCE GELMEK ZORUNDA -->
   <script src="config.js?v=20261014-cargo-separate-34"></script>
@@ -31,6 +31,17 @@
   </style>
 
 <script src="cargo-weights.js?v=20261014-cargo-first-35"></script>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/siparis-operasyon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/siparis-operasyon-192.png">
+  <meta name="application-name" content="Sipariş Operasyon">
+  <meta name="theme-color" content="#123e33">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Sipariş Operasyon">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="/install-app.css?v=20261016-pwa-52">
+  <script src="/install-app.js?v=20261016-pwa-52" defer></script>
 </head>
 
 <body class="orders-page">
@@ -64,6 +75,7 @@
       </li>
     </ul>
 
+    <button id="installAppBtn" type="button" hidden><img src="/icons/siparis-operasyon-192.png" alt="">Ana Ekrana Ekle</button>
     <button class="btn-logout" type="button" onclick="logout()">Çıkış Yap</button>
   </aside>
 
@@ -231,6 +243,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
 
 </body>
 </html>
+
 
 
 

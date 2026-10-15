@@ -1,20 +1,18 @@
 {
-  "name": "Sipariş Sistemi",
-  "short_name": "Sipariş",
+  "id": "/index.html",
+  "name": "Sipariş Operasyon",
+  "short_name": "Sipariş Operasyon",
+  "description": "Sipariş hazırlama, kargolama ve kargo takibi.",
+  "lang": "tr",
   "start_url": "/index.html",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0d6e32",
-  "theme_color": "#0d6e32",
+  "background_color": "#f5f6f1",
+  "theme_color": "#123e33",
+  "prefer_related_applications": false,
   "icons": [
-    {
-      "src": "logo.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "logo.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    {"src":"/icons/siparis-operasyon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/icons/siparis-operasyon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"/icons/siparis-operasyon-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
   ]
 }
