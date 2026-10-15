@@ -489,7 +489,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
 
   const actionBtn = (orderStage === "Tamamlandı" || orderStage === "İade")
     ? returnOrderActions(o)
-    : `<button class="btn-open" onclick="event.stopPropagation(); openOrder(${Number(o.siparis_no)})">Detay</button>`;
+    : "";
 
 const errorPreview = isPreparedTab && canShip && o.gonder_hata_bilgisi
   ? `<button class="error-chip"
@@ -558,6 +558,14 @@ tr.innerHTML = isPendingTab
   `;
 
 labelOrderCells(tr);
+tr.tabIndex=0;
+tr.setAttribute("aria-label", `${o.siparis_no} numaralı siparişin detayını aç`);
+tr.addEventListener("keydown", (event)=>{
+  if(event.target===tr && ["Enter"," "].includes(event.key)){
+    event.preventDefault();
+    openOrder(o.siparis_no);
+  }
+});
 // Satır tıklama kontrolü (chip'e tıklayınca detay açılmasın)
 tr.addEventListener("click", (e)=>{
   if (
@@ -2208,6 +2216,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
