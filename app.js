@@ -944,12 +944,27 @@ async function refreshSelectedCargoMovements(id){
   }catch(error){toast(error.message,8000);}
   finally{cargoDetailBusy=false;if(button?.isConnected){button.disabled=false;button.textContent="Hareket geçmişini getir";}}
 }
+function cargoQrCodes(order){
+  const raw=order?.kargo_qr_kod;
+  if(raw===null||raw===undefined||raw==='')return [];
+  let values=raw;
+  if(typeof raw==='string'){
+    try{values=JSON.parse(raw);}catch{values=raw.trim().startsWith('[')?[]:[raw.trim()];}
+  }
+  if(typeof values==='string')values=[values];
+  if(!Array.isArray(values))return [];
+  return [...new Set(values.filter(x=>typeof x==='string').map(x=>x.trim()).filter(x=>x.length>0&&x.length<=100))];
+}
+
 function savedCargoPieces(order){
   try{
     const raw=String(order.kargo_zpl||'').trim();
-    if(!raw)return [];
-    const labels=JSON.parse(raw.startsWith('[')?raw:new TextDecoder().decode(Uint8Array.from(atob(raw),c=>c.charCodeAt(0))));
-    if(!Array.isArray(labels)||labels.length>100)return [];
+    const qrCodes=cargoQrCodes(order);
+    let labels=[];
+    try{labels=raw?JSON.parse(raw.startsWith('[')?raw:new TextDecoder().decode(Uint8Array.from(atob(raw),c=>c.charCodeAt(0)))):[];}catch{}
+    if(!Array.isArray(labels)||labels.length>100)labels=[];
+    // QR is authoritative. Match the original label by exact code, never list position.
+    if(qrCodes.length)labels=qrCodes.map((barcode,index)=>({...labels.find(x=>x?.barcode===barcode),barcode,pieceNumber:labels.find(x=>x?.barcode===barcode)?.pieceNumber||index+1}));
     const seen=new Set();
     return labels.filter(x=>{
       if(typeof x?.barcode!=='string'||!x.barcode.trim()||seen.has(x.barcode))return false;
@@ -968,7 +983,7 @@ function canReprintCargoPiece(order,piece){
 function renderCargoPieces(order){
   const pieces=savedCargoPieces(order);
   if(!pieces.length)return '';
-  return `<div class="cargo-pieces"><strong>Paket Etiketleri</strong><p>Çıkış teyidi yok: DHL hareketinde bu paket barkodu görülmedi. Paketin kesin olarak depoda olduğu anlamına gelmez.</p>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>${escapeHtml(piece.barcode)}</code><span>${cargoPieceHasExit(order,piece.barcode)?'Çıkışı doğrulandı':'Çıkış teyidi yok'}</span></div>${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</div>`;
+  return `<div class="cargo-pieces"><strong>Paket Etiketleri</strong><p>Çıkış teyidi yok: DHL hareketinde bu paket barkodu görülmedi. Paketin kesin olarak depoda olduğu anlamına gelmez.</p>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>QR / Paket barkodu: ${escapeHtml(piece.barcode)}</code><span>${cargoPieceHasExit(order,piece.barcode)?'Çıkışı doğrulandı':'Çıkış teyidi yok'}</span></div>${!piece.printable?'<small>Bu QR koduna ait orijinal etiket bulunamadı.</small>':''}${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</div>`;
 }
 const piecePrintBusy=new Set();
 async function reprintCargoPiece(orderId,index,button){
@@ -999,7 +1014,8 @@ async function reprintCargoPiece(orderId,index,button){
 window.reprintCargoPiece=reprintCargoPiece;
 
 function cargoPieceSummary(order){
-  const expected=Number(order.kargo_adet);
+  const qrCount=cargoQrCodes(order).length;
+  const expected=qrCount||Number(order.kargo_adet);
   if(!Number.isSafeInteger(expected)||expected<2)return '';
   const movements=sortCargoMovements(cargoTrackingData(order).movements);
   const barcode=m=>String(m.barcode||m.pieceBarcode||m.packageBarcode||'').trim();
@@ -1016,7 +1032,7 @@ function cargoPieceSummary(order){
   const countText=confirmed.size
     ? `Çıkışı barkodla doğrulanan: ${confirmed.size} · Çıkış teyidi beklenen: ${Math.max(0,expected-confirmed.size)}`
     : 'Çıkışı barkodla doğrulanan adet: Bilinmiyor';
-  return `<div class="cargo-piece-summary${different?' cargo-piece-summary--mismatch':''}"><strong>Planlanan paket / etiket: ${expected}</strong><span>${countText}</span><span>DHL kaydındaki parça: ${carrier===null?'Bilgi yok':carrier}${different?` · Adet farkı: ${Math.abs(expected-carrier)}`:''}</span>${different?'<small>Paket adedi uyuşmuyor. DHL toplam parça adedi tek başına hangi paketlerin çıktığını doğrulamaz.</small>':''}</div>`;
+  return `<div class="cargo-piece-summary${different?' cargo-piece-summary--mismatch':''}"><strong>Planlanan paket / etiket: ${expected}${qrCount?' · QR alanından':''}</strong><span>${countText}</span><span>DHL kaydındaki parça: ${carrier===null?'Bilgi yok':carrier}${different?` · Adet farkı: ${Math.abs(expected-carrier)}`:''}</span>${different?'<small>Paket adedi uyuşmuyor. DHL toplam parça adedi tek başına hangi paketlerin çıktığını doğrulamaz.</small>':''}</div>`;
 }
 
 // Only carrier-provided piece barcodes identify a package. A shipment ID is shared.

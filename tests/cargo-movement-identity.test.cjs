@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const source=fs.readFileSync(require('node:path').join(__dirname,'..','app.js'),'utf8');
 const context={window:{},TextDecoder,Uint8Array,atob,escapeHtml:value=>String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'),cargoTrackingData:o=>o.tracking||{},sortCargoMovements:x=>x||[],cargoStatusBadge:()=>'',cargoBranchContact:()=>'',isLiveShipment:()=>false,isGaziAdmin:false};
 vm.createContext(context);
-vm.runInContext(source.slice(source.indexOf('function savedCargoPieces('),source.indexOf('\n\n\nfunction printEtiket(')),context);
+vm.runInContext(source.slice(source.indexOf('function cargoQrCodes('),source.indexOf('\n\n\nfunction printEtiket(')),context);
 const movement={shipmentId:'636340448124',referenceId:'AKH452009180',pieceTotal:'1',eventStatus:'Transfer Aşamasında'};
 const order={siparis_no:9180,kargo_adet:'2',kargo_takip_kodu:'636340448124',tracking:{movements:[movement]}};
 let html=context.renderCargoTracking(order);
@@ -44,3 +44,15 @@ assert(!context.canReprintCargoPiece({...piecesOrder,kargo_api_yanit:'{"activeSh
 assert(!context.canReprintCargoPiece({...piecesOrder,isDelivered:true},pieces[2]));
 assert(!context.savedCargoPieces({...piecesOrder,kargo_zpl:JSON.stringify([{barcode:'X',value:'^XA^XZ^XA^XZ'}])})[0].printable);
 console.log('PASS: 3 labels, 2 exits, only remaining barcode can reprint; base64, canceled and delivered guards');
+
+const qrOrder={...piecesOrder,kargo_qr_kod:'["B3","B1","MISSING"]'};
+const qrPieces=context.savedCargoPieces(qrOrder);
+assert.equal(qrPieces.length,3);
+assert.equal(qrPieces[0].barcode,'B3');assert.equal(qrPieces[0].value,labels[2].value);
+assert.equal(qrPieces[2].barcode,'MISSING');assert(!qrPieces[2].printable);
+assert.equal(context.savedCargoPieces({...qrOrder,kargo_zpl:'broken'})[0].barcode,'B3');
+assert(!context.savedCargoPieces({...qrOrder,kargo_zpl:'broken'})[0].printable);
+assert.equal(context.cargoQrCodes({kargo_qr_kod:'["B1","B1","B2"]'}).length,2);
+assert.equal(context.savedCargoPieces({...piecesOrder,kargo_qr_kod:null}).length,3);
+assert(context.renderCargoPieces(qrOrder).includes('QR / Paket barkodu: B3'));
+console.log('PASS: QR authority, reordered exact label match, missing labels fail closed, duplicates and legacy fallback');
