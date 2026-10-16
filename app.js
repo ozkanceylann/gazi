@@ -292,6 +292,8 @@ async function loadOrders(reset=false){
     return toast("Gösterilecek başka kayıt yok.");
   }
 
+  await loadCustomerNotes(data);
+  if(request!==listRequest)return;
   renderTable(data, { append: !reset, hasMore });
   updateListHeading(false, `${tbody.children.length} sipariş gösteriliyor · Toplam ${count ?? data.length} kayıt`);
   } catch(error) {
@@ -314,6 +316,59 @@ function needsCargoLabelRetry(order){
     && cargoEnvironment(order)!=="test";
 }
 
+
+const customerNotes = new Map();
+const customerNoteOrderIds = new Map();
+function customerNotePhone(value){return String(value||"").replace(/\D/g,"").replace(/^90/,"").replace(/^0/,"");}
+async function loadCustomerNotes(rows){
+  if(!rows?.length)return;
+  const ids=[...new Set(rows.map(o=>Number(o.musteri_no)).filter(n=>Number.isSafeInteger(n)&&n>0))];
+  ids.forEach(id=>customerNotes.delete(id));
+  const missing=rows.filter(o=>!Number(o.musteri_no));
+  const phones=[...new Set(missing.flatMap(o=>{const n=customerNotePhone(o.musteri_tel);return /^5\d{9}$/.test(n)?[String(o.musteri_tel),n,"0"+n,"90"+n,"+90"+n]:[];}))];
+  const reads=[];
+  if(ids.length)reads.push(db.from("musteriler").select("musteri_no,musteri_tel,not").in("musteri_no",ids));
+  if(phones.length)reads.push(db.from("musteriler").select("musteri_no,musteri_tel,not").in("musteri_tel",phones));
+  const results=await Promise.all(reads.map(q=>Promise.resolve(q).catch(error=>({data:null,error}))));let failed=false;const customers=[];
+  for(const r of results){if(r.error){failed=true;continue;}for(const c of r.data||[]){customerNotes.set(Number(c.musteri_no),c);customers.push(c);}}
+  for(const o of rows){
+    const number=Number(o.musteri_no);
+    if(number>0){customerNoteOrderIds.set(Number(o.siparis_no),number);o._customerNoteUnavailable=failed&&!customers.some(c=>Number(c.musteri_no)===number);}
+    else{o._customerNoteUnavailable=failed;const matches=customers.filter(c=>customerNotePhone(c.musteri_tel)===customerNotePhone(o.musteri_tel));const unique=[...new Set(matches.map(c=>Number(c.musteri_no)))];customerNoteOrderIds.delete(Number(o.siparis_no));if(unique.length===1)customerNoteOrderIds.set(Number(o.siparis_no),unique[0]);}
+  }
+}
+function customerNoteRecord(order){const id=Number(order?.musteri_no)||customerNoteOrderIds.get(Number(order?.siparis_no));return customerNotes.get(id);}
+function customerNoteCard(order){
+  if(!["bekleyen","hazirlandi","kargolandi"].includes(currentTab))return "";
+  const note=String(customerNoteRecord(order)?.not||"").trim();
+  if(!note)return "";
+  return `<button type="button" class="customer-note-card" title="${escapeHtml(note)}" onclick="event.stopPropagation();openOrder(${Number(order.siparis_no)})"><span>Müşteri notu</span><strong>${escapeHtml(note)}</strong></button>`;
+}
+function customerNoteDetail(order){
+  const customer=customerNoteRecord(order),note=String(customer?.not||"");
+  const unavailable=order._customerNoteUnavailable===true;
+  return `<section class="detail-group customer-note-panel"><div class="customer-note-heading"><strong>Müşteri notu</strong><span>Kalıcı · tüm siparişlerde</span>${isGaziAdmin&&customer&&!unavailable?'<button type="button" onclick="editCustomerNote()">'+(note.trim()?"Düzenle":"Not ekle")+'</button>':""}</div>${note.trim()?`<p class="customer-note-content">${escapeHtml(note)}</p>`:""}${unavailable?'<p class="customer-note-content">Müşteri notu alınamadı. Siparişi yeniden açın.</p>':!customer?'<p class="customer-note-content">Müşteri kaydı eşleştirilemedi.</p>':""}${isGaziAdmin&&customer&&!unavailable?`<form id="customerNoteForm" hidden onsubmit="event.preventDefault();saveCustomerNote(this)"><label for="customerNoteInput">Bu müşterinin tüm siparişlerinde görünür</label><textarea id="customerNoteInput" name="note" rows="3" maxlength="10000">${escapeHtml(note)}</textarea><div><button type="submit">Müşteri notunu kaydet</button><button type="button" onclick="this.closest('form').hidden=true">Vazgeç</button></div><p role="status"></p></form>`:""}</section>`;
+}
+window.editCustomerNote=function(){const form=document.getElementById("customerNoteForm");if(form){form.hidden=!form.hidden;if(!form.hidden)form.elements.namedItem("note").focus();}};
+window.saveCustomerNote=async function(form){
+  const order=selectedOrder,customer=customerNoteRecord(order);
+  if(!isGaziAdmin||!customer||form.dataset.saving)return;
+  const id=Number(customer.musteri_no),note=form.elements.namedItem("note").value.trim()||null;
+  const button=form.querySelector('[type="submit"]'),status=form.querySelector('[role="status"]');
+  form.dataset.saving="true";button.disabled=true;status.textContent="Kaydediliyor…";
+  try{
+    let q=db.from("musteriler").update({not:note}).eq("musteri_no",id);
+    q=customer.not===null?q.is("not",null):q.eq("not",customer.not);
+    const {data,error}=await q.select("musteri_no,musteri_tel,not").maybeSingle();
+    if(error)throw error;
+    if(!data)throw Error("Müşteri notu başka bir yerde değişmiş olabilir. Siparişi yeniden açıp kontrol edin.");
+    customerNotes.set(id,data);toast("Müşteri notu kaydedildi. Tüm siparişlerinde görünecek.",5000);
+    const inTab=!!document.getElementById("tabSearchInput")?.value.trim();
+    if(inTab||document.getElementById("searchInput")?.value.trim())await searchOrders(inTab?"tab":"all");else await loadOrders(true);
+    if(selectedOrder?.siparis_no===order.siparis_no)renderDetails();
+  }catch(error){status.textContent=error.message||"Müşteri notu kaydedilemedi.";}
+  finally{delete form.dataset.saving;button.disabled=false;}
+};
 
 function orderDateMarkup(value) {
   // The order timestamp has no timezone; retain its recorded calendar date.
@@ -550,7 +605,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     <td>${orderStage === "Bekliyor" ? `<div class="order-primary-actions"><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button><button type="button" class="btn-direct-cargo" onclick="event.stopPropagation(); directShipFromList(${Number(o.siparis_no)}, this)">Direkt Kargola</button></div> ${actionBtn}` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div></td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${customerNoteCard(o)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -567,7 +622,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
     ${isPreparedTab ? `<td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>` : ""}
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div></td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${customerNoteCard(o)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -1263,6 +1318,7 @@ async function openOrder(id){
     if(Number.isSafeInteger(Number(mergedInto))&&Number(mergedInto)>0&&Number(mergedInto)!==Number(id))return openOrder(Number(mergedInto));
     return toast("Bu sipariş arşivlendi.");
   }
+  await loadCustomerNotes([data]);
   const modal = document.getElementById("orderModal");
   const resetScroll = selectedOrder?.siparis_no !== data.siparis_no || modal.style.display !== "flex";
   selectedOrder = data;
@@ -1340,6 +1396,7 @@ document.getElementById("orderDetails").innerHTML = `
  </div></div>
  ${d.notlar?`<div class="detail-group detail-note"><div class="detail-title">Sipariş notu</div><div class="note-text">${escapeHtml(d.notlar)}</div></div>`:""}
 </div>
+${customerNoteDetail(d)}
 ${renderOriginalMessage(d)}
 `;
 
@@ -2358,6 +2415,7 @@ async function searchOrders(scope = "all") {
     renderTableHeader();
     const matches = data;
     if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(a))-Number(hasCargoLabel(b))||(Date.parse(b.etiket_olusturma_tarihi)||0)-(Date.parse(a.etiket_olusturma_tarihi)||0)||Number(b.siparis_no)-Number(a.siparis_no));
+    await loadCustomerNotes(matches);
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
   } catch (error) {
