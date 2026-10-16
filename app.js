@@ -2237,12 +2237,26 @@ async function restoreOrder(){
 /* ============================================================
    ARAMA
 ============================================================ */
+function customerNameSearchPattern(input){
+  const raw=String(input||'').trim().toLocaleLowerCase('tr-TR');
+  // Name matching only: accents are equivalent; one vowel typo is tolerated in longer names.
+  const groups={c:'[cç]',ç:'[cç]',g:'[gğ]',ğ:'[gğ]',o:'[oö]',ö:'[oö]',s:'[sş]',ş:'[sş]',u:'[uü]',ü:'[uü]',i:'[iıİI]',ı:'[iıİI]'};
+  const chars=Array.from(raw);
+  const escaped=chars.map(c=>groups[c]||(/^[a-z0-9 ]$/.test(c)?c:'\\'+c));
+  const patterns=[escaped.join('')];
+  if(chars.filter(c=>/[a-zçğıöşü]/.test(c)).length>=5){
+    chars.forEach((c,index)=>{if(/[aeıioöuü]/.test(c)){const variant=[...escaped];variant[index]='[aeıiİIoöuü]';patterns.push(variant.join(''));}});
+  }
+  return '(?:'+patterns.join('|')+')';
+}
+
 function buildOrderSearchFilter(input) {
   const raw = input.trim();
   const pattern = value => JSON.stringify("%" + value.replace(/[\\%_]/g, character => "\\" + character) + "%");
   const text = pattern(raw);
   const filters = ["ad_soyad", "adres", "kargo_takip_kodu", "iade_kodu"]
     .map(column => column + ".ilike." + text);
+  if(/[a-zçğıöşüİ]/i.test(raw))filters.push('ad_soyad.imatch.'+JSON.stringify(customerNameSearchPattern(raw)));
   const digits = raw.replace(/\D/g, "");
   const phoneInput = /^[+\d\s().-]+$/.test(raw) && digits.length >= 3;
   const phone = phoneInput
