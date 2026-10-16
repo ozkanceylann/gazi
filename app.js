@@ -945,14 +945,14 @@ async function refreshSelectedCargoMovements(id){
   finally{cargoDetailBusy=false;if(button?.isConnected){button.disabled=false;button.textContent="Hareket geçmişini getir";}}
 }
 function renderCargoTracking(order){
-  if(!order.kargo_takip_kodu)return "";
+  if(!order.kargo_takip_kodu&&!order.orderinvoiceid)return "";
   const tracking=cargoTrackingData(order);
   const movements=sortCargoMovements(tracking?.movements);
   const timeline=movements.map(m=>`<li><strong>${escapeHtml(m.eventStatus||"Kargo hareketi")}</strong><span>${escapeHtml(m.eventDateTime||m.eventDateTime2||"")} · ${cargoBranchContact(m)}</span>${m.description?`<span>${escapeHtml(m.description)}</span>`:""}</li>`).join("");
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
   const detailButton=isLiveShipment(order)?`<button class="btn-open" type="button" data-cargo-detail-refresh onclick="refreshSelectedCargoMovements(${Number(order.siparis_no)})">Hareket geçmişini getir</button>`:"";
-  return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu)}</p>${link}${detailButton}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
+  return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu||"Henüz oluşmadı")}</p>${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment style="width:auto;padding:7px 10px;font-size:12px;margin-top:8px" onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
 }
 
 
@@ -2058,6 +2058,32 @@ function hasExistingShipment(order){
    KARGOLANMIŞ İPTAL
 ============================================================ */
 
+function canCancelShipment(order){
+  return ["Kargolandı","Hazırlandı"].includes(order?.kargo_durumu)
+    && !!(order?.orderinvoiceid||order?.kargo_takip_kodu)
+    && order?.isDelivered!==true && Number(order?.shipmentStatusCode)!==5
+    && cargoEnvironment(order)!=="test";
+}
+async function cancelShipmentToWaiting(orderId,button){
+  const id=Number(orderId??selectedOrder?.siparis_no);
+  if(!isGaziAdmin||!Number.isSafeInteger(id)||id<1||cancelBusy||busy.kargola.has(id)||busy.barkod.has(id))return;
+  const ok=await confirmModal({title:"Kargo Gönderisini İptal Et",text:"DHL gönderisi ve sipariş kaydı iptal edilecek. DHL iptali onaylarsa sipariş Bekleyen aşamasına dönecek. Mevcut etiketler geçersiz olacak. Devam edilsin mi?",confirmText:"Evet, Gönderiyi İptal Et",cancelText:"Vazgeç"});
+  if(!ok||cancelBusy||busy.kargola.has(id)||busy.barkod.has(id))return;
+  cancelBusy=true;busy.kargola.add(id);busy.barkod.add(id);
+  const label=button?.textContent;
+  if(button){button.disabled=true;button.textContent="İptal ediliyor…";}
+  try{
+    const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
+    if(error)throw error;
+    if(!canCancelShipment(order))throw new Error("Bu siparişin gönderisi iptal edilemez. Listeyi yenileyin.");
+    const result=await cargoRequest(CONFIG.webhooks.iptal,{operation:"gonderi_iptal",siparis_no:String(id),reason:"Kargo gönderisi iptal edilerek sipariş yeniden hazırlamak üzere Bekleyen aşamasına alınıyor."});
+    if(result.cancelled!==true||result.recordVerified!==true||result.kargo_durumu!=="Bekliyor")throw new Error("İptal ve Bekleyen kaydı doğrulanamadı. Siparişin durumunu kontrol edin.");
+    toast(result.message||"Gönderi iptal edildi; sipariş Bekleyen aşamasına alındı.",7000);
+    closeModal();setTab("bekleyen");
+  }catch(error){toast(error.message||"Gönderi iptali tamamlanamadı.",10000);await loadOrders(true);}
+  finally{cancelBusy=false;busy.kargola.delete(id);busy.barkod.delete(id);if(button){button.disabled=false;button.textContent=label;}}
+}
+
 let cancelBusy=false;
 async function confirmCancel(){
   if(cancelBusy)return;
@@ -2325,6 +2351,7 @@ Object.assign(window, {
   openCancelForm,
   cancelCancelForm,
   confirmCancel,
+  cancelShipmentToWaiting,
   restoreOrder,
 
   queryCityDistrictCodes,
@@ -2356,6 +2383,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
