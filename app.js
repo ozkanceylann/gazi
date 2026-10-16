@@ -42,7 +42,7 @@ let selectedOrder = null;
 const orderTakerNames = new Map();
 const isGaziAdmin = sessionUser.app_metadata?.role !== "seller";
 
-const busy = { kargola: new Set(), barkod: new Set(), iade: new Set() };
+const busy = { kargola: new Set(), barkod: new Set(), iade: new Set(), sube: new Set() };
 
 
 
@@ -457,7 +457,7 @@ function orderStageBadge(order) {
   };
   const [label, tone] = states[stage] || [stage, "unknown"];
   const delivery = order?.teslim_sekli_kontrol === true ? '<span class="order-stage-badge order-stage-badge--problem">Teslim şekli kontrol</span>' : order?.subeden_teslim === true ? '<span class="order-stage-badge order-stage-badge--prepared">Şubeden teslim</span>' : '';
-  return `<span class="order-stage-badge order-stage-badge--${tone}" aria-label="Sipariş durumu: ${escapeHtml(label)}">${escapeHtml(label)}</span>${delivery}`;
+  return `<span class="order-stage-badge order-stage-badge--${tone}" aria-label="Sipariş durumu: ${escapeHtml(label)}">${escapeHtml(label)}</span>${delivery}${branchLabelBadge(order)}`;
 }
 
 function mobileOrderInfo(order){
@@ -586,7 +586,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${orderTakerMarkup(o)}</td>
-<td>${errorPreview}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" data-label-operation="${hasCargoLabel(o)?"print":"create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
+<td>${errorPreview}${currentTab === "kargolandi" ? branchLabelButton(o) : ""}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" data-label-operation="${hasCargoLabel(o)?"print":"create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
 
   `;
 
@@ -753,6 +753,20 @@ async function createReturnLabel(id,button){
   finally{busy.iade.delete(id);if(button?.isConnected){button.disabled=false;button.textContent="İADE Etiketi Oluştur";}}
 }
 
+window.sendBranchLabel=async function(id,button,operation="send"){
+  id=Number(id);if(busy.sube.has(id))return;busy.sube.add(id);button.disabled=true;button.textContent="Şubeye iletiliyor…";
+  try{
+    const {data,error}=await db.functions.invoke("gazi-branch-label",{body:{siparis_no:id,operation}});
+    if(error){let detail;try{detail=await error.context?.json();}catch{}throw Error(detail?.message||error.message);}
+    if(!data?.success)throw Error(data?.message||"Gönderim tamamlanamadı");
+    toast(data.status==="historical"?"Şubeden kesilen olarak işaretlendi.":data.status==="sent"?"Şubeye iletildi. Tekrar gönderim kapatıldı.":"Bu sipariş için daha önce işlem başlatılmış. Tekrar gönderilmedi.",6000);
+  }catch(error){toast(error.message||"Şubeye iletilemedi",8000);}
+  finally{
+    busy.sube.delete(id);await loadOrders(true);
+    if(selectedOrder?.siparis_no===id){const {data}=await db.from(TABLE).select("*").eq("siparis_no",id).single();if(data){selectedOrder=data;renderDetails();}}
+  }
+};
+
 const CARGO_STATES = [{"key":"created","code":1,"label":"Gönderi Hazırlandı","tone":"created","raw":"Gönderi_Hazırlandı"},{"key":"transfer","code":2,"label":"Transfer Aşamasında","tone":"transit","raw":"Transfer_Aşamasında"},{"key":"branch","code":3,"label":"Teslimat Birimine Ulaştı","tone":"transit","raw":"Teslimat_Birimine_Ulaştı"},{"key":"delivery","code":4,"label":"Alıcı Adresine Yönlendirildi","tone":"delivery","raw":"Alıcı_Adresine_Yönlendirildi"},{"key":"delivered","code":5,"label":"Teslim Edildi","tone":"delivered","raw":"Teslim_Edildi"},{"key":"failed","code":6,"label":"Teslim Edilemedi","tone":"problem","raw":"Teslim_Edilemedi"},{"key":"return","code":7,"label":"Geri Geliyor","tone":"return","raw":"Geri_Geliyor"},{"key":"support","code":8,"label":"Destek Gerekiyor","tone":"problem","raw":"Destek_Gerekiyor"}];
 function cargoStatusInfo(order){
   const code=Number(order.shipmentStatusCode);
@@ -769,6 +783,20 @@ function isCargoAwaitingHandover(order){
   return order?.kargo_durumu==="Kargolandı" && order?.isDelivered!==true
     && (!code||code===1) && ["","Gönderi Hazırlandı","DHL sipariş kaydı oluşturuldu; barkod bekleniyor"].includes(status);
 }
+function canRequestBranchLabel(order){
+  return isGaziAdmin && isCargoAwaitingHandover(order) && !hasCargoLabel(order)
+    && cargoEnvironment(order)!=="test" && !["sending","sent","uncertain","historical"].includes(order?.sube_etiket_durumu);
+}
+function branchLabelBadge(order){
+  const labels={sending:"Şubeye gönderiliyor",sent:"Şubeye iletildi",uncertain:"Şube gönderimi kontrol edilmeli",historical:"Şubeden kesilen"};
+  const label=labels[order?.sube_etiket_durumu];
+  return label?`<span class="order-stage-badge order-stage-badge--branch">${label}</span>`:"";
+}
+function branchLabelButton(order){
+  if(isGaziAdmin&&["sent","uncertain"].includes(order?.sube_etiket_durumu))return `<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this,'confirm')">Şubeden Kesildi İşaretle</button>`;
+  return canRequestBranchLabel(order)?`<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this)">Şubeye İlet · WhatsApp</button>`:"";
+}
+
 function canPrintCargoLabel(order){
   return isCargoAwaitingHandover(order) && !!order?.orderinvoiceid;
 }
@@ -1401,6 +1429,12 @@ document.getElementById("orderDetails").innerHTML = `
   document.getElementById("btnBarcode").style.display =
     canPrintCargoLabel(d) ? "inline-block" : "none";
   updateCargoLabelButton(document.getElementById("btnBarcode"),d);
+
+  let branchButton=document.getElementById("btnBranchLabel");
+  if(!branchButton){branchButton=document.createElement("button");branchButton.id="btnBranchLabel";branchButton.className="btn-cargo-label cargo-label-branch";document.getElementById("actionButtons").appendChild(branchButton);}
+  branchButton.textContent="Şubeye İlet · WhatsApp";branchButton.disabled=busy.sube.has(Number(d.siparis_no));
+  branchButton.style.display=currentTab==="kargolandi"&&canRequestBranchLabel(d)?"inline-block":"none";
+  branchButton.onclick=()=>window.sendBranchLabel(d.siparis_no,branchButton);
 
   // Tamamlandı → butonları kapat, sadece kapat butonu açık kalsın
   if (tamam) {

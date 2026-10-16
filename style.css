@@ -1620,3 +1620,6 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .orders-page .btn-cargo-label.cargo-label-print:hover,
 #btnBarcode.cargo-label-print:hover,
 .orders-page .cargo-piece .cargo-label-print:hover { background:#c7ddfa; }
+
+.cargo-label-branch{background:#6d28d9!important;color:#fff!important;border:1px solid #5b21b6!important;margin:5px 0;white-space:normal;}
+.order-stage-badge--branch{background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;}
