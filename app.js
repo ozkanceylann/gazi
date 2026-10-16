@@ -1257,9 +1257,12 @@ async function openOrder(id){
     if(Number.isSafeInteger(Number(mergedInto))&&Number(mergedInto)>0&&Number(mergedInto)!==Number(id))return openOrder(Number(mergedInto));
     return toast("Bu sipariş arşivlendi.");
   }
+  const modal = document.getElementById("orderModal");
+  const resetScroll = selectedOrder?.siparis_no !== data.siparis_no || modal.style.display !== "flex";
   selectedOrder = data;
   renderDetails();
-  document.getElementById("orderModal").style.display = "flex";
+  modal.style.display = "flex";
+  if (resetScroll) modal.scrollTop = 0;
 }
 
 function closeModal(){

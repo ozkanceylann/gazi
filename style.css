@@ -1697,3 +1697,12 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
  #orderModal .modal-btns button{flex:1 1 calc(33.33% - 7px);min-height:39px;font-size:11px;}
 }
 @media(max-width:360px){#orderDetails .detail-overview{align-items:flex-start;flex-direction:column;}.detail-overview-total{flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:6px 10px;text-align:left;}#orderDetails .detail-overview-total>span:first-child{display:none;}}
+
+/* One natural scroll surface for the entire order sheet. */
+#orderModal{flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-sizing:border-box;padding-bottom:max(16px,env(safe-area-inset-bottom));}
+#orderModal::-webkit-scrollbar{display:none;width:0;height:0;}
+#orderModal .modal-content{flex:0 0 auto;max-height:none!important;height:auto!important;overflow:visible!important;margin:auto 0!important;}
+#orderModal #orderDetails{flex:0 0 auto;max-height:none;overflow:visible;padding-right:0;scrollbar-width:none;}
+#orderModal #orderDetails::-webkit-scrollbar{display:none;}
+#orderModal .original-message-text{max-height:none;overflow:visible;overflow-wrap:anywhere;}
+@media(max-width:600px){#orderModal{padding:8px 8px max(8px,env(safe-area-inset-bottom));}#orderModal .modal-content{max-height:none!important;margin:auto 0!important;}}
