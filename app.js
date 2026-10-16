@@ -214,7 +214,7 @@ function applyTabFilter(q) {
   return q;
 }
 
-// Saved labels come first, newest creation first. Count queues before ranges: an exhausted queue must never
+// Orders needing label creation come first; saved labels follow, newest creation first. Count queues before ranges: an exhausted queue must never
 // receive an offset beyond its last row (PostgREST PGRST103 / HTTP 416).
 async function loadCargoLabelQueue(start, end){
   const query = (saved, head=false) => {
@@ -231,12 +231,12 @@ async function loadCargoLabelQueue(start, end){
   const [pending,saved]=await Promise.all([query(false,true),query(true,true)]);
   if(pending.error||saved.error)return {error:pending.error||saved.error};
   const pendingCount=pending.count||0, savedCount=saved.count||0;
-  const savedTake=Math.max(0,Math.min(end+1,savedCount)-start);
-  const pendingStart=Math.max(0,start-savedCount);
-  const pendingTake=Math.max(0,Math.min(end-start+1-savedTake,pendingCount-pendingStart));
+  const pendingTake=Math.max(0,Math.min(end+1,pendingCount)-start);
+  const savedStart=Math.max(0,start-pendingCount);
+  const savedTake=Math.max(0,Math.min(end-start+1-pendingTake,savedCount-savedStart));
   const requests=[];
-  if(savedTake)requests.push(savedRows.order("etiket_olusturma_tarihi",{ascending:false,nullsFirst:false}).order("siparis_no",{ascending:false}).range(start,start+savedTake-1));
-  if(pendingTake)requests.push(pendingRows.order("siparis_no",{ascending:false}).range(pendingStart,pendingStart+pendingTake-1));
+  if(pendingTake)requests.push(pendingRows.order("siparis_no",{ascending:false}).range(start,start+pendingTake-1));
+  if(savedTake)requests.push(savedRows.order("etiket_olusturma_tarihi",{ascending:false,nullsFirst:false}).order("siparis_no",{ascending:false}).range(savedStart,savedStart+savedTake-1));
   const pages=await Promise.all(requests);
   const error=pages.find(page=>page.error)?.error;
   return {data:pages.flatMap(page=>page.data||[]),error:error||null,count:pendingCount+savedCount};
@@ -2341,7 +2341,7 @@ async function searchOrders(scope = "all") {
     if (error) throw error;
     renderTableHeader();
     const matches = data;
-    if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(b))-Number(hasCargoLabel(a))||(Date.parse(b.etiket_olusturma_tarihi)||0)-(Date.parse(a.etiket_olusturma_tarihi)||0)||Number(b.siparis_no)-Number(a.siparis_no));
+    if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(a))-Number(hasCargoLabel(b))||(Date.parse(b.etiket_olusturma_tarihi)||0)-(Date.parse(a.etiket_olusturma_tarihi)||0)||Number(b.siparis_no)-Number(a.siparis_no));
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
   } catch (error) {
