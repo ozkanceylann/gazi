@@ -15,7 +15,7 @@
   <script src="config.js?v=20261014-cargo-separate-34"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261017-customer-note-text-71" />
+  <link rel="stylesheet" href="style.css?v=20261017-operation-counters-72" />
 
   <style>
     .btn-mini{
@@ -86,6 +86,13 @@
     <header class="page-header"><div><p class="page-eyebrow">SİPARİŞ YÖNETİMİ</p><h1 id="pageTitle">Bekleyen Siparişler</h1><p id="listSummary" role="status" aria-live="polite">Siparişler yükleniyor…</p></div><div class="page-header-actions"><button class="btn-refresh" type="button" onclick="clearSearch()" aria-label="Listeyi yenile" title="Listeyi yenile">↻ Yenile</button></div></header>
 
 
+
+    <section id="operationCounters" class="operation-counters" aria-label="Operasyon özeti" aria-busy="true">
+      <button type="button" class="operation-card operation-card--prepare" data-operation="prepare" aria-pressed="false" onclick="openOperationQueue('prepare')"><span>Hazırlanacak</span><strong data-operation-count="prepare">…</strong><small>Bekleyen siparişler</small></button>
+      <button type="button" class="operation-card operation-card--label" data-operation="label" aria-pressed="false" onclick="openOperationQueue('label')"><span>Etiket bekleyen</span><strong data-operation-count="label">…</strong><small>Etiketi henüz oluşmayanlar</small></button>
+      <button type="button" class="operation-card operation-card--handover" data-operation="handover" aria-pressed="false" onclick="openOperationQueue('handover')"><span>DHL teslim alımı bekleyen</span><strong data-operation-count="handover">…</strong><small>Etiketi hazır, çıkış bekliyor</small></button>
+      <button type="button" class="operation-card operation-card--attention" data-operation="attention" aria-pressed="false" onclick="openOperationQueue('attention')"><span>Müdahale gereken</span><strong data-operation-count="attention">…</strong><small>Teslim edilemedi / destek gerekiyor</small></button>
+    </section>
 
     <div class="order-quick-actions">
       <div id="batchPrepareTools" class="quick-action-wrapper" hidden>
@@ -202,7 +209,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261017-customer-note-text-71");
+      await import("./app.js?v=20261017-operation-counters-72");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

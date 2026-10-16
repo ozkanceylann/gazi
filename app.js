@@ -36,6 +36,7 @@ const WH_SEHIR_ILCE = CONFIG.webhooks.sehir_ilce;
 ============================================================ */
 let currentTab = "bekleyen";
 let cargoFilter = "all";
+let operationFilter = "";
 let currentPage = 1;
 const PAGE_SIZE = 10;
 let selectedOrder = null;
@@ -196,23 +197,69 @@ function formatDateTimeTR(iso) {
 ============================================================ */
 let listRequest = 0;
 let listLoading = false;
-function applyTabFilter(q) {
-  if(currentTab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
-  if(currentTab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
+function applyTabFilter(q, tab=currentTab, operation=operationFilter) {
+  if(tab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
+  if(tab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
   const deliveredFilter = "shipmentStatusCode.eq.5,isDelivered.eq.true,shipmentStatus.eq.Teslim_Edildi,shipmentStatus.eq.Teslim Edildi";
-  if(currentTab==="kargolandi") {
+  if(tab==="kargolandi") {
     q = q.in("kargo_durumu",["Kargolandı","Tamamlandı"])
       .or("isDelivered.is.null,isDelivered.eq.false")
       .or("shipmentStatusCode.is.null,shipmentStatusCode.neq.5")
       .or("shipmentStatus.is.null,and(shipmentStatus.neq.Teslim_Edildi,shipmentStatus.neq.Teslim Edildi)");
   }
-  if(currentTab==="tamamlandi") q = q.or(deliveredFilter);
-  if(currentTab==="sorunlu") q=q.or([cargoStateFilter("failed"),cargoStateFilter("support")].join(","));
-  if(currentTab==="iade") q=q.or(cargoStateFilter("return")+",iade_kodu.not.is.null");
-  if(currentTab==="iptal")      q = q.eq("kargo_durumu","İptal");
+  if(tab==="tamamlandi") q = q.or(deliveredFilter);
+  if(tab==="sorunlu") q=q.or([cargoStateFilter("failed"),cargoStateFilter("support")].join(","));
+  if(tab==="iade") q=q.or(cargoStateFilter("return")+",iade_kodu.not.is.null");
+  if(tab==="iptal")      q = q.eq("kargo_durumu","İptal");
 
-  return q;
+  return applyOperationFilter(q, operation);
 }
+
+// Dashboard and list share the same server-side predicates and session permissions.
+const OPERATION_CARDS = {
+  prepare: {tab:"bekleyen", title:"Hazırlanacak Siparişler"},
+  label: {tab:"kargolandi", title:"Etiket Bekleyen Siparişler"},
+  handover: {tab:"kargolandi", title:"DHL Teslim Alımı Bekleyen Siparişler"},
+  attention: {tab:"sorunlu", title:"Müdahale Gereken Siparişler"}
+};
+function applyOperationFilter(query, key){
+  if(key!=="label" && key!=="handover")return query;
+  query=query.or(cargoStateFilter("created"));
+  return key==="handover"
+    ? query.or("and(kargo_zpl.not.is.null,kargo_zpl.neq.),zpl_base64.like.JVBER%")
+    : query.or("kargo_zpl.is.null,kargo_zpl.eq.")
+      .or("zpl_base64.is.null,zpl_base64.not.like.JVBER%");
+}
+let operationCountsLoading = false;
+async function refreshOperationCounts(){
+  const panel=document.getElementById("operationCounters");
+  if(!panel || operationCountsLoading)return;
+  operationCountsLoading=true;
+  panel.setAttribute("aria-busy","true");
+  try{
+    await Promise.all(Object.entries(OPERATION_CARDS).map(async ([key,card])=>{
+      const value=panel.querySelector(`[data-operation-count="${key}"]`);
+      try{
+        const query=db.from(TABLE).select("siparis_no",{count:"exact",head:true})
+          .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
+        const {count,error}=await applyOperationFilter(applyTabFilter(query,card.tab,""),key);
+        if(error || typeof count!=="number")throw error || Error("Sayı alınamadı");
+        value.textContent=count.toLocaleString("tr-TR");
+        value.closest("button").title=card.title+": "+count+" sipariş";
+      }catch{
+        value.textContent="—";
+        value.closest("button").title="Sayı alınamadı. Yenile düğmesiyle tekrar deneyin.";
+      }
+    }));
+  }finally{operationCountsLoading=false;panel.setAttribute("aria-busy","false");}
+}
+function openOperationQueue(key){
+  const card=OPERATION_CARDS[key];
+  if(!card)return;
+  setTab(card.tab,key);
+  document.querySelector(".sidebar")?.classList.remove("open");
+}
+window.openOperationQueue=openOperationQueue;
 
 // Orders needing label creation come first; saved labels follow, newest creation first. Count queues before ranges: an exhausted queue must never
 // receive an offset beyond its last row (PostgREST PGRST103 / HTTP 416).
@@ -243,6 +290,7 @@ async function loadCargoLabelQueue(start, end){
 }
 
 async function loadOrders(reset=false){
+  if(reset)void refreshOperationCounts();
   if(document.getElementById("tabSearchInput")?.value.trim()) return searchOrders("tab");
   if(document.getElementById("searchInput")?.value.trim()) return searchOrders();
   syncCargoTools();
@@ -981,6 +1029,8 @@ function applyCargoFilter(query){
   return expression ? query.or(expression) : query;
 }
 function filterCargo(key){
+  operationFilter="";
+  document.querySelectorAll("[data-operation]").forEach(button=>button.setAttribute("aria-pressed","false"));
   if(key!=="all"&&!CARGO_FILTER_GROUPS[key])return;
   cargoFilter=key;
   document.getElementById("searchInput").value="";
@@ -2439,11 +2489,13 @@ function updateListHeading(search, summary) {
   const titles = {bekleyen:"Bekleyen Siparişler", hazirlandi:"Hazırlanan Siparişler", kargolandi:"Kargolanan Siparişler", tamamlandi:"Tamamlanan Siparişler", iade:"İade Siparişleri", sorunlu:"Sorunlu Siparişler", iptal:"İptal Edilen Siparişler"};
   const title = document.getElementById("pageTitle");
   const info = document.getElementById("listSummary");
-  if (title) title.textContent = search ? "Arama Sonuçları" : titles[currentTab];
+  if (title) title.textContent = search ? "Arama Sonuçları" : (OPERATION_CARDS[operationFilter]?.title || titles[currentTab]);
   if (info) info.textContent = summary;
 }
 
-function setTab(tab){
+function setTab(tab, operation=""){
+  operationFilter=OPERATION_CARDS[operation]?.tab===tab ? operation : "";
+  document.querySelectorAll("[data-operation]").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.operation===operationFilter)));
   document.getElementById("searchInput").value = "";
   document.getElementById("tabSearchInput").value = "";
   currentTab = tab;
@@ -2624,3 +2676,6 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
 
 
 
+
+// Refresh visible dashboards once a minute; no background polling.
+setInterval(()=>{if(!document.hidden)void refreshOperationCounts();},60000);

@@ -1777,3 +1777,16 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 #orderDetails .customer-note-content{margin:7px 0 0;font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:#efdfbb;}
 #customerNoteForm[hidden]{display:none!important;}#customerNoteForm{margin-top:10px;}#customerNoteForm label{display:block;font-size:10px;color:#c9b78d;margin-bottom:6px;}#customerNoteForm textarea{width:100%;resize:vertical;padding:9px;font:inherit;font-size:12px;}#customerNoteForm>div{display:flex;gap:7px;margin-top:7px;}#customerNoteForm button{width:auto;padding:6px 9px;border:1px solid #d4a85766;border-radius:7px;background:#d4a85725;color:#efd39b;font-size:11px;cursor:pointer;}#customerNoteForm [role=status]{font-size:11px;color:#efc7b1;margin:5px 0 0;}
 @media(max-width:1200px){.orders-page #ordersBody .customer-note-card{padding:6px 8px;margin-top:5px;}.orders-page #ordersBody .customer-note-card strong{font-size:11px;}}
+
+/* Clickable operation totals; counts cover every accessible order. */
+.operation-counters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 20px}
+.operation-card{--counter:#356049;display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;padding:16px;text-align:left;font:inherit;color:#20382c;background:#edf4ee;border:1px solid #cbdccf;border-top:4px solid var(--counter);border-radius:14px;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.operation-card--label{--counter:#9a6b16;background:#faf3df;border-color:#e5d7ad;color:#61460f}
+.operation-card--handover{--counter:#356fa4;background:#eaf2fa;border-color:#c5d8eb;color:#234e76}
+.operation-card--attention{--counter:#b74c49;background:#f9ece9;border-color:#eac7c1;color:#853a36}
+.operation-card strong{font-size:30px;line-height:1.15;font-variant-numeric:tabular-nums}
+.operation-card span{font-size:13px;font-weight:750;overflow-wrap:anywhere}
+.operation-card small{font-size:11px;line-height:1.5;opacity:.85}
+.operation-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px #193a2814}
+.operation-card[aria-pressed="true"],.operation-card:focus-visible{outline:2px solid var(--counter);outline-offset:2px}
+@media(max-width:1000px){.operation-counters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.operation-card{padding:12px}.operation-card strong{font-size:27px}}
