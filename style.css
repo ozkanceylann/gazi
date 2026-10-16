@@ -1591,3 +1591,9 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
   .orders-page #ordersBody .order-primary-actions button { width:100%; min-width:0; }
   .orders-page #ordersBody .order-primary-actions .btn-direct-cargo { color:#fff; background:#285a43; }
 }
+
+.cargo-timeline .cargo-movement-identity{color:#354d40;font-weight:600;overflow-wrap:anywhere;line-height:1.6}
+
+.cargo-piece-summary{display:grid;gap:4px;margin:8px 0;padding:9px 11px;border:1px solid #cbded2;border-radius:9px;background:#f1f7f3;font-size:12px;overflow-wrap:anywhere;line-height:1.5}
+.cargo-piece-summary--mismatch{border-color:#dc9b51;background:#fff4e7;color:#7b460e}
+.cargo-piece-summary small{font-weight:400}
