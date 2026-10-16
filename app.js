@@ -944,6 +944,60 @@ async function refreshSelectedCargoMovements(id){
   }catch(error){toast(error.message,8000);}
   finally{cargoDetailBusy=false;if(button?.isConnected){button.disabled=false;button.textContent="Hareket geçmişini getir";}}
 }
+function savedCargoPieces(order){
+  try{
+    const raw=String(order.kargo_zpl||'').trim();
+    if(!raw)return [];
+    const labels=JSON.parse(raw.startsWith('[')?raw:new TextDecoder().decode(Uint8Array.from(atob(raw),c=>c.charCodeAt(0))));
+    if(!Array.isArray(labels)||labels.length>100)return [];
+    const seen=new Set();
+    return labels.filter(x=>{
+      if(typeof x?.barcode!=='string'||!x.barcode.trim()||seen.has(x.barcode))return false;
+      seen.add(x.barcode);return true;
+    }).map(x=>({...x,printable:typeof x.value==='string'&&x.value.trim().startsWith('^XA')&&x.value.trim().endsWith('^XZ')&&(x.value.match(/\^XA/g)||[]).length===1&&(x.value.match(/\^XZ/g)||[]).length===1}));
+  }catch{return [];}
+}
+function cargoPieceHasExit(order,barcode){
+  const movements=cargoTrackingData(order).movements;
+  return Array.isArray(movements)&&movements.some(m=>String(m.barcode||m.pieceBarcode||m.packageBarcode||'').trim()===barcode&&['2','3','4','5','6','7','8','9'].includes(String(m.eventSequence)));
+}
+function canReprintCargoPiece(order,piece){
+  let meta;try{meta=typeof order.kargo_api_yanit==='string'?JSON.parse(order.kargo_api_yanit||'{}'):order.kargo_api_yanit||{};}catch{return false;}
+  return isGaziAdmin&&piece.printable&&order.kargo_durumu==='Kargolandı'&&meta.environment!=='test'&&meta.activeShipmentCancelled!==true&&order.isDelivered!==true&&Number(order.shipmentStatusCode)!==5&&!cargoPieceHasExit(order,piece.barcode);
+}
+function renderCargoPieces(order){
+  const pieces=savedCargoPieces(order);
+  if(!pieces.length)return '';
+  return `<div class="cargo-pieces"><strong>Paket Etiketleri</strong><p>Çıkış teyidi yok: DHL hareketinde bu paket barkodu görülmedi. Paketin kesin olarak depoda olduğu anlamına gelmez.</p>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>${escapeHtml(piece.barcode)}</code><span>${cargoPieceHasExit(order,piece.barcode)?'Çıkışı doğrulandı':'Çıkış teyidi yok'}</span></div>${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</div>`;
+}
+const piecePrintBusy=new Set();
+async function reprintCargoPiece(orderId,index,button){
+  const id=Number(orderId);
+  if(!isGaziAdmin||!Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(index)||index<0||piecePrintBusy.has(id))return;
+  const wanted=savedCargoPieces(selectedOrder||{})[index]?.barcode;
+  if(selectedOrder?.siparis_no!==id||!wanted)return;
+  const w=window.open('','_blank');
+  if(!w)return toast('Etiket için açılır pencerelere izin verin.');
+  w.document.body.textContent='Seçilen orijinal paket etiketi hazırlanıyor…';
+  piecePrintBusy.add(id);button.disabled=true;
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),30000);
+  try{
+    const {data:order,error}=await db.from(TABLE).select('*').eq('siparis_no',id).single();
+    if(error)throw error;
+    const piece=savedCargoPieces(order).find(p=>p.barcode===wanted);
+    if(!piece||!canReprintCargoPiece(order,piece))throw Error('Paket durumu değişmiş veya orijinal etiketi bulunamıyor. Hareketleri yenileyin.');
+    // Render the existing barcode only, using the same renderer as the cargo workflow.
+    const response=await fetch('https://api.labelary.com/v1/printers/8dpmm/labels/4.1x4.8/0/',{method:'POST',headers:{Accept:'application/pdf','Content-Type':'application/x-www-form-urlencoded'},body:piece.value,signal:controller.signal});
+    if(!response.ok)throw Error('Etiket görüntüsü hazırlanamadı ('+response.status+'). Tekrar deneyin.');
+    const bytes=new Uint8Array(await response.arrayBuffer());
+    let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
+    await openCargoPdf(w,btoa(binary),{...order,ad_soyad:order.ad_soyad+' - Paket '+(piece.pieceNumber||index+1)});
+    toast('Yalnızca seçilen paketin orijinal etiketi açıldı.');
+  }catch(error){if(!w.closed)w.close();toast(error.name==='AbortError'?'Etiket isteği zaman aşımına uğradı.':error.message,8000);}
+  finally{clearTimeout(timeout);piecePrintBusy.delete(id);if(button.isConnected)button.disabled=false;}
+}
+window.reprintCargoPiece=reprintCargoPiece;
+
 function cargoPieceSummary(order){
   const expected=Number(order.kargo_adet);
   if(!Number.isSafeInteger(expected)||expected<2)return '';
@@ -990,7 +1044,7 @@ function renderCargoTracking(order){
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
   const detailButton=isLiveShipment(order)?`<button class="btn-open" type="button" data-cargo-detail-refresh onclick="refreshSelectedCargoMovements(${Number(order.siparis_no)})">Hareket geçmişini getir</button>`:"";
-  return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu||"Henüz oluşmadı")}</p>${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment style="width:auto;padding:7px 10px;font-size:12px;margin-top:8px" onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}${pieceNotice}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
+  return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu||"Henüz oluşmadı")}</p>${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment style="width:auto;padding:7px 10px;font-size:12px;margin-top:8px" onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}${renderCargoPieces(order)}${pieceNotice}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
 }
 
 

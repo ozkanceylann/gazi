@@ -1,8 +1,8 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync(require('node:path').join(__dirname,'..','app.js'),'utf8');
-const context={escapeHtml:value=>String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'),cargoTrackingData:o=>o.tracking||{},sortCargoMovements:x=>x||[],cargoStatusBadge:()=>'',cargoBranchContact:()=>'',isLiveShipment:()=>false,isGaziAdmin:false};
+const context={window:{},TextDecoder,Uint8Array,atob,escapeHtml:value=>String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'),cargoTrackingData:o=>o.tracking||{},sortCargoMovements:x=>x||[],cargoStatusBadge:()=>'',cargoBranchContact:()=>'',isLiveShipment:()=>false,isGaziAdmin:false};
 vm.createContext(context);
-vm.runInContext(source.slice(source.indexOf('function cargoPieceSummary('),source.indexOf('\n\n\nfunction printEtiket(')),context);
+vm.runInContext(source.slice(source.indexOf('function savedCargoPieces('),source.indexOf('\n\n\nfunction printEtiket(')),context);
 const movement={shipmentId:'636340448124',referenceId:'AKH452009180',pieceTotal:'1',eventStatus:'Transfer Aşamasında'};
 const order={siparis_no:9180,kargo_adet:'2',kargo_takip_kodu:'636340448124',tracking:{movements:[movement]}};
 let html=context.renderCargoTracking(order);
@@ -28,3 +28,19 @@ summary=context.cargoPieceSummary({...three,tracking:{movements:[{...movement,ba
 assert(summary.includes('Çıkışı barkodla doğrulanan: 1 · Çıkış teyidi beklenen: 2'));
 assert(!context.cargoPieceSummary({...three,tracking:{movements:[{...movement,barcode:'9180-1',eventSequence:'1'}]}}).includes('Çıkışı barkodla doğrulanan: 1'));
 console.log('PASS: 3 planned vs 1 carrier piece, duplicate scans, and label creation is not physical exit');
+
+const labels=[{pieceNumber:1,barcode:'B1',value:'^XA^FD1^FS^XZ'},{pieceNumber:2,barcode:'B2',value:'^XA^FD2^FS^XZ'},{pieceNumber:3,barcode:'B3',value:'^XA^FD3^FS^XZ'}];
+const piecesOrder={...three,kargo_durumu:'Kargolandı',kargo_zpl:JSON.stringify(labels),tracking:{movements:[{barcode:'B1',eventSequence:2},{barcode:'B2',eventSequence:2}]}};
+context.isGaziAdmin=true;
+let pieces=context.savedCargoPieces(piecesOrder);
+assert.equal(pieces.length,3);assert(pieces.every(p=>p.printable));
+assert(!context.canReprintCargoPiece(piecesOrder,pieces[0]));
+assert(context.canReprintCargoPiece(piecesOrder,pieces[2]));
+html=context.renderCargoPieces(piecesOrder);
+assert.equal((html.match(/Etiketi Yazdır/g)||[]).length,1);
+assert(html.includes('reprintCargoPiece(9180,2,this)'));
+assert.equal(context.savedCargoPieces({...piecesOrder,kargo_zpl:Buffer.from(JSON.stringify(labels)).toString('base64')}).length,3);
+assert(!context.canReprintCargoPiece({...piecesOrder,kargo_api_yanit:'{"activeShipmentCancelled":true}'},pieces[2]));
+assert(!context.canReprintCargoPiece({...piecesOrder,isDelivered:true},pieces[2]));
+assert(!context.savedCargoPieces({...piecesOrder,kargo_zpl:JSON.stringify([{barcode:'X',value:'^XA^XZ^XA^XZ'}])})[0].printable);
+console.log('PASS: 3 labels, 2 exits, only remaining barcode can reprint; base64, canceled and delivered guards');

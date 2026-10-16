@@ -1597,3 +1597,10 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .cargo-piece-summary{display:grid;gap:4px;margin:8px 0;padding:9px 11px;border:1px solid #cbded2;border-radius:9px;background:#f1f7f3;font-size:12px;overflow-wrap:anywhere;line-height:1.5}
 .cargo-piece-summary--mismatch{border-color:#dc9b51;background:#fff4e7;color:#7b460e}
 .cargo-piece-summary small{font-weight:400}
+
+.cargo-pieces{margin-top:12px;padding:10px;border:1px solid #d7e2da;border-radius:10px}
+.cargo-pieces>p{font-size:12px;color:#637168;line-height:1.5}
+.cargo-piece{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-top:1px solid #e0e8e2}
+.cargo-piece>div{min-width:0;display:grid;gap:4px;font-size:12px}
+.cargo-piece code{overflow-wrap:anywhere;font-size:12px}
+.cargo-piece .btn-open{flex-shrink:0;margin:0;padding:7px 9px;font-size:12px}
