@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261017-customer-note-icons-70";
+const VERSION = "20261017-customer-note-text-71";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
