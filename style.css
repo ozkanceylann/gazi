@@ -1750,3 +1750,22 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 @media(min-width:901px){#orderModal{left:220px;}}
 @media(max-width:900px){#orderModal{left:0;padding:16px;}#orderModal .modal-content{width:min(620px,100%)!important;}}
 @media(max-width:600px){#orderModal{padding:14px 12px max(14px,env(safe-area-inset-bottom));}#orderModal .modal-content{width:100%!important;max-width:100%!important;border-radius:16px;}}
+
+/* Destructive actions stay compact rather than inheriting full-width sidebar buttons. */
+#orderModal #actionButtons>.btn-danger,#orderModal #editButtons>.btn-danger,#orderModal #restoreButtons>.btn-danger,#orderModal #cancelForm .btn-danger,#orderDetails button[data-cancel-shipment]{width:auto!important;max-width:100%;min-width:0!important;flex:0 0 auto!important;align-self:center;min-height:30px!important;height:auto;padding:6px 10px!important;margin:0!important;white-space:nowrap;font-size:11px!important;line-height:1.3;}
+#orderModal #actionButtons>.btn-close{width:auto!important;flex:1 1 75px;max-width:120px;margin-left:auto!important;order:2!important;}
+#orderDetails .detail-cargo-actions>button[data-cancel-shipment]{margin-left:auto!important;min-height:28px!important;padding:5px 8px!important;font-size:10px!important;}
+
+/* Explicit open/close controls make the collapsed sections discoverable. */
+#orderDetails .original-message>summary,#orderDetails .detail-movement-history>summary,#orderDetails .cargo-label-archive>summary,.card-original-message>summary{display:flex;align-items:center;gap:8px;min-height:36px;list-style:none;cursor:pointer;font-size:12px;font-weight:600;}
+#orderDetails .original-message,#orderDetails .detail-movement-history,#orderDetails .cargo-label-archive{border:1px solid #a98b4b88;background:#203725;}
+#orderDetails .original-message>summary,#orderDetails .detail-movement-history>summary,#orderDetails .cargo-label-archive>summary{color:#ead09b;}
+#orderDetails summary .disclosure-action,.card-original-message summary .disclosure-action{display:inline-flex!important;align-items:center;justify-content:center;margin-left:auto;padding:4px 8px;border-radius:6px;background:#d4a85726;border:1px solid #d4a85766;color:#efd39b;font-size:10px;font-weight:650;white-space:nowrap;}
+#orderDetails .disclosure-action:before,.card-original-message .disclosure-action:before{content:'Aç';}
+#orderDetails details[open]>summary>.disclosure-action:before,.card-original-message[open]>summary>.disclosure-action:before{content:'Kapat';}
+#orderDetails .original-message>summary:after,#orderDetails .detail-movement-history>summary:after,#orderDetails .cargo-label-archive>summary:after,.card-original-message>summary:after{content:'⌄';display:grid;place-items:center;width:20px;height:20px;flex-shrink:0;font-size:17px;font-weight:600;line-height:1;color:#d4a857;}
+#orderDetails .original-message[open]>summary:after,#orderDetails .detail-movement-history[open]>summary:after,#orderDetails .cargo-label-archive[open]>summary:after,.card-original-message[open]>summary:after{content:'⌃';}
+#orderDetails summary .disclosure-count{margin:0;color:#aabd9f;font-size:10px;font-weight:400;}
+#orderDetails details[open]>summary{padding-bottom:8px;border-bottom:1px solid #a98b4b55;margin-bottom:8px;}
+.card-original-message summary .disclosure-action{background:#dce9dc;border-color:#91ab8c;color:#284e33;}
+@media(max-width:600px){#orderModal #actionButtons>.btn-danger{order:1;padding:6px 9px!important;}#orderModal #actionButtons>.btn-close{max-width:none;}#orderDetails .detail-cargo-actions>button[data-cancel-shipment]{margin-left:0!important;}}

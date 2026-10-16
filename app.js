@@ -472,7 +472,7 @@ function mobileOrderInfo(order){
   return `<div class="order-mobile-info">${field("Telefon",phone?`<a href="tel:${escapeHtml(dial)}">${escapeHtml(phone)}</a>`:"")}${field("İl / İlçe",escapeHtml(place))}${field("Paket / KG",escapeHtml(packInfo))}${field("Ödeme",escapeHtml(order.odeme_sekli||"Belirtilmemiş"))}</div>
     ${order.adres?`<p class="order-mobile-address">${escapeHtml(order.adres)}</p>`:""}
     <span class="order-mobile-delivery${order.subeden_teslim===true?" order-mobile-delivery--branch":""}">${order.subeden_teslim===true?"Şubeden teslim"+(order.teslim_subesi?" · "+escapeHtml(order.teslim_subesi):""):"Adrese teslim"}</span>
-    <details class="card-original-message"><summary>Ham mesaj <span>Sağa kaydır →</span></summary><div class="original-message-text">${escapeHtml(order.whatsapp_message_text===undefined?"Mesajı görmek için açın.":order.whatsapp_message_text||"Bu siparişin orijinal mesajı kayıtlı değil.")}</div></details>`;
+    <details class="card-original-message"><summary>Ham mesaj <span class="disclosure-action"></span></summary><div class="original-message-text">${escapeHtml(order.whatsapp_message_text===undefined?"Mesajı görmek için açın.":order.whatsapp_message_text||"Bu siparişin orijinal mesajı kayıtlı değil.")}</div></details>`;
 }
 function bindOrderCardSwipe(row){
   let start=null;
@@ -1016,6 +1016,10 @@ function savedCargoPieces(order){
     }).map(x=>({...x,printable:typeof x.value==='string'&&x.value.trim().startsWith('^XA')&&x.value.trim().endsWith('^XZ')&&(x.value.match(/\^XA/g)||[]).length===1&&(x.value.match(/\^XZ/g)||[]).length===1}));
   }catch{return [];}
 }
+function hasPackageMovementData(order){
+  const movements=cargoTrackingData(order).movements;
+  return Array.isArray(movements)&&movements.some(m=>String(m.barcode||m.pieceBarcode||m.packageBarcode||'').trim());
+}
 function cargoPieceHasExit(order,barcode){
   const movements=cargoTrackingData(order).movements;
   return Array.isArray(movements)&&movements.some(m=>String(m.barcode||m.pieceBarcode||m.packageBarcode||'').trim()===barcode&&['2','3','4','5','6','7','8','9'].includes(String(m.eventSequence)));
@@ -1027,8 +1031,10 @@ function canReprintCargoPiece(order,piece){
 function renderCargoPieces(order){
   const pieces=savedCargoPieces(order);
   if(!pieces.length)return '';
-  return `<div class="cargo-pieces"><strong>Paket Etiketleri</strong> <small data-label-print-count="${Number(order.siparis_no)}">${Math.max(0,Number(order.etiket_yazdirma_sayisi)||0)} kez yazdırma açıldı</small><p>Çıkış teyidi yok: DHL hareketinde bu paket barkodu görülmedi. Paketin kesin olarak depoda olduğu anlamına gelmez.</p>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>QR / Paket barkodu: ${escapeHtml(piece.barcode)}</code><span>${cargoPieceHasExit(order,piece.barcode)?'Çıkışı doğrulandı':'Çıkış teyidi yok'}</span></div>${!piece.printable?'<small>Bu QR koduna ait orijinal etiket bulunamadı.</small>':''}${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open cargo-label-print" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</div>`;
+  const packageTracking=hasPackageMovementData(order);
+  return `<details class="cargo-pieces cargo-label-archive"><summary>Kayıtlı etiketler <span class="disclosure-count">${pieces.length} paket</span><span class="disclosure-action"></span></summary><small data-label-print-count="${Number(order.siparis_no)}">${Math.max(0,Number(order.etiket_yazdirma_sayisi)||0)} kez yazdırma açıldı</small><p>${packageTracking?'Paket hareketi yalnızca DHL yanıtında aynı barkod varsa gösterilir.':'Bu bölüm etiket arşividir. DHL hareket yanıtında paket barkodu bulunmadığı için paketlerin ayrı konumu gösterilemiyor.'}</p>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>QR / Paket barkodu: ${escapeHtml(piece.barcode)}</code>${packageTracking?`<span>${cargoPieceHasExit(order,piece.barcode)?'Çıkışı doğrulandı':'Bu barkoda ait çıkış hareketi yok'}</span>`:''}</div>${!piece.printable?'<small>Bu QR koduna ait orijinal etiket bulunamadı.</small>':''}${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open cargo-label-print" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</details>`;
 }
+
 const piecePrintBusy=new Set();
 async function reprintCargoPiece(orderId,index,button){
   const id=Number(orderId);
@@ -1075,7 +1081,7 @@ function cargoPieceSummary(order){
   const different=carrier!==null&&carrier!==expected;
   const countText=confirmed.size
     ? `Çıkışı barkodla doğrulanan: ${confirmed.size} · Çıkış teyidi beklenen: ${Math.max(0,expected-confirmed.size)}`
-    : 'Çıkışı barkodla doğrulanan adet: Bilinmiyor';
+    : hasPackageMovementData(order)?'Bu barkodlara ait çıkış hareketi yok':'Paket bazlı hareket bilgisi sağlanmıyor; takip gönderi bazında.';
   return `<div class="cargo-piece-summary${different?' cargo-piece-summary--mismatch':''}"><strong>Planlanan paket / etiket: ${expected}${qrCount?' · QR alanından':''}</strong><span>${countText}</span><span>DHL kaydındaki parça: ${carrier===null?'Bilgi yok':carrier}${different?` · Adet farkı: ${Math.abs(expected-carrier)}`:''}</span>${different?'<small>Paket adedi uyuşmuyor. DHL toplam parça adedi tek başına hangi paketlerin çıktığını doğrulamaz.</small>':''}</div>`;
 }
 
@@ -1104,7 +1110,7 @@ function renderCargoTracking(order){
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
   const detailButton=isLiveShipment(order)?`<button class="btn-open" type="button" data-cargo-detail-refresh onclick="refreshSelectedCargoMovements(${Number(order.siparis_no)})">Hareket geçmişini getir</button>`:"";
-  return `<div class="detail-group cargo-detail"><div class="detail-cargo-heading"><div class="detail-title">Kargo ve teslimat</div><span class="detail-tracking-number">${escapeHtml(order.kargo_takip_kodu||"Takip no bekleniyor")}</span></div>${cargoStatusBadge(order,{compact:true})}<div class="detail-cargo-actions">${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}</div><details class="detail-movement-history"><summary>Paket ve hareket ayrıntıları <span>${movements.length} hareket</span></summary>${cargoPieceSummary(order)}${renderCargoPieces(order)}${pieceNotice}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</details></div>`;
+  return `<div class="detail-group cargo-detail"><div class="detail-cargo-heading"><div class="detail-title">Kargo ve teslimat</div><span class="detail-tracking-number">${escapeHtml(order.kargo_takip_kodu||"Takip no bekleniyor")}</span></div>${cargoStatusBadge(order,{compact:true})}<div class="detail-cargo-actions">${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}</div><details class="detail-movement-history"><summary>Kargo hareketleri <span class="disclosure-count">${movements.length} kayıt</span><span class="disclosure-action"></span></summary>${cargoPieceSummary(order)}${renderCargoPieces(order)}${pieceNotice}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</details></div>`;
 }
 
 
@@ -1272,7 +1278,7 @@ function closeModal(){
 function renderOriginalMessage(order) {
   const message = order.whatsapp_message_text;
   return `<details class="detail-group original-message">
-    <summary>Orijinal sipariş mesajı <span>Görüntüle</span></summary>
+    <summary>Orijinal sipariş mesajı <span class="disclosure-action"></span></summary>
     <p class="original-message-hint">Sipariş bilgileriyle karşılaştırmak için gelen mesajı açın.</p>
     <div class="original-message-text">${escapeHtml(message === undefined ? "Mesajı görmek için bölümü açın." : (message || "Bu siparişin orijinal mesajı kayıtlı değil."))}</div>
   </details>`;
