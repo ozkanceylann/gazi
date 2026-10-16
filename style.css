@@ -1743,3 +1743,10 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
  #orderModal .modal-btns button{flex:1 1 calc(33.33% - 6px);min-height:33px;}#orderDetails .detail-parcel-line .cargo-count{height:22px;min-width:22px;}
 }
 @media(max-height:760px) and (min-width:601px){#orderModal{padding:8px;}#orderModal .modal-content{width:min(1040px,100%)!important;padding:12px 16px;}#orderDetails .detail-overview{padding:9px 12px;}#orderDetails .detail-overview h3{font-size:18px;}#orderDetails .detail-item{font-size:11px;}#orderDetails .detail-column>.detail-group{padding:9px 11px;}}
+
+/* Center a compact card inside the workspace, leaving the sidebar unobstructed. */
+#orderModal{padding:20px;}
+#orderModal .modal-content{width:min(660px,100%)!important;max-width:100%!important;border-radius:18px;}
+@media(min-width:901px){#orderModal{left:220px;}}
+@media(max-width:900px){#orderModal{left:0;padding:16px;}#orderModal .modal-content{width:min(620px,100%)!important;}}
+@media(max-width:600px){#orderModal{padding:14px 12px max(14px,env(safe-area-inset-bottom));}#orderModal .modal-content{width:100%!important;max-width:100%!important;border-radius:16px;}}
