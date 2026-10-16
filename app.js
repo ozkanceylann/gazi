@@ -1104,7 +1104,7 @@ function renderCargoTracking(order){
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
   const detailButton=isLiveShipment(order)?`<button class="btn-open" type="button" data-cargo-detail-refresh onclick="refreshSelectedCargoMovements(${Number(order.siparis_no)})">Hareket geçmişini getir</button>`:"";
-  return `<div class="detail-group cargo-detail"><div class="detail-title">🚚 Kargo Bilgileri</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu||"Henüz oluşmadı")}</p>${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment style="width:auto;padding:7px 10px;font-size:12px;margin-top:8px" onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}${renderCargoPieces(order)}${pieceNotice}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
+  return `<div class="detail-group cargo-detail"><div class="detail-title">Kargo ve teslimat</div>${cargoStatusBadge(order)}<p>Takip no: ${escapeHtml(order.kargo_takip_kodu||"Henüz oluşmadı")}</p>${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment style="width:auto;padding:7px 10px;font-size:12px;margin-top:8px" onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}${renderCargoPieces(order)}${pieceNotice}${timeline?`<details class="detail-movement-history"><summary>Kargo hareketleri <span>${movements.length} kayıt</span></summary><ol class="cargo-timeline">${timeline}</ol></details>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div>`;
 }
 
 
@@ -1262,14 +1262,14 @@ async function openOrder(id){
   document.getElementById("orderModal").style.display = "flex";
 }
 
-function closeModal(){ 
-  document.getElementById("orderModal").style.display = "none"; 
+function closeModal(){
+  document.getElementById("orderModal").style.display = "none";
 }
 
 function renderOriginalMessage(order) {
   const message = order.whatsapp_message_text;
   return `<details class="detail-group original-message">
-    <summary>Orjinal Ham Mesaj</summary>
+    <summary>Orijinal sipariş mesajı <span>Görüntüle</span></summary>
     <p class="original-message-hint">Sipariş bilgileriyle karşılaştırmak için gelen mesajı açın.</p>
     <div class="original-message-text">${escapeHtml(message === undefined ? "Mesajı görmek için bölümü açın." : (message || "Bu siparişin orijinal mesajı kayıtlı değil."))}</div>
   </details>`;
@@ -1308,16 +1308,20 @@ function renderDetails() {
 
   /* — DETAY HTML — */
 document.getElementById("orderDetails").innerHTML = `
-<div class="detail-layout" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;">
+<section class="detail-overview" aria-label="Sipariş özeti">
+  <div class="detail-overview-main"><span class="detail-eyebrow">SİPARİŞ #${Number(d.siparis_no)}</span><h3>${escapeHtml(d.ad_soyad || "Müşteri")}</h3><div class="detail-overview-status">${orderStageBadge(d)}</div></div>
+  <div class="detail-overview-total"><span>Tahsilat tutarı</span><strong>${escapeHtml(d.toplam_tutar ?? "—")} <small>TL</small></strong><span>${escapeHtml(d.odeme_sekli || "Belirtilmemiş")}</span></div>
+</section>
+<div class="detail-layout">
 <div class="detail-column detail-column-customer">
   <div class="detail-group">
-    <div class="detail-title">📞Müşteri İletişim</div>    
+    <div class="detail-title">Müşteri iletişim</div>
     <div class="detail-item"><b>İsim:</b> ${escapeHtml(d.ad_soyad ?? "—")}</div>
-    <div class="detail-item"><b>Müşteri Tel:</b> ${escapeHtml(d.musteri_tel ?? "—")}</div>
+    <div class="detail-item detail-phone"><b>Telefon</b> ${d.musteri_tel ? `<a href="tel:${escapeHtml(String(d.musteri_tel).replace(/[^0-9+]/g,""))}">${escapeHtml(d.musteri_tel)}</a>` : "—"}</div>
   </div>
 
   <div class="detail-group">
-    <div class="detail-title">📍 Adres Bilgileri</div>
+    <div class="detail-title">Teslimat adresi</div>
     <div class="detail-item"><b>Teslim şekli:</b> ${d.subeden_teslim === true ? "Şubeden teslim" : "Adrese teslim"}${d.subeden_teslim === true && d.teslim_subesi ? ` · ${escapeHtml(d.teslim_subesi)}` : ""}</div>
     ${d.teslim_sekli_kontrol === true ? `<div class="detail-item" role="alert">⚠️ Teslim şeklini kontrol edin.${d.orderinvoiceid || d.kargo_takip_kodu ? " Mevcut DHL kaydı var; teslim şeklini düzeltmek için kargo kaydının yeniden açılması gerekiyor." : " Düzenle bölümünden teslim şeklini seçip kaydedin."}</div>` : ""}
     <div class="detail-item"><b>Adres:</b> ${escapeHtml(d.adres ?? "—")}</div>
@@ -1337,7 +1341,7 @@ document.getElementById("orderDetails").innerHTML = `
 
   <div class="detail-group">
     <div class="detail-item"><b>No:</b> ${d.siparis_no}</div>
-    <div class="detail-item"><b>Sipariş Alan:</b> ${orderTakerMarkup(d)}</div>    
+    <div class="detail-item"><b>Sipariş Alan:</b> ${orderTakerMarkup(d)}</div>
     <div class="detail-item" style="margin-top:6px;">
   <span class="pill pill-date">
     📅 ${formatDateTimeTR(d.tarih)}
@@ -1347,8 +1351,8 @@ document.getElementById("orderDetails").innerHTML = `
   </div>
 
   <div class="detail-group">
-    <div class="detail-title">📦 Ürün Bilgisi</div>
-    <div class="detail-item"><b>Ürün:</b> ${escapeHtml(parseProduct(d.urun_bilgisi))}</div>
+    <div class="detail-title">Ürün ve ödeme</div>
+    <div class="detail-item detail-product"><b>Ürünler</b><span>${escapeHtml(parseProduct(d.urun_bilgisi))}</span></div>
     <div class="detail-item"><b>Adet:</b> ${cargoCountBadge(d.kargo_adet)}</div>
     <div class="detail-item"><b>KG:</b> ${escapeHtml(CargoWeights.display(d.kargo_kg,d.kargo_adet) || "—")}</div>
     <div class="detail-item"><b>Tutar:</b> ${escapeHtml(d.toplam_tutar ?? "—")} TL</div>
@@ -1358,7 +1362,7 @@ document.getElementById("orderDetails").innerHTML = `
 </div>
 
 <div class="detail-group detail-note" style="grid-column:1 / -1;">
-  <div class="detail-title">📝 Not</div>
+  <div class="detail-title">Sipariş notu</div>
 
   ${
     d.notlar
@@ -2491,7 +2495,7 @@ function printSiparis(order){
   }, 100);
 }
 /* ============================================================
-   ENNTER İLE ARA 
+   ENNTER İLE ARA
 ============================================================ */
 
 // Delegation also works when config loading finishes after DOMContentLoaded.
