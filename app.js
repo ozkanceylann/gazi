@@ -586,7 +586,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${orderTakerMarkup(o)}</td>
-<td>${errorPreview}${currentTab === "kargolandi" ? branchLabelButton(o) : ""}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" data-label-operation="${hasCargoLabel(o)?"print":"create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
+<td>${errorPreview}${currentTab === "kargolandi" && ["sent","uncertain"].includes(o.sube_etiket_durumu) ? branchLabelButton(o) : ""}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" data-label-operation="${hasCargoLabel(o)?"print":"create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
 
   `;
 
@@ -792,9 +792,9 @@ function branchLabelBadge(order){
   const label=labels[order?.sube_etiket_durumu];
   return label?`<span class="order-stage-badge order-stage-badge--branch">${label}</span>`:"";
 }
-function branchLabelButton(order){
+function branchLabelButton(order,compact=false){
   if(isGaziAdmin&&["sent","uncertain"].includes(order?.sube_etiket_durumu))return `<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this,'confirm')">Şubeden Kesildi İşaretle</button>`;
-  return canRequestBranchLabel(order)?`<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this)">Şubeye İlet · WhatsApp</button>`:"";
+  return canRequestBranchLabel(order)?`<button type="button" class="btn-cargo-label cargo-label-branch${compact?" cargo-label-branch--compact":""}" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this)">Şubeye İlet</button>`:"";
 }
 
 function canPrintCargoLabel(order){
@@ -876,7 +876,7 @@ function cargoStatusBadge(order){
   const latest=sortCargoMovements(movements)[0] || null;
   const contact=cargoStatusInfo(order).key==="failed"&&latest ? `<small style="display:block;margin-top:5px">${cargoBranchContact(latest)}</small>` : "";
   const returnBadge = order.iade_kodu ? `<small class="cargo-checked"><span class="cargo-status cargo-status--return">İade etiketi oluşturuldu</span></small>` : "";
-  return `<span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${returnBadge}${checked}${contact}${cargoPieceSummary(order)}`;
+  return `<span class="cargo-status-actions"><span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${currentTab==="kargolandi"&&canRequestBranchLabel(order)?branchLabelButton(order,true):""}</span>${returnBadge}${checked}${contact}${cargoPieceSummary(order)}`;
 }
 function cargoEnvironment(order){
   try {
