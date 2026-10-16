@@ -214,7 +214,7 @@ function applyTabFilter(q) {
   return q;
 }
 
-// Count each queue before applying its range: an exhausted queue must never
+// Saved labels come first, newest creation first. Count queues before ranges: an exhausted queue must never
 // receive an offset beyond its last row (PostgREST PGRST103 / HTTP 416).
 async function loadCargoLabelQueue(start, end){
   const query = (saved, head=false) => {
@@ -231,12 +231,12 @@ async function loadCargoLabelQueue(start, end){
   const [pending,saved]=await Promise.all([query(false,true),query(true,true)]);
   if(pending.error||saved.error)return {error:pending.error||saved.error};
   const pendingCount=pending.count||0, savedCount=saved.count||0;
-  const pendingTake=Math.max(0,Math.min(end+1,pendingCount)-start);
-  const savedStart=Math.max(0,start-pendingCount);
-  const savedTake=Math.max(0,Math.min(end-start+1-pendingTake,savedCount-savedStart));
+  const savedTake=Math.max(0,Math.min(end+1,savedCount)-start);
+  const pendingStart=Math.max(0,start-savedCount);
+  const pendingTake=Math.max(0,Math.min(end-start+1-savedTake,pendingCount-pendingStart));
   const requests=[];
-  if(pendingTake)requests.push(pendingRows.order("siparis_no",{ascending:false}).range(start,start+pendingTake-1));
-  if(savedTake)requests.push(savedRows.order("siparis_no",{ascending:false}).range(savedStart,savedStart+savedTake-1));
+  if(savedTake)requests.push(savedRows.order("etiket_olusturma_tarihi",{ascending:false,nullsFirst:false}).order("siparis_no",{ascending:false}).range(start,start+savedTake-1));
+  if(pendingTake)requests.push(pendingRows.order("siparis_no",{ascending:false}).range(pendingStart,pendingStart+pendingTake-1));
   const pages=await Promise.all(requests);
   const error=pages.find(page=>page.error)?.error;
   return {data:pages.flatMap(page=>page.data||[]),error:error||null,count:pendingCount+savedCount};
@@ -586,7 +586,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${orderTakerMarkup(o)}</td>
-<td>${errorPreview}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
+<td>${errorPreview}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" data-label-operation="${hasCargoLabel(o)?"print":"create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
 
   `;
 
@@ -2057,6 +2057,7 @@ function cargoLabelButtonText(order){
 function updateCargoLabelButton(button,order){
   if(!button)return;
   button.textContent=cargoLabelButtonText(order);
+  button.dataset.labelOperation=hasCargoLabel(order)?"print":"create";
   button.classList.toggle("cargo-label-print",hasCargoLabel(order));
   button.classList.toggle("cargo-label-create",!hasCargoLabel(order));
 }
@@ -2085,48 +2086,50 @@ function hasCargoLabel(order){
 
 async function retryCargoLabel(siparisNo,button){
   const id=Number(siparisNo);
-  if(!Number.isSafeInteger(id)||id<1)return;
+  if(!Number.isSafeInteger(id)||id<1||button.disabled)return;
   if(busy.kargola.has(id)||busy.barkod.has(id))return toast("Bu siparişin kargo işlemi sürüyor.");
-  // Open synchronously so the browser permits the eventual PDF window.
-  const w=window.open("","_blank");
-  if(!w)return toast("Etiket ekranı için açılır pencerelere izin verin.");
-  w.document.body.textContent="Paket etiketi hazırlanıyor…";
+  const operation=button.dataset.labelOperation||(/Yazdır/.test(button.textContent)?"print":"create");
+  // Only an explicit Print click opens a window, synchronously for popup permission.
+  const w=operation==="print"?window.open("","_blank"):null;
+  if(operation==="print"&&!w)return toast("Etiket ekranı için açılır pencerelere izin verin.");
+  if(w)w.document.body.textContent="Paket etiketi hazırlanıyor…";
   busy.kargola.add(id);busy.barkod.add(id);
-  const label=button.textContent;button.disabled=true;button.textContent="Hazırlanıyor…";
-  let labelReady=false,latestLabelOrder=null;
+  const label=button.textContent;button.disabled=true;button.textContent=operation==="create"?"Etiket oluşturuluyor…":"Yazdırma açılıyor…";
+  let latestLabelOrder=null;
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
     if(error)throw error;
     if(!canPrintCargoLabel(order))throw new Error("Bu gönderi kargo hareketine geçmiş. Etiket işlemi kapatıldı.");
-    labelReady=hasCargoLabel(order);
-    if(!hasCargoLabel(order)&&!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
-    const operation=hasCargoLabel(order)?"print":"create";
-    let result=await cargoRequest(WH_BARKOD,{siparis_no:String(id),operation});
-    labelReady ||= !!(result.label_saved || result.pdf_base64);
-    if(!result.pdf_base64 && result.label_saved){
-      w.document.body.textContent="Etiket kaydedildi. Yazdırma ekranı hazırlanıyor…";
-      button.textContent="Yazdırma açılıyor…";
-      try{
-        result=await cargoRequest(WH_BARKOD,{siparis_no:String(id),operation:"print"});
-      }catch(error){
-        throw new Error("Etiket kaydedildi; yazdırma ekranı açılamadı. Etiketi Yazdır ile tekrar açabilirsiniz. " + (error.message||""));
-      }
+    if(operation==="create"&&hasCargoLabel(order)){
+      toast("Etiket zaten oluşturulmuş. Etiket Yazdır butonunu kullanabilirsiniz.",6000);
+      return;
     }
-    if(result.pdf_base64){await openCargoPdf(w,result.pdf_base64,order);toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi açıldı.",6000);}
-    else if(result.label_saved)throw new Error("Etiket kaydedildi; PDF henüz hazır değil. Etiketi Yazdır ile tekrar açabilirsiniz.");
-    else throw new Error("Etiket yanıtı doğrulanamadı.");
-  }catch(error){if(!w.closed)w.close();toast(error.message||"Kargo etiketi hazırlanamadı.",10000);}
+    if(operation==="print"&&!hasCargoLabel(order))throw new Error("Önce Etiket Oluştur işlemini tamamlayın.");
+    if(operation==="create"&&!needsCargoLabelRetry(order))throw new Error("Siparişin durumu değişti. Liste yenileniyor.");
+    const result=await cargoRequest(WH_BARKOD,{siparis_no:String(id),operation});
+    if(operation==="create"){
+      if(!result.label_saved&&!result.pdf_base64)throw new Error("Etiket yanıtı doğrulanamadı.");
+      const {data:saved,error:saveError}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
+      if(saveError)throw saveError;
+      if(!hasCargoLabel(saved))throw new Error("Etiket kaydı doğrulanamadı. Siparişin durumunu kontrol edin.");
+      toast("Etiket oluşturuldu. Etiket Yazdır butonuyla açabilirsiniz.",6000);
+    }else{
+      if(!result.pdf_base64)throw new Error("Etiket PDF'si alınamadı. Etiket Yazdır ile tekrar deneyin.");
+      await openCargoPdf(w,result.pdf_base64,order);
+      toast((result.kargo_adet||order.kargo_adet||"")+" paket etiketi açıldı.",6000);
+    }
+  }catch(error){if(w&&!w.closed)w.close();toast(error.message||"Kargo etiketi hazırlanamadı.",10000);}
   finally{
     busy.kargola.delete(id);busy.barkod.delete(id);
     try{
       const {data,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
       if(!error&&data){
-        labelReady=hasCargoLabel(data);latestLabelOrder=data;
+        latestLabelOrder=data;
         if(selectedOrder?.siparis_no===id)selectedOrder={...selectedOrder,...data};
       }
     }catch(error){console.error("Etiket durumu yenilenemedi:",error);}
     button.disabled=false;
-    if(latestLabelOrder)updateCargoLabelButton(button,latestLabelOrder);else button.textContent=labelReady?"Etiket Yazdır":label;
+    if(latestLabelOrder)updateCargoLabelButton(button,latestLabelOrder);else button.textContent=label;
     const detailButton=document.getElementById("btnBarcode");
     if(selectedOrder?.siparis_no===id&&detailButton)updateCargoLabelButton(detailButton,selectedOrder);
     await loadOrders(true);
@@ -2338,7 +2341,7 @@ async function searchOrders(scope = "all") {
     if (error) throw error;
     renderTableHeader();
     const matches = data;
-    if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(a))-Number(hasCargoLabel(b))||Number(b.siparis_no)-Number(a.siparis_no));
+    if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(b))-Number(hasCargoLabel(a))||(Date.parse(b.etiket_olusturma_tarihi)||0)-(Date.parse(a.etiket_olusturma_tarihi)||0)||Number(b.siparis_no)-Number(a.siparis_no));
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
   } catch (error) {
@@ -2534,6 +2537,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
