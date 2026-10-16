@@ -808,7 +808,7 @@ function branchLabelBadge(order){
   return label?`<span class="order-stage-badge order-stage-badge--branch">${label}</span>`:"";
 }
 function branchLabelButton(order,compact=false){
-  if(isGaziAdmin&&order?.sube_etiket_durumu==="historical"&&!order.kargo_takip_kodu)return `<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); linkBranchShipment(${Number(order.siparis_no)})">Şube takip no bağla</button>`;
+  if(isGaziAdmin&&order?.sube_etiket_durumu==="historical"&&!order.kargo_takip_kodu)return `<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); refreshCargoMovements()">Şube gönderisini bul</button>`;
   if(isGaziAdmin&&["sent","uncertain"].includes(order?.sube_etiket_durumu))return `<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this,'confirm')">Şubeden Kesildi İşaretle</button>`;
   return canRequestBranchLabel(order)?`<button type="button" class="btn-cargo-label cargo-label-branch${compact?" cargo-label-branch--compact":""}" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this)">Şubeye İlet</button>`:"";
 }

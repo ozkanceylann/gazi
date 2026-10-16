@@ -1,0 +1,166 @@
+[
+  {
+    "name": "Şube Eşleştirme Planı",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.3,
+    "parameters": {
+      "method": "POST",
+      "url": "https://jarsxtpqzqzhlshpmgot.supabase.co/rest/v1/rpc/gazi_branch_match_plan",
+      "authentication": "predefinedCredentialType",
+      "nodeCredentialType": "supabaseApi",
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "{}",
+      "options": {
+        "timeout": 15000
+      }
+    },
+    "credentials": {
+      "supabaseApi": {
+        "id": "BBA8YSbXFzA6xcvt",
+        "name": "Supabase account"
+      }
+    },
+    "position": [
+      500,
+      2500
+    ]
+  },
+  {
+    "name": "Şube Eşleştirme Gerekli mi",
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2.2,
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict",
+          "version": 2
+        },
+        "conditions": [
+          {
+            "id": "pending",
+            "leftValue": "={{ $json.pending }}",
+            "rightValue": true,
+            "operator": {
+              "type": "boolean",
+              "operation": "true",
+              "singleValue": true
+            }
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "position": [
+      700,
+      2500
+    ]
+  },
+  {
+    "name": "Şube Tarihlerini Hazırla",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "parameters": {
+      "jsCode": "const cfg=$input.first().json,from=new Date(cfg.from+'T00:00:00Z'),to=new Date(cfg.to+'T00:00:00Z');if(!Number.isFinite(+from)||!Number.isFinite(+to)||to<from||(+to-+from)/86400000>6)throw Error('Şube tarih aralığı geçersiz');return [{json:{date:cfg.from,url:'https://api.mngkargo.com.tr/mngapi/api/bulkqueryapi/getShipmentByDate/'+cfg.from.split('-').reverse().join('.')}}];"
+    },
+    "position": [
+      900,
+      2500
+    ]
+  },
+  {
+    "name": "Şube Ayrıntılı Gönderileri",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.3,
+    "parameters": {
+      "url": "={{ $json.url }}",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Accept",
+            "value": "application/json"
+          },
+          {
+            "name": "x-api-version",
+            "value": "v1"
+          },
+          {
+            "name": "X-IBM-Client-Id",
+            "value": "={{ $('Toplu Token Alanları').first().json.Client_Id }}"
+          },
+          {
+            "name": "X-IBM-Client-Secret",
+            "value": "={{ $('Toplu Token Alanları').first().json.Client_Secret }}"
+          },
+          {
+            "name": "Authorization",
+            "value": "=Bearer {{ $('Toplu Token Alanları').first().json.jwt }}"
+          }
+        ]
+      },
+      "options": {
+        "batching": {
+          "batch": {
+            "batchSize": 3,
+            "batchInterval": 250
+          }
+        },
+        "response": {
+          "response": {
+            "fullResponse": true,
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        },
+        "timeout": 30000
+      }
+    },
+    "position": [
+      1100,
+      2500
+    ]
+  },
+  {
+    "name": "Şube Alıcılarını Hazırla",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "parameters": {
+      "jsCode": "const responses=$input.all().map(x=>x.json);const rows=[],errors=[];\nfor(const r of responses){if(r.statusCode===404)continue;if(r.statusCode!==200||!Array.isArray(r.body)){errors.push('DHL ayrıntılı liste alınamadı');continue;}rows.push(...r.body);}\nconst list=rows.map(raw=>{const s=raw.shipment||{},r=raw.recipient||{},dt=String(s.shipmentDateTime||'').match(/^(\\d{2})[-/.](\\d{2})[-/.](\\d{4})/);const phone=String(r.mobilePhoneNumber||r.homePhoneNumber||'');\nreturn {shipment_id:String(s.shipmentId||''),reference:s.referenceId||'',code:Number(s.shipmentStatusCode),name:r.fullName||'',city:r.city||r.cityName||'',district:r.district||r.districtName||'',phone:/^\\+?\\d[\\d\\s()-]+$/.test(phone)?phone.replace(/\\D/g,'').slice(-10):'',pieces:Number(s.pieceCount),amount:s.codAmount==null?null:Number(s.codAmount),shipment_date:dt?dt[3]+'-'+dt[2]+'-'+dt[1]:null,raw};});\nreturn [{json:{p_shipments:errors.length?[]:list,p_dry_run:false,warning:errors[0]||null}}];"
+    },
+    "position": [
+      1300,
+      2500
+    ]
+  },
+  {
+    "name": "Şube Gönderilerini Eşleştir",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.3,
+    "parameters": {
+      "method": "POST",
+      "url": "https://jarsxtpqzqzhlshpmgot.supabase.co/rest/v1/rpc/gazi_branch_auto_match",
+      "authentication": "predefinedCredentialType",
+      "nodeCredentialType": "supabaseApi",
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={{ {p_shipments:$json.p_shipments,p_dry_run:false} }}",
+      "options": {
+        "timeout": 15000
+      }
+    },
+    "credentials": {
+      "supabaseApi": {
+        "id": "BBA8YSbXFzA6xcvt",
+        "name": "Supabase account"
+      }
+    },
+    "position": [
+      1500,
+      2500
+    ]
+  }
+]
