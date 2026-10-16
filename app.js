@@ -341,9 +341,15 @@ function customerNoteRecord(order){const id=Number(order?.musteri_no)||customerN
 function customerNoteCard(order){
   if(!["bekleyen","hazirlandi","kargolandi"].includes(currentTab))return "";
   const note=String(customerNoteRecord(order)?.not||"").trim();
-  if(!note)return "";
-  return `<button type="button" class="customer-note-card" title="${escapeHtml(note)}" onclick="event.stopPropagation();openOrder(${Number(order.siparis_no)})"><span>Müşteri notu</span><strong>${escapeHtml(note)}</strong></button>`;
+  return note?`<button type="button" class="customer-note-indicator" title="Müşteri notu var" aria-label="Müşteri notunu görüntüle" onclick="event.stopPropagation();showCustomerNote(${Number(order.siparis_no)})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8z M14 3v5h5 M9 12h6 M9 16h4"/></svg><span class="note-dot"></span></button>`:"";
 }
+window.showCustomerNote=function(id){
+ const customer=customerNoteRecord({siparis_no:Number(id)}),note=String(customer?.not||"").trim();if(!note)return;
+ const root=document.getElementById("alertRoot"),wrap=document.createElement("div");wrap.className="alert-backdrop";
+ wrap.innerHTML=`<section class="alert-card customer-note-readonly" role="dialog" aria-modal="true"><div class="alert-title">Müşteri notu</div><p>${escapeHtml(note)}</p><div class="alert-actions"><button type="button" class="btn-brand">Kapat</button></div></section>`;
+ wrap.querySelector('button').onclick=()=>wrap.remove();wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.remove();});root.appendChild(wrap);wrap.querySelector('button').focus();
+};
+
 function customerNoteDetail(order){
   const customer=customerNoteRecord(order),note=String(customer?.not||"");
   const unavailable=order._customerNoteUnavailable===true;
@@ -605,7 +611,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     <td>${orderStage === "Bekliyor" ? `<div class="order-primary-actions"><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button><button type="button" class="btn-direct-cargo" onclick="event.stopPropagation(); directShipFromList(${Number(o.siparis_no)}, this)">Direkt Kargola</button></div> ${actionBtn}` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${customerNoteCard(o)}</td>
+    <td><div class="order-customer-meta"><div class="customer-name-row"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${customerNoteCard(o)}</div>${orderDateMarkup(o.tarih)}</div></td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -622,7 +628,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
     ${isPreparedTab ? `<td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>` : ""}
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${customerNoteCard(o)}</td>
+    <td><div class="order-customer-meta"><div class="customer-name-row"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${customerNoteCard(o)}</div>${orderDateMarkup(o.tarih)}</div></td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">

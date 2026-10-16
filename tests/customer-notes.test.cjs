@@ -4,7 +4,7 @@ const ctx={window:{},Number,String,Map,Set,Promise,currentTab:'bekleyen',isGaziA
 vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('const customerNotes = new Map();'),source.indexOf('function orderDateMarkup(')),ctx);
 (async()=>{
  const orders=[{siparis_no:1,musteri_no:10},{siparis_no:2,musteri_no:10}];await ctx.loadCustomerNotes(orders);assert.equal(calls.length,1);assert.equal(ctx.customerNoteRecord(orders[0]).not,ctx.customerNoteRecord(orders[1]).not);
- const html=ctx.customerNoteCard(orders[0]);assert(html.includes('&lt;özel&gt;'));assert(!html.includes('<özel>'));assert(html.includes('Müşteri notu'));
+ const html=ctx.customerNoteCard(orders[0]);assert(html.includes('customer-note-indicator'));assert(!html.includes('<özel>'));assert(html.includes('showCustomerNote(1)'));assert(ctx.customerNoteDetail(orders[0]).includes('&lt;özel&gt;'));
  ctx.currentTab='hazirlandi';assert(ctx.customerNoteCard(orders[0]));ctx.currentTab='kargolandi';assert(ctx.customerNoteCard(orders[0]));ctx.currentTab='iptal';assert.equal(ctx.customerNoteCard(orders[0]),'');
  const unlinked={siparis_no:3,musteri_tel:'+90 535 111 22 33'};await ctx.loadCustomerNotes([unlinked]);assert.equal(ctx.customerNoteRecord(unlinked).musteri_no,10);
  rows.push({musteri_no:11,musteri_tel:'05351112233',not:'Başka kayıt'});await ctx.loadCustomerNotes([unlinked]);assert.equal(ctx.customerNoteRecord(unlinked),undefined);
