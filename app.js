@@ -307,7 +307,8 @@ async function loadOrders(reset=false){
 }
 
 function needsCargoLabelRetry(order){
-  return order?.kargo_durumu==="Kargolandı"
+  return !["sending","sent","uncertain","historical"].includes(order?.sube_etiket_durumu)
+    && order?.kargo_durumu==="Kargolandı"
     && !!(order.orderinvoiceid || order.kargo_takip_kodu)
     && !hasCargoLabel(order)
     && cargoEnvironment(order)!=="test";
@@ -586,7 +587,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${orderTakerMarkup(o)}</td>
-<td>${errorPreview}${currentTab === "kargolandi" && ["sent","uncertain"].includes(o.sube_etiket_durumu) ? branchLabelButton(o) : ""}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" data-label-operation="${hasCargoLabel(o)?"print":"create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
+<td>${errorPreview}${currentTab === "kargolandi" && ["sent","uncertain","historical"].includes(o.sube_etiket_durumu) ? branchLabelButton(o) : ""}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" data-label-operation="${hasCargoLabel(o)?"print":"create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
 
   `;
 
@@ -753,6 +754,19 @@ async function createReturnLabel(id,button){
   finally{busy.iade.delete(id);if(button?.isConnected){button.disabled=false;button.textContent="İADE Etiketi Oluştur";}}
 }
 
+window.linkBranchShipment=async function(id){
+  if(!isGaziAdmin||busy.sube.has(Number(id)))return;
+  const wrap=document.createElement("div");wrap.className="alert-backdrop";
+  wrap.innerHTML=`<form class="alert-card" role="dialog" aria-modal="true"><div class="alert-title">Şube takip numarası</div><p>Şubenin bu müşteri için kestiği 12 haneli DHL gönderi numarasını yazın. DHL doğrulamasından sonra siparişe bağlanacak.</p><input name="shipment" aria-label="12 haneli DHL takip numarası" inputmode="numeric" pattern="[0-9]{12}" maxlength="12" required style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0"><p role="status"></p><button type="submit" class="btn-primary">Bağla ve hareketleri getir</button><button type="button" data-cancel>Vazgeç</button></form>`;
+  document.getElementById("alertRoot").appendChild(wrap);const form=wrap.querySelector("form");const input=form.elements.namedItem("shipment");input.focus();
+  wrap.querySelector('[data-cancel]').onclick=()=>{if(!busy.sube.has(Number(id)))wrap.remove();};
+  form.onsubmit=async event=>{event.preventDefault();if(busy.sube.has(Number(id)))return;const number=input.value.trim();if(!/^\d{12}$/.test(number))return;
+    const button=form.querySelector('[type=submit]'),status=form.querySelector('[role=status]');busy.sube.add(Number(id));button.disabled=true;status.textContent="DHL gönderisi doğrulanıyor…";
+    try{await cargoRequest(CONFIG.webhooks.hareket,{siparis_no:String(id),branch_shipment_id:number});wrap.remove();toast("Şube gönderisi bağlandı ve kargo hareketleri güncellendi.",6000);await loadOrders(true);if(selectedOrder?.siparis_no===Number(id))await openOrder(Number(id));}
+    catch(error){status.textContent=error.message||"Gönderi bağlanamadı";}
+    finally{busy.sube.delete(Number(id));button.disabled=false;}
+  };
+};
 window.sendBranchLabel=async function(id,button,operation="send"){
   id=Number(id);if(busy.sube.has(id))return;busy.sube.add(id);button.disabled=true;button.textContent="Şubeye iletiliyor…";
   try{
@@ -774,6 +788,7 @@ function cargoStatusInfo(order){
   const state=CARGO_STATES.find(s=>s.code===code)
     ||CARGO_STATES.find(s=>s.label.toLocaleLowerCase("tr-TR")===normalized)
     ||(order.isDelivered===true ? CARGO_STATES.find(s=>s.key==="delivered") : null);
+  if(isCargoAwaitingHandover(order)&&["sending","sent","uncertain","historical"].includes(order?.sube_etiket_durumu))return {key:"created",tone:"created",label:order.sube_etiket_durumu==="historical"?"Şubeden kesilen · takip bilgisi bekleniyor":"Etiket işlemi şubede"};
   if(isCargoAwaitingHandover(order))return {key:"created",tone:"created",label:hasCargoLabel(order)?"Etiket hazır · DHL teslim alımı bekleniyor":"Etiket oluşturulacak"};
   return state ? {...state} : {key:"unknown",tone:"unknown",label:String(order.shipmentStatus||"DHL durumu henüz alınmadı").replace(/_/g," ")};
 }
@@ -793,12 +808,13 @@ function branchLabelBadge(order){
   return label?`<span class="order-stage-badge order-stage-badge--branch">${label}</span>`:"";
 }
 function branchLabelButton(order,compact=false){
+  if(isGaziAdmin&&order?.sube_etiket_durumu==="historical"&&!order.kargo_takip_kodu)return `<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); linkBranchShipment(${Number(order.siparis_no)})">Şube takip no bağla</button>`;
   if(isGaziAdmin&&["sent","uncertain"].includes(order?.sube_etiket_durumu))return `<button type="button" class="btn-cargo-label cargo-label-branch" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this,'confirm')">Şubeden Kesildi İşaretle</button>`;
   return canRequestBranchLabel(order)?`<button type="button" class="btn-cargo-label cargo-label-branch${compact?" cargo-label-branch--compact":""}" onclick="event.stopPropagation(); sendBranchLabel(${Number(order.siparis_no)},this)">Şubeye İlet</button>`:"";
 }
 
 function canPrintCargoLabel(order){
-  return isCargoAwaitingHandover(order) && !!order?.orderinvoiceid;
+  return !["sending","sent","uncertain","historical"].includes(order?.sube_etiket_durumu) && isCargoAwaitingHandover(order) && !!order?.orderinvoiceid;
 }
 function cargoStateFilter(key){
   if(key==="created")return 'and(kargo_durumu.eq.Kargolandı,or(isDelivered.is.null,isDelivered.eq.false),or(shipmentStatusCode.is.null,shipmentStatusCode.eq.1),or(shipmentStatus.is.null,shipmentStatus.eq.,shipmentStatus.eq.Gönderi_Hazırlandı,shipmentStatus.eq.Gönderi Hazırlandı,shipmentStatus.eq.DHL sipariş kaydı oluşturuldu; barkod bekleniyor))';
