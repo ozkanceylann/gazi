@@ -1604,3 +1604,19 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .cargo-piece>div{min-width:0;display:grid;gap:4px;font-size:12px}
 .cargo-piece code{overflow-wrap:anywhere;font-size:12px}
 .cargo-piece .btn-open{flex-shrink:0;margin:0;padding:7px 9px;font-size:12px}
+
+
+/* Keep the scanner at the far right, including tabs without batch prepare. */
+.orders-page .order-quick-actions #scanLabelBtn { grid-column:2; justify-self:end; margin-left:auto; }
+.orders-page .order-quick-actions:has(.quick-action-wrapper[hidden]) { justify-content:flex-end; }
+/* Orange creates a label; blue prints a saved label. */
+.orders-page .btn-cargo-label.cargo-label-create,
+#btnBarcode.cargo-label-create { background:#fff0ce; color:#7c4c08; border:1px solid #dfbd76; }
+.orders-page .btn-cargo-label.cargo-label-create:hover,
+#btnBarcode.cargo-label-create:hover { background:#f9e2ad; }
+.orders-page .btn-cargo-label.cargo-label-print,
+#btnBarcode.cargo-label-print,
+.orders-page .cargo-piece .cargo-label-print { background:#dceaff; color:#204f89; border:1px solid #9cbbe4; }
+.orders-page .btn-cargo-label.cargo-label-print:hover,
+#btnBarcode.cargo-label-print:hover,
+.orders-page .cargo-piece .cargo-label-print:hover { background:#c7ddfa; }

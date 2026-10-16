@@ -586,7 +586,7 @@ tr.innerHTML = isPendingTab
 </td>
 
 <td>${orderTakerMarkup(o)}</td>
-<td>${errorPreview}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${hasCargoLabel(o) ? "Etiketi Yazdır" : "Etiket Oluştur"}</button>` : ""}</td>
+<td>${errorPreview}${currentTab === "kargolandi" && canLabel ? `<button type="button" class="btn-cargo-label ${hasCargoLabel(o)?"cargo-label-print":"cargo-label-create"}" onclick="event.stopPropagation(); retryCargoLabel(${Number(o.siparis_no)}, this)">${cargoLabelButtonText(o)}</button>` : ""}</td>
 
   `;
 
@@ -983,7 +983,7 @@ function canReprintCargoPiece(order,piece){
 function renderCargoPieces(order){
   const pieces=savedCargoPieces(order);
   if(!pieces.length)return '';
-  return `<div class="cargo-pieces"><strong>Paket Etiketleri</strong><p>Çıkış teyidi yok: DHL hareketinde bu paket barkodu görülmedi. Paketin kesin olarak depoda olduğu anlamına gelmez.</p>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>QR / Paket barkodu: ${escapeHtml(piece.barcode)}</code><span>${cargoPieceHasExit(order,piece.barcode)?'Çıkışı doğrulandı':'Çıkış teyidi yok'}</span></div>${!piece.printable?'<small>Bu QR koduna ait orijinal etiket bulunamadı.</small>':''}${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</div>`;
+  return `<div class="cargo-pieces"><strong>Paket Etiketleri</strong> <small data-label-print-count="${Number(order.siparis_no)}">${Math.max(0,Number(order.etiket_yazdirma_sayisi)||0)} kez yazdırma açıldı</small><p>Çıkış teyidi yok: DHL hareketinde bu paket barkodu görülmedi. Paketin kesin olarak depoda olduğu anlamına gelmez.</p>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>QR / Paket barkodu: ${escapeHtml(piece.barcode)}</code><span>${cargoPieceHasExit(order,piece.barcode)?'Çıkışı doğrulandı':'Çıkış teyidi yok'}</span></div>${!piece.printable?'<small>Bu QR koduna ait orijinal etiket bulunamadı.</small>':''}${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open cargo-label-print" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</div>`;
 }
 const piecePrintBusy=new Set();
 async function reprintCargoPiece(orderId,index,button){
@@ -1400,7 +1400,7 @@ document.getElementById("orderDetails").innerHTML = `
   // Mevcut etiketi tekrar aç; yeni kargo / barkod oluşturma.
   document.getElementById("btnBarcode").style.display =
     canPrintCargoLabel(d) ? "inline-block" : "none";
-  document.getElementById("btnBarcode").textContent = hasCargoLabel(d) ? "Etiketi Yazdır" : "Etiket Oluştur";
+  updateCargoLabelButton(document.getElementById("btnBarcode"),d);
 
   // Tamamlandı → butonları kapat, sadece kapat butonu açık kalsın
   if (tamam) {
@@ -1927,7 +1927,7 @@ function cargoPdfFilename(order) {
   return `${name} - ${number}.pdf`;
 }
 
-async function openCargoPdf(w, base64, order){
+async function openCargoPdf(w, base64, order, {trackPrint=true}={}){
   if(!base64?.startsWith("JVBER")) throw new Error("Geçerli etiket PDF'si alınamadı.");
   if(w.closed)throw new Error("Etiket penceresi kapatıldı. Etiketi Yazdır ile tekrar açabilirsiniz.");
   const filename=cargoPdfFilename(order);
@@ -1981,6 +1981,7 @@ async function openCargoPdf(w, base64, order){
   w.document.body.appendChild(frame);
   w.document.addEventListener("keydown",event=>{if(event.key==="Escape"){event.preventDefault();w.close();}});
   w.addEventListener("unload",cleanup,{once:true});
+  if(trackPrint)await recordCargoLabelPrint(order);
 }
 
 async function shipPreparedFromList(siparisNo, button){
@@ -2050,6 +2051,34 @@ async function sendToCargo(orderId,{prepareFirst=false}={}){
   finally{busy.kargola.delete(siparisNo);if(prepareFirst)preparingOrders.delete(siparisNo);}
 }
 
+function cargoLabelButtonText(order){
+  return hasCargoLabel(order)?`Etiket Yazdır · ${Math.max(0,Number(order?.etiket_yazdirma_sayisi)||0)} kez`:"Etiket Oluştur";
+}
+function updateCargoLabelButton(button,order){
+  if(!button)return;
+  button.textContent=cargoLabelButtonText(order);
+  button.classList.toggle("cargo-label-print",hasCargoLabel(order));
+  button.classList.toggle("cargo-label-create",!hasCargoLabel(order));
+}
+async function recordCargoLabelPrint(order){
+  try{
+    const {data,error}=await db.rpc("gazi_record_label_print",{p_siparis_no:Number(order.siparis_no)});
+    if(error)throw error;
+    if(!Number.isSafeInteger(data)||data<1)throw Error("Yazdırma sayacı doğrulanamadı");
+    order.etiket_yazdirma_sayisi=data;
+    if(Number(selectedOrder?.siparis_no)===Number(order.siparis_no)){
+      selectedOrder.etiket_yazdirma_sayisi=data;
+      updateCargoLabelButton(document.getElementById("btnBarcode"),selectedOrder);
+    }
+    document.querySelectorAll('[data-label-print-count]').forEach(el=>{
+      if(Number(el.dataset.labelPrintCount)===Number(order.siparis_no))el.textContent=`${data} kez yazdırma açıldı`;
+    });
+  }catch(error){
+    console.error("Etiket yazdırma sayacı:",error);
+    toast("Etiket açıldı, ancak yazdırma sayısı kaydedilemedi. "+(error.message||""),8000);
+  }
+}
+
 function hasCargoLabel(order){
   return !!(String(order?.kargo_zpl||"").trim() || String(order?.zpl_base64||"").startsWith("JVBER"));
 }
@@ -2064,7 +2093,7 @@ async function retryCargoLabel(siparisNo,button){
   w.document.body.textContent="Paket etiketi hazırlanıyor…";
   busy.kargola.add(id);busy.barkod.add(id);
   const label=button.textContent;button.disabled=true;button.textContent="Hazırlanıyor…";
-  let labelReady=false;
+  let labelReady=false,latestLabelOrder=null;
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
     if(error)throw error;
@@ -2092,14 +2121,14 @@ async function retryCargoLabel(siparisNo,button){
     try{
       const {data,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
       if(!error&&data){
-        labelReady=hasCargoLabel(data);
+        labelReady=hasCargoLabel(data);latestLabelOrder=data;
         if(selectedOrder?.siparis_no===id)selectedOrder={...selectedOrder,...data};
       }
     }catch(error){console.error("Etiket durumu yenilenemedi:",error);}
     button.disabled=false;
-    button.textContent=labelReady?"Etiketi Yazdır":label;
+    if(latestLabelOrder)updateCargoLabelButton(button,latestLabelOrder);else button.textContent=labelReady?"Etiket Yazdır":label;
     const detailButton=document.getElementById("btnBarcode");
-    if(selectedOrder?.siparis_no===id&&detailButton)detailButton.textContent=labelReady?"Etiketi Yazdır":"Etiket Oluştur";
+    if(selectedOrder?.siparis_no===id&&detailButton)updateCargoLabelButton(detailButton,selectedOrder);
     await loadOrders(true);
   }
 }
@@ -2119,7 +2148,7 @@ async function printReferenceLabel(orderId){
     if(result.label_type!=="reference")throw new Error("Referans etiketi yanıtı doğrulanamadı.");
     const {data:labelOrder,error:labelOrderError}=await db.from(TABLE).select("siparis_no,ad_soyad").eq("siparis_no",id).single();
     if(labelOrderError)throw labelOrderError;
-    await openCargoPdf(w,result.pdf_base64,labelOrder);
+    await openCargoPdf(w,result.pdf_base64,labelOrder,{trackPrint:false});
     toast("Referans etiketi yazdırmaya hazır.",5000);
   }catch(error){if(!w.closed)w.close();toast(error.message||"Referans etiketi alınamadı.",8000);}
   finally{referenceLabelBusy.delete(id);}
@@ -2505,6 +2534,7 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
   currentTab = requestedTab;
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => item.classList.toggle("active", item.id === "tab_" + currentTab));
 }
+
 
 
 
