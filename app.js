@@ -2,6 +2,8 @@
    CONFIG YÜKLENENE KADAR BEKLE
 ============================================================ */
 await window.waitConfig();
+const {bindBranchSelector}=await import("./branch-selector.js?v=20261017-dhl-branch-73");
+let branchSelector=null;
 
 /* ============================================================
    SUPABASE
@@ -1664,6 +1666,7 @@ async function populateDistrictSelect(cityId, selectedDistrictId){
    DÜZENLEME
 ============================================================ */
 async function enterEditMode(){
+  branchSelector=null;
   const d = selectedOrder;
   const deliveryLocked = !!(d.orderinvoiceid || d.kargo_takip_kodu);
   const cities = await loadCities();
@@ -1697,7 +1700,7 @@ async function enterEditMode(){
           </select>
         </div>
         <div class="form-field" id="delivery_branch_field" ${d.subeden_teslim === true ? "" : "hidden"}>
-          <label for="delivery_branch">Şube adı (varsa)</label><input id="delivery_branch" maxlength="150" value="${escapeHtml(d.teslim_subesi ?? "")}" ${deliveryLocked ? "disabled" : ""}>
+          <label for="delivery_branch_select">Teslim alınacak DHL şubesi</label><select id="delivery_branch_select" disabled><option>Önce il ve ilçe seçin</option></select><input id="delivery_branch" type="hidden" value="${escapeHtml(d.teslim_subesi ?? "")}"><p id="delivery_branch_info" class="branch-selector-info" role="status"></p><button id="delivery_branch_retry" class="btn-mini" type="button" hidden>Şubeleri yeniden getir</button>
         </div>
         ${deliveryLocked ? '<div class="form-field full-row"><small>Mevcut DHL kaydı var. Teslim şekli değişikliği için kargo kaydının yeniden açılması gerekir.</small></div>' : ""}
 
@@ -1776,6 +1779,7 @@ async function enterEditMode(){
     ilceKoduInput.value = opt?.dataset.code || "";
   });
 
+  branchSelector=bindBranchSelector({order:d,locked:deliveryLocked,request:body=>cargoRequest(CONFIG.webhooks.subeler,body)});
   document.getElementById("actionButtons").style.display = "none";
   document.getElementById("editButtons").style.display = "flex";
 }
@@ -1804,6 +1808,7 @@ async function saveEdit(){
   if (!(selectedOrder.orderinvoiceid || selectedOrder.kargo_takip_kodu)) {
     const delivery = document.getElementById("delivery_select")?.value;
     if (!["true", "false"].includes(delivery)) return toast("Adrese teslim veya Şubeden teslim seçin.", 6000);
+    if(delivery === "true" && !branchSelector?.valid())return toast("Teslim alınacak DHL şubesini listeden seçin.",6000);
     updated.subeden_teslim = delivery === "true";
     updated.teslim_subesi = updated.subeden_teslim ? document.getElementById("delivery_branch").value.trim() || null : null;
     updated.teslim_sekli_kontrol = false;

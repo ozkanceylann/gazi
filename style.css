@@ -1790,3 +1790,7 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .operation-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px #193a2814}
 .operation-card[aria-pressed="true"],.operation-card:focus-visible{outline:2px solid var(--counter);outline-offset:2px}
 @media(max-width:1000px){.operation-counters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.operation-card{padding:12px}.operation-card strong{font-size:27px}}
+
+.branch-selector-info{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.6;margin:6px 0;color:#435d50}#delivery_branch_field select{width:100%;min-width:0}
+
+#delivery_branch_field[hidden],#delivery_branch_retry[hidden]{display:none!important}

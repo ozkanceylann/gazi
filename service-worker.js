@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261017-operation-counters-72";
+const VERSION = "20261017-dhl-branch-73";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -14,6 +14,7 @@ const ASSETS = [
   "/config.js",
   "/cargo-weights.js",
   "/label-scanner.js",
+  "/branch-selector.js",
   "/manifest.json",
   "/install-app.js",
   "/install-app.css",
