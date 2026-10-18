@@ -1007,7 +1007,7 @@ function cargoStatusBadge(order,{compact=false}={}){
   const latest=sortCargoMovements(movements)[0] || null;
   const contact=cargoStatusInfo(order).key==="failed"&&latest ? `<small style="display:block;margin-top:5px">${cargoBranchContact(latest)}</small>` : "";
   const returnBadge = order.iade_kodu ? `<small class="cargo-checked"><span class="cargo-status cargo-status--return">İade etiketi oluşturuldu</span></small>` : "";
-  return `<span class="cargo-status-actions"><span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${currentTab==="kargolandi"&&canRequestBranchLabel(order)?branchLabelButton(order,true):""}</span>${returnBadge}${checked}${contact}${compact?"":cargoPieceSummary(order)}`;
+  return `<span class="cargo-status-actions"><span class="cargo-status cargo-status--${tone}">${escapeHtml(label)}</span>${currentTab==="kargolandi"&&canRequestBranchLabel(order)?branchLabelButton(order,true):""}</span>${returnBadge}${checked}${contact}`;
 }
 function cargoEnvironment(order){
   try {
@@ -1148,8 +1148,7 @@ function canReprintCargoPiece(order,piece){
 function renderCargoPieces(order){
   const pieces=savedCargoPieces(order);
   if(!pieces.length)return '';
-  const packageTracking=hasPackageMovementData(order);
-  return `<details class="cargo-pieces cargo-label-archive"><summary>Kayıtlı etiketler <span class="disclosure-count">${pieces.length} paket</span><span class="disclosure-action"></span></summary><small data-label-print-count="${Number(order.siparis_no)}">${Math.max(0,Number(order.etiket_yazdirma_sayisi)||0)} kez yazdırma açıldı</small><p>${packageTracking?'Paket hareketi yalnızca DHL yanıtında aynı barkod varsa gösterilir.':'Bu bölüm etiket arşividir. DHL hareket yanıtında paket barkodu bulunmadığı için paketlerin ayrı konumu gösterilemiyor.'}</p>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>QR / Paket barkodu: ${escapeHtml(piece.barcode)}</code>${packageTracking?`<span>${cargoPieceHasExit(order,piece.barcode)?'Çıkışı doğrulandı':'Bu barkoda ait çıkış hareketi yok'}</span>`:''}</div>${!piece.printable?'<small>Bu QR koduna ait orijinal etiket bulunamadı.</small>':''}${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open cargo-label-print" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</details>`;
+  return `<details class="cargo-pieces cargo-label-archive"><summary>Kayıtlı etiketler <span class="disclosure-count">${pieces.length} paket</span><span class="disclosure-action"></span></summary><small data-label-print-count="${Number(order.siparis_no)}">${Math.max(0,Number(order.etiket_yazdirma_sayisi)||0)} kez yazdırma açıldı</small>${pieces.map((piece,index)=>`<div class="cargo-piece"><div><strong>Paket ${escapeHtml(piece.pieceNumber||index+1)}</strong><code>QR / Paket barkodu: ${escapeHtml(piece.barcode)}</code></div>${!piece.printable?'<small>Bu QR koduna ait orijinal etiket bulunamadı.</small>':''}${canReprintCargoPiece(order,piece)?`<button type="button" class="btn-open cargo-label-print" onclick="reprintCargoPiece(${Number(order.siparis_no)},${index},this)">Etiketi Yazdır</button>`:''}</div>`).join('')}</details>`;
 }
 
 const piecePrintBusy=new Set();
@@ -1180,40 +1179,15 @@ async function reprintCargoPiece(orderId,index,button){
 }
 window.reprintCargoPiece=reprintCargoPiece;
 
-function cargoPieceSummary(order){
-  const qrCount=cargoQrCodes(order).length;
-  const expected=qrCount||Number(order.kargo_adet);
-  if(!Number.isSafeInteger(expected)||expected<2)return '';
-  const movements=sortCargoMovements(cargoTrackingData(order).movements);
-  const barcode=m=>String(m.barcode||m.pieceBarcode||m.packageBarcode||'').trim();
-  // Only an actual package barcode on a physical movement confirms that package left.
-  const physical=m=>['2','3','4','5','6','7','8','9'].includes(String(m.eventSequence));
-  const confirmed=new Set(movements.filter(m=>barcode(m)&&physical(m)).map(barcode));
-  const latestByShipment=new Map();
-  for(const m of movements){
-    const id=String(m.shipmentId||'').trim(),count=Number(m.pieceTotal);
-    if(id&&!latestByShipment.has(id)&&Number.isSafeInteger(count)&&count>0)latestByShipment.set(id,count);
-  }
-  const carrier=latestByShipment.size?[...latestByShipment.values()].reduce((a,b)=>a+b,0):null;
-  const different=carrier!==null&&carrier!==expected;
-  const countText=confirmed.size
-    ? `Çıkışı barkodla doğrulanan: ${confirmed.size} · Çıkış teyidi beklenen: ${Math.max(0,expected-confirmed.size)}`
-    : hasPackageMovementData(order)?'Bu barkodlara ait çıkış hareketi yok':'Paket bazlı hareket bilgisi sağlanmıyor; takip gönderi bazında.';
-  return `<div class="cargo-piece-summary${different?' cargo-piece-summary--mismatch':''}"><strong>Planlanan paket / etiket: ${expected}${qrCount?' · QR alanından':''}</strong><span>${countText}</span><span>DHL kaydındaki parça: ${carrier===null?'Bilgi yok':carrier}${different?` · Adet farkı: ${Math.abs(expected-carrier)}`:''}</span>${different?'<small>Paket adedi uyuşmuyor. DHL toplam parça adedi tek başına hangi paketlerin çıktığını doğrulamaz.</small>':''}</div>`;
-}
-
 // Only carrier-provided piece barcodes identify a package. A shipment ID is shared.
 function cargoMovementIdentity(movement){
   const barcode=String(movement?.barcode||movement?.pieceBarcode||movement?.packageBarcode||'').trim();
   const shipment=String(movement?.shipmentId||'').trim();
   const reference=String(movement?.referenceId||'').trim();
-  const pieces=String(movement?.pieceTotal||'').trim();
   const fields=[];
   if(barcode)fields.push(`Barkod: ${escapeHtml(barcode)}`);
   if(shipment)fields.push(`Gönderi takip no: ${escapeHtml(shipment)}`);
   if(reference)fields.push(`Referans: ${escapeHtml(reference)}`);
-  if(/^[1-9]\d*$/.test(pieces))fields.push(`Hareketteki parça adedi: ${escapeHtml(pieces)}`);
-  if(!barcode)fields.push('Paket barkodu belirtilmemiş');
   return `<span class="cargo-movement-identity">${fields.join(' · ')}</span>`;
 }
 
@@ -1222,12 +1196,10 @@ function renderCargoTracking(order){
   const tracking=cargoTrackingData(order);
   const movements=sortCargoMovements(tracking?.movements);
   const timeline=movements.map(m=>`<li><strong>${escapeHtml(m.eventStatus||"Kargo hareketi")}</strong><span>${escapeHtml(m.eventDateTime||m.eventDateTime2||"")} · ${cargoBranchContact(m)}</span>${m.description?`<span>${escapeHtml(m.description)}</span>`:""}${cargoMovementIdentity(m)}</li>`).join("");
-  const pieceNotice=Number(order.kargo_adet)>1&&(!movements.length||movements.some(m=>!String(m.barcode||m.pieceBarcode||m.packageBarcode||'').trim()))
-    ? `<p class="cargo-warning">Bu sipariş ${escapeHtml(order.kargo_adet)} parçalı. Paket barkodu belirtilmeyen hareketlerde hangi ürünün işlem gördüğü ayırt edilemiyor; gönderi takip numarası paket barkodu değildir.</p>` : '';
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
   const detailButton=isLiveShipment(order)?`<button class="btn-open" type="button" data-cargo-detail-refresh onclick="refreshSelectedCargoMovements(${Number(order.siparis_no)})">Hareket geçmişini getir</button>`:"";
-  return `<div class="detail-group cargo-detail"><div class="detail-cargo-heading"><div class="detail-title">Kargo ve teslimat</div><span class="detail-tracking-number">${escapeHtml(order.kargo_takip_kodu||"Takip no bekleniyor")}</span></div>${cargoStatusBadge(order,{compact:true})}<div class="detail-cargo-actions">${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}</div><details class="detail-movement-history"><summary>Kargo hareketleri <span class="disclosure-count">${movements.length} kayıt</span><span class="disclosure-action"></span></summary>${cargoPieceSummary(order)}${renderCargoPieces(order)}${pieceNotice}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</details></div>`;
+  return `<div class="detail-group cargo-detail"><div class="detail-cargo-heading"><div class="detail-title">Kargo ve teslimat</div><span class="detail-tracking-number">${escapeHtml(order.kargo_takip_kodu||"Takip no bekleniyor")}</span></div>${cargoStatusBadge(order,{compact:true})}<div class="detail-cargo-actions">${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}</div><details class="detail-movement-history"><summary>Kargo hareketleri <span class="disclosure-count">${movements.length} kayıt</span><span class="disclosure-action"></span></summary>${renderCargoPieces(order)}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</details></div>`;
 }
 
 
