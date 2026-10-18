@@ -873,7 +873,17 @@ window.linkBranchShipment=async function(id){
   };
 };
 window.sendBranchLabel=async function(id,button,operation="send"){
-  id=Number(id);if(busy.sube.has(id))return;busy.sube.add(id);button.disabled=true;button.textContent="Şubeye iletiliyor…";
+  id=Number(id);if(busy.sube.has(id))return;busy.sube.add(id);
+  if(operation==="send"){
+    const confirmed=await confirmModal({
+      title:"Şubeye İlet",
+      text:`${id} numaralı sipariş şubeye WhatsApp grubundan iletilecektir.\nBu siparişi eski haline getiremeyeceksiniz.\nDevam etmek istiyor musunuz?`,
+      confirmText:"Evet, Şubeye İlet",
+      cancelText:"Vazgeç"
+    });
+    if(!confirmed){busy.sube.delete(id);return;}
+  }
+  button.disabled=true;button.textContent="Şubeye iletiliyor…";
   try{
     const {data,error}=await db.functions.invoke("gazi-branch-label",{body:{siparis_no:id,operation}});
     if(error){let detail;try{detail=await error.context?.json();}catch{}throw Error(detail?.message||error.message);}
@@ -1520,12 +1530,6 @@ ${renderOriginalMessage(d)}
   document.getElementById("btnBarcode").style.display =
     canPrintCargoLabel(d) ? "inline-block" : "none";
   updateCargoLabelButton(document.getElementById("btnBarcode"),d);
-
-  let branchButton=document.getElementById("btnBranchLabel");
-  if(!branchButton){branchButton=document.createElement("button");branchButton.id="btnBranchLabel";branchButton.className="btn-cargo-label cargo-label-branch";document.getElementById("actionButtons").appendChild(branchButton);}
-  branchButton.textContent="Şubeye İlet · WhatsApp";branchButton.disabled=busy.sube.has(Number(d.siparis_no));
-  branchButton.style.display=currentTab==="kargolandi"&&canRequestBranchLabel(d)?"inline-block":"none";
-  branchButton.onclick=()=>window.sendBranchLabel(d.siparis_no,branchButton);
 
   // Tamamlandı → butonları kapat, sadece kapat butonu açık kalsın
   if (tamam) {
@@ -2327,10 +2331,14 @@ function hasExistingShipment(order){
 ============================================================ */
 
 function canCancelShipment(order){
-  return ["Kargolandı","Hazırlandı"].includes(order?.kargo_durumu)
-    && !!(order?.orderinvoiceid||order?.kargo_takip_kodu)
-    && order?.isDelivered!==true && Number(order?.shipmentStatusCode)!==5
-    && cargoEnvironment(order)!=="test";
+  if(!isCargoAwaitingHandover(order)
+    || ![0,1].includes(Number(order?.shipmentStatusCode))
+    || !(order?.orderinvoiceid||order?.kargo_takip_kodu)
+    || cargoEnvironment(order)==="test")return false;
+  const tracking=cargoTrackingData(order);
+  const status=tracking.status||{};
+  if(status.isDelivered===true || (Number(status.shipmentStatusCode)>1))return false;
+  return !Array.isArray(tracking.movements) || !tracking.movements.some(m=>Number(m.eventSequence)>=2);
 }
 async function cancelShipmentToWaiting(orderId,button){
   const id=Number(orderId??selectedOrder?.siparis_no);
@@ -2343,7 +2351,7 @@ async function cancelShipmentToWaiting(orderId,button){
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
     if(error)throw error;
-    if(!canCancelShipment(order))throw new Error("Bu siparişin gönderisi iptal edilemez. Listeyi yenileyin.");
+    if(!canCancelShipment(order))throw new Error("Yalnızca DHL teslim alımı bekleyen gönderiler iptal edilebilir. Transfer aşamasına geçmiş gönderiler iptal edilemez.");
     const result=await cargoRequest(CONFIG.webhooks.iptal,{operation:"gonderi_iptal",siparis_no:String(id),reason:"Kargo gönderisi iptal edilerek sipariş yeniden hazırlamak üzere Bekleyen aşamasına alınıyor."});
     if(result.cancelled!==true||result.recordVerified!==true||result.kargo_durumu!=="Bekliyor")throw new Error("İptal ve Bekleyen kaydı doğrulanamadı. Siparişin durumunu kontrol edin.");
     toast(result.message||"Gönderi iptal edildi; sipariş Bekleyen aşamasına alındı.",7000);
