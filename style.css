@@ -1858,3 +1858,31 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
   .orders-page #ordersBody .order-total-amount { font-size:25px; }
   .orders-page .operation-card strong { font-size:30px; }
 }
+
+/* Dark canvas around the order cards, including mobile header and tools. */
+html:has(body.orders-page) { background:#101d15; }
+body.orders-page { --bg:#101d15; --text:#edf0e3; background:#101d15; color:#edf0e3; min-height:100vh; }
+.orders-page .content-area { background:#101d15; min-height:100vh; }
+.orders-page .page-header { background:#172b1e; border:1px solid #39513b; border-radius:14px; padding:12px 14px; }
+.orders-page .page-header h1 { color:#f4f1e5; }
+.orders-page .page-header #listSummary { color:#b6c8ae; }
+.orders-page .page-header .btn-refresh,
+.orders-page .btn-load-more { background:#233b2a; color:#e4ce9e; border-color:#587052; }
+.orders-page .page-header .btn-refresh:hover,
+.orders-page .btn-load-more:hover { background:#304d36; }
+.orders-page .top-bar.search-slot,
+.orders-page .cargo-tools { background:#1b2f22; border-color:#415b43; }
+.orders-page .search-slot input,
+.orders-page .search-slot #tabSearchInput { background:#13251a; color:#f0f0e3; border-color:#526b4e; }
+.orders-page .search-slot input::placeholder { color:#b0c1aa; opacity:1; }
+.orders-page .cargo-tools #cargoSyncStatus { color:#c3d2b9; }
+.orders-page .table-wrapper { background:#1b2f22; border-color:#415b43; }
+.orders-page .label-scan-launch { background:#263e2d; color:#e6ce9b; border-color:#607451; }
+.orders-page .label-scan-launch:disabled { color:#b6c8ae; }
+.orders-page .order-quick-actions #batchPrepareBtn { background:#314d36; color:#ecdfb9; border-color:#607451; }
+@media(max-width:1200px) {
+  .orders-page .table-wrapper { background:transparent; }
+}
+@media(max-width:600px) {
+  .orders-page .page-header { background:transparent; border:0; padding:4px 0 8px; }
+}
