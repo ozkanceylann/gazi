@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261019-no-piece-tracking-77";
+const VERSION = "20261019-mobile-bottom-nav-78";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -11,6 +11,7 @@ const ASSETS = [
   "/login.html",
   "/style.css",
   "/app.js",
+  "/mobile-navigation.js",
   "/config.js",
   "/cargo-weights.js",
   "/label-scanner.js",

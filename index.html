@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
 
 
@@ -15,7 +15,7 @@
   <script src="config.js?v=20261014-cargo-separate-34"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261019-dark-canvas-76" />
+  <link rel="stylesheet" href="style.css?v=20261019-mobile-bottom-nav-78" />
 
   <style>
     .btn-mini{
@@ -42,6 +42,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="stylesheet" href="/install-app.css?v=20261016-pwa-52">
   <script src="/install-app.js?v=20261016-pwa-52" defer></script>
+  <script src="mobile-navigation.js?v=20261019-mobile-bottom-nav-78" defer></script>
 </head>
 
 <body class="orders-page">
@@ -209,7 +210,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261019-no-piece-tracking-77");
+      await import("./app.js?v=20261019-mobile-bottom-nav-78");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");
