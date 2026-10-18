@@ -117,7 +117,7 @@ body.orders-page,body.login-page {
 .orders-page #ordersBody .order-primary-actions .btn-direct-cargo:hover { background:#334d39; }
 .orders-page .btn-danger { background:var(--ui-danger); color:var(--ui-danger-ink) !important; border-color:#9c635966; box-shadow:none; }
 .orders-page .btn-danger:hover { background:#744239; }
-.orders-page #orderModal #actionButtons button:not(#btnBarcode),
+.orders-page #orderModal #actionButtons button:where(:not(#btnBarcode)),
 .orders-page #orderModal #editButtons button,
 .orders-page #orderModal #restoreButtons button {
   background:#263d2d !important; color:#e1c589 !important;
