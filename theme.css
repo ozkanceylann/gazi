@@ -234,10 +234,10 @@ body.login-page { background:radial-gradient(ellipse at 100% 0,#3b5c4540,transpa
 
 /* Direct shipping stands apart from preparation without changing its action. */
 .orders-page #ordersBody .order-primary-actions .btn-direct-cargo {
-  background:linear-gradient(110deg,#426e8d,#31566e); color:#f4f1e5;
-  border:1px solid #8fb6d2; font-weight:750; min-height:38px !important;
+  background:linear-gradient(110deg,#b6cfaa,#97b78f); color:#183521;
+  border:1px solid #c5ddb9; font-weight:750; min-height:38px !important;
   box-shadow:0 2px 7px #0003,inset 0 1px 0 #ffffff18;
 }
 .orders-page #ordersBody .order-primary-actions .btn-direct-cargo:hover {
-  background:linear-gradient(110deg,#426e8d,#365e77); color:#fff9e8; border-color:#bad2e4;
+  background:linear-gradient(110deg,#c5ddb9,#aac89e); color:#183521; border-color:#d6e8ce;
 }
