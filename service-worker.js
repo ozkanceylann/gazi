@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261019-mobile-bottom-nav-78";
+const VERSION = "20261019-unified-mobile-theme-79";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -10,6 +10,7 @@ const ASSETS = [
   "/index.html",
   "/login.html",
   "/style.css",
+  "/theme.css",
   "/app.js",
   "/mobile-navigation.js",
   "/config.js",

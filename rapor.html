@@ -9,7 +9,7 @@
   <script src="config.js"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261019-mobile-bottom-nav-78" />
+  <link rel="stylesheet" href="style.css?v=20261019-unified-mobile-theme-79" />
 
   <!-- SUPABASE & CHARTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -43,6 +43,7 @@
   </style>
 <script src="cargo-weights.js?v=20261014-kg-plus-33"></script>
   <script src="mobile-navigation.js?v=20261019-mobile-bottom-nav-78" defer></script>
+  <link rel="stylesheet" href="theme.css?v=20261019-unified-mobile-theme-79">
 </head>
 <body class="orders-page">
   <button class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Menüyü aç veya kapat">☰</button>
@@ -93,12 +94,12 @@
 
     <div id="summaryCards" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;"></div>
 
-    <div style="background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);margin-bottom:20px;">
+    <div class="report-panel">
       <h3>📈 Günlük Sipariş</h3>
       <div class="report-chart-area"><canvas id="dailyChart" aria-label="Günlük sipariş" role="img"></canvas></div>
     </div>
 
-    <div style="background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);margin-bottom:20px;">
+    <div class="report-panel">
       <h3>Siparişi alan kişiler</h3>
       <div class="report-chart-area"><canvas id="salesByTel" aria-label="Siparişi alan kişiler" role="img"></canvas></div>
     </div>
@@ -343,6 +344,8 @@
     if(!chartSpecs.has(canvas.id)||chartInstances.has(canvas.id))return;
     try{
       await ensureChartLibrary();
+      Chart.defaults.color="#b7c8ae";
+      Chart.defaults.borderColor="#3a5140";
       if(revision!==chartRevision||chartInstances.has(canvas.id))return;
       const spec=chartSpecs.get(canvas.id);if(!spec)return;
       chartInstances.set(canvas.id,new Chart(canvas,spec));

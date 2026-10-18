@@ -1,0 +1,213 @@
+/* Gazi palette: shared with Mobil Sipariş. Status/label palettes stay in style.css. */
+:root {
+  color-scheme:dark;
+  --ui-canvas:#0c1710;
+  --ui-paper:#142219;
+  --ui-surface:#223728;
+  --ui-inset:#182b1e;
+  --ui-line:#48604a;
+  --ui-line-soft:#3a5140;
+  --ui-ink:#f4f1e5;
+  --ui-muted:#a5b7a6;
+  --ui-accent:#d4a857;
+  --ui-accent-ink:#efd39b;
+  --ui-accent-line:#d4a85755;
+  --ui-card:linear-gradient(120deg,#2a4331,#223728);
+  --ui-overview:linear-gradient(125deg,#3b5c45,#223929);
+  --ui-primary:linear-gradient(110deg,#dfbd78,#c89845);
+  --ui-primary-ink:#1a2a1f;
+  --ui-danger:#623832;
+  --ui-danger-ink:#ffc7ba;
+  --ui-shadow:0 6px 18px #0002;
+}
+html:has(body.orders-page),html:has(body.login-page) { background:var(--ui-canvas); }
+body.orders-page,body.login-page {
+  --bg:var(--ui-canvas); --text:var(--ui-ink);
+  background:var(--ui-canvas); color:var(--ui-ink);
+}
+.orders-page .content-area { background:var(--ui-canvas); }
+.orders-page .sidebar { background:var(--ui-paper); color:var(--ui-ink); box-shadow:none; border-right:1px solid var(--ui-line-soft); }
+.orders-page .sidebar-header { border-color:var(--ui-accent-line); }
+.orders-page .sidebar-title,.orders-page .sidebar-title .brand-name { color:var(--ui-accent-ink); text-shadow:none; }
+.orders-page .sidebar-title .brand-caption { color:var(--ui-muted); }
+.orders-page .menu li,.orders-page .menu-more summary { color:#c4d3be; }
+.orders-page .menu li.active { background:#d4a8571f !important; color:var(--ui-accent-ink); border-color:var(--ui-accent-line); border-left-color:var(--ui-accent); }
+.orders-page .menu li:hover,.orders-page .menu-more summary:hover { background:#d4a85712; }
+.orders-page .sidebar>.btn-logout,.orders-page .sidebar>.btn-danger { background:#322c24; color:var(--ui-danger-ink) !important; border-color:#805b50; box-shadow:none; }
+.orders-page .sidebar>.btn-logout:hover,.orders-page .sidebar>.btn-danger:hover { background:#49342c; }
+.orders-page .page-header { background:none; border-color:transparent; box-shadow:none; }
+.orders-page .page-header h1 { color:var(--ui-ink); }
+.orders-page .page-header #listSummary,.orders-page #reportStatus,.orders-page .search-hint { color:var(--ui-muted); }
+.orders-page .page-eyebrow { color:var(--ui-accent); }
+
+/* Quiet surfaces; the process badges carry the status colors. */
+.orders-page .operation-card,
+.orders-page .operation-card--label,
+.orders-page .operation-card--handover,
+.orders-page .operation-card--attention {
+  --counter:var(--ui-accent); background:var(--ui-overview); color:var(--ui-ink);
+  border:1px solid var(--ui-accent-line); box-shadow:var(--ui-shadow);
+}
+.orders-page .operation-card strong { color:#f5e6bd; }
+.orders-page .operation-card small { color:#c4d4c0; }
+.orders-page .operation-card:hover { background:var(--ui-overview); box-shadow:0 8px 22px #0003; }
+.orders-page .operation-card[aria-pressed="true"] { border-color:var(--ui-accent); outline-color:var(--ui-accent); }
+.orders-page .top-bar.search-slot,.orders-page .cargo-tools,.orders-page .toolbar {
+  background:var(--ui-paper); color:var(--ui-ink); border-color:var(--ui-line-soft); box-shadow:none;
+}
+.orders-page .search-slot input,.orders-page .search-slot #tabSearchInput,
+.orders-page .toolbar input,.orders-page .toolbar select {
+  background:var(--ui-inset); color:var(--ui-ink); border-color:var(--ui-line); box-shadow:none;
+}
+.orders-page input::placeholder,.orders-page textarea::placeholder { color:var(--ui-muted); opacity:1; }
+.orders-page .search-slot input::placeholder { color:var(--ui-muted); }
+.orders-page .cargo-tools #cargoSyncStatus { color:var(--ui-muted); }
+.orders-page .table-wrapper,.orders-page .orders-table { background:var(--ui-paper); border-color:var(--ui-line); }
+.orders-page .orders-table th { background:#1a2c20; color:#c4d3be; border-color:var(--ui-line); }
+.orders-page .orders-table #ordersBody tr,
+.orders-page .orders-table #ordersBody tr:nth-child(even),
+.orders-page .orders-table #ordersBody tr.cargo-label-retry {
+  background:var(--ui-card); color:var(--ui-ink); border-color:var(--ui-line); box-shadow:var(--ui-shadow);
+}
+.orders-page .orders-table #ordersBody td { background:transparent !important; color:var(--ui-ink); border-color:var(--ui-line); }
+.orders-page .orders-table #ordersBody tr:hover td,
+.orders-page .orders-table #ordersBody tr.cargo-label-retry:hover td { background:#304c37 !important; }
+.orders-page .orders-table #ordersBody tr.order-zero-total,
+.orders-page .orders-table #ordersBody tr.order-zero-total:nth-child(even) { background:linear-gradient(120deg,#403a34,#342f2a); border-color:#695347; }
+.orders-page .orders-table #ordersBody tr.order-zero-total td { border-color:#695347 !important; }
+.orders-page .orders-table #ordersBody tr.order-zero-total:hover td { background:#484037 !important; }
+.orders-page .orders-table #ordersBody tr td:first-child { border-left-color:var(--ui-line); }
+.orders-page .orders-table #ordersBody tr.order-zero-total td:first-child { border-left-color:#8f6c59; }
+.orders-page .orders-table #ordersBody td::before { color:var(--ui-muted); }
+.orders-page #ordersBody .order-customer-name,.orders-page #ordersBody .order-product-limit,
+.orders-page #ordersBody .order-mobile-field>strong { color:var(--ui-ink); }
+.orders-page #ordersBody .order-date,.orders-page #ordersBody .order-cell--number,
+.orders-page #ordersBody .order-mobile-field>span,.orders-page #ordersBody .order-mobile-address,
+.orders-page #ordersBody .order-mobile-delivery,.orders-page #ordersBody .cargo-checked { color:var(--ui-muted); }
+.orders-page #ordersBody .order-total-amount { color:var(--ui-accent-ink); }
+.orders-page #ordersBody .order-mobile-extra { border-color:var(--ui-line-soft) !important; }
+.orders-page #ordersBody .card-original-message { background:var(--ui-inset); border-color:var(--ui-line); }
+.orders-page #ordersBody .card-original-message summary { color:var(--ui-accent-ink); }
+.orders-page #ordersBody .card-original-message summary>span { color:var(--ui-muted); }
+.orders-page #ordersBody .card-original-message .original-message-text { background:var(--ui-paper); color:var(--ui-ink); border-color:var(--ui-line-soft); }
+.orders-page .card-original-message summary .disclosure-action { background:#d4a8571f; border-color:var(--ui-accent-line); color:var(--ui-accent-ink); }
+.orders-page .customer-note-card { background:#303525; color:#efdfbb; border-color:#8b784b; border-left-color:var(--ui-accent); }
+
+/* Actions follow one hierarchy. Label/return/branch buttons are deliberately excluded. */
+.orders-page .btn-primary:not(#btnBarcode),
+.orders-page .btn-brand,.orders-page .btn-prepare,.orders-page .btn-ship-order,
+.orders-page .search-slot .btn-search {
+  background:var(--ui-primary); color:var(--ui-primary-ink) !important; border:1px solid #f3d296;
+  box-shadow:none;
+}
+.orders-page .btn-secondary,.orders-page .btn-warning,.orders-page .btn-waiting,
+.orders-page .btn-close,.orders-page .btn-clear,.orders-page .btn-ghost,
+.orders-page .page-header .btn-refresh,.orders-page .btn-load-more,
+.orders-page .label-scan-launch,.orders-page .label-scan-close,
+.orders-page .order-quick-actions #batchPrepareBtn,
+.orders-page #ordersBody .order-primary-actions .btn-direct-cargo {
+  background:#263d2d; color:#e1c589; border-color:var(--ui-accent-line); box-shadow:none;
+}
+.orders-page .btn-open:not(.cargo-label-print):not(.cargo-label-create) {
+  background:#263d2d !important; color:#e1c589 !important; border:1px solid var(--ui-accent-line); box-shadow:none;
+}
+.orders-page .btn-secondary:hover,.orders-page .btn-warning:hover,.orders-page .btn-waiting:hover,
+.orders-page .btn-close:hover,.orders-page .btn-ghost:hover,.orders-page .btn-load-more:hover,
+.orders-page .page-header .btn-refresh:hover,.orders-page .label-scan-launch:hover,
+.orders-page #ordersBody .order-primary-actions .btn-direct-cargo:hover { background:#334d39; }
+.orders-page .btn-danger { background:var(--ui-danger); color:var(--ui-danger-ink) !important; border-color:#9c635966; box-shadow:none; }
+.orders-page .btn-danger:hover { background:#744239; }
+.orders-page #orderModal #actionButtons button:not(#btnBarcode),
+.orders-page #orderModal #editButtons button,
+.orders-page #orderModal #restoreButtons button {
+  background:#263d2d !important; color:#e1c589 !important;
+  border:1px solid var(--ui-accent-line) !important; box-shadow:none;
+}
+.orders-page #orderModal #actionButtons .btn-prepare,
+.orders-page #orderModal #actionButtons .btn-secondary,
+.orders-page #orderModal #editButtons .btn-secondary,
+.orders-page #orderModal #restoreButtons .btn-secondary {
+  background:var(--ui-primary) !important; color:var(--ui-primary-ink) !important; border-color:#f3d296 !important;
+}
+.orders-page #orderModal #actionButtons .btn-danger,
+.orders-page #orderModal #editButtons .btn-danger,
+.orders-page #orderModal #restoreButtons .btn-danger {
+  background:var(--ui-danger) !important; color:var(--ui-danger-ink) !important; border-color:#9c635966 !important;
+}
+.orders-page #orderModal #actionButtons button:not(#btnBarcode)::after,
+.orders-page #orderModal #editButtons button::after,
+.orders-page #orderModal #restoreButtons button::after { background:none; }
+.orders-page #orderDetails .detail-cargo-actions>.btn-open,
+.orders-page #orderDetails .btn-reference-mini { background:#263d2d !important; color:#e1c589 !important; border-color:var(--ui-accent-line); }
+
+/* Detail sheets, confirmation dialogs and camera all share the same surfaces. */
+.orders-page #orderModal { background:#050e09b8; }
+.orders-page #orderModal .modal-content { background:var(--ui-paper); color:var(--ui-ink); border-color:var(--ui-accent-line); box-shadow:0 24px 70px #0005; }
+.orders-page #orderDetails .detail-overview { background:var(--ui-overview); border-color:var(--ui-accent-line); }
+.orders-page #orderDetails .detail-group,
+.orders-page #orderDetails .detail-column>.detail-group,
+.orders-page #orderDetails .detail-layout>.detail-note { background:var(--ui-card); border-color:var(--ui-line); color:var(--ui-ink); }
+.orders-page #orderDetails .original-message,.orders-page #orderDetails .detail-movement-history,
+.orders-page #orderDetails .cargo-label-archive { background:var(--ui-inset); border-color:var(--ui-line); }
+.orders-page #orderModal input,.orders-page #orderModal textarea,.orders-page #orderModal select,
+.orders-page .error-detail-text,.orders-page .label-scan-form input,.orders-page .taker-settings input {
+  background:var(--ui-inset); border-color:var(--ui-line); color:var(--ui-ink); box-shadow:none;
+}
+.orders-page .alert-card,.orders-page .label-scan-card,.orders-page .taker-settings {
+  background:var(--ui-paper); color:var(--ui-ink); border:1px solid var(--ui-line); box-shadow:0 20px 70px #0005;
+}
+.orders-page .alert-title,.orders-page .label-scan-heading h2,.orders-page .taker-settings-heading h2 { color:var(--ui-accent-ink); }
+.orders-page .alert-text,.orders-page .label-scan-status { color:var(--ui-ink); }
+.orders-page .label-scan-help,.orders-page .taker-settings p,
+.orders-page .taker-settings-row label,.orders-page .taker-row-status { color:var(--ui-muted); }
+.orders-page .label-scan-choice { background:var(--ui-surface); color:var(--ui-ink); border-color:var(--ui-line); }
+.orders-page .label-scan-form { border-color:var(--ui-line); }
+.orders-page .toast { background:var(--ui-surface); color:var(--ui-ink); border:1px solid var(--ui-line); }
+.orders-page .taker-settings-row button { background:var(--ui-primary); color:var(--ui-primary-ink); }
+.orders-page #installAppBtn { background:#263d2d; color:#e1c589; border-color:var(--ui-accent-line); }
+
+/* Reports use the same cards instead of white islands. */
+.orders-page .report-card,.orders-page .report-panel,.orders-page .report-chart-card {
+  background:var(--ui-card); color:var(--ui-ink); border:1px solid var(--ui-line); box-shadow:var(--ui-shadow);
+}
+.orders-page .report-panel { padding:20px; border-radius:12px; margin-bottom:20px; }
+.orders-page .report-card h3,.orders-page .report-chart-card h3,.orders-page .report-panel h3 { color:#c4d3be; }
+.orders-page .report-card .value { color:var(--ui-accent-ink); }
+.orders-page .report-chart-card p { color:var(--ui-muted); }
+.orders-page .report-customer { color:var(--ui-accent-ink); }
+.orders-page .orders-table #reportTable tr,.orders-page .orders-table #reportTable tr:nth-child(even) { background:var(--ui-card); }
+.orders-page .orders-table #reportTable td { color:var(--ui-ink); background:transparent; border-color:var(--ui-line); }
+.orders-page .orders-table #reportTable tr:hover td { background:#304c37 !important; }
+
+/* Navigation uses the same inset as the mobile application. */
+.orders-page .mobile-bottom-nav { background:#17291ef5; color:#9db198; border-color:var(--ui-accent-line); box-shadow:0 -4px 18px #0002; }
+.orders-page .mobile-bottom-nav>button[aria-current="page"],
+.orders-page .mobile-bottom-more.has-active-page>summary,
+.orders-page .mobile-bottom-more[open]>summary { background:#d4a85716; color:#e6c580; }
+.orders-page .mobile-bottom-popup { background:var(--ui-paper); color:var(--ui-ink); border-color:var(--ui-accent-line); }
+.orders-page :is(button,input,select,textarea,a,summary):focus-visible { outline-color:var(--ui-accent); }
+
+/* Sign-in keeps the same typography and hierarchy, without the bright gold panel. */
+body.login-page { background:radial-gradient(ellipse at 100% 0,#3b5c4540,transparent 55%),var(--ui-canvas); }
+.login-page::before,.login-page .login-box::before { display:none; }
+.login-page .login-box { background:var(--ui-card); color:var(--ui-ink); border-color:var(--ui-line); box-shadow:0 20px 60px #0004; }
+.login-page .brand-caption,.login-page .login-footer,.login-page label { color:#bfceb8; }
+.login-page h2,.login-page .ornament { color:var(--ui-accent-ink); }
+.login-page .login-subtitle { color:var(--ui-ink); }
+.login-page input { background:var(--ui-inset); color:var(--ui-ink); border-color:var(--ui-line); box-shadow:none; }
+.login-page input::placeholder { color:var(--ui-muted); }
+.login-page input:focus { background:var(--ui-inset); color:var(--ui-ink); border-color:var(--ui-accent); box-shadow:0 0 0 3px #d4a85718; }
+.login-page .btn-login { background:var(--ui-primary); color:var(--ui-primary-ink); border-color:#f3d296; box-shadow:none; }
+.login-page .error { background:var(--ui-danger); color:var(--ui-danger-ink); border-color:#9c635966; }
+.login-page #installAppBtn { background:#263d2d; color:#e1c589; border-color:var(--ui-accent-line); }
+
+@media(max-width:1200px) {
+  .orders-page .table-wrapper,.orders-page .orders-table,.orders-page .orders-table tbody { background:transparent; }
+  .orders-page .orders-table #ordersBody tr,.orders-page .orders-table #ordersBody tr:nth-child(even) { border-left-color:var(--ui-line); }
+  .orders-page .orders-table #ordersBody tr.order-zero-total { border-left-color:#8f6c59; }
+  .orders-page .orders-table #ordersBody tr:hover td,
+  .orders-page .orders-table #ordersBody tr.order-zero-total:hover td,
+  .orders-page .orders-table #ordersBody tr.cargo-label-retry:hover td { background:transparent !important; }
+}
+
+.orders-page .btn-prepare:hover,.orders-page .btn-ship-order:hover,.orders-page .btn-primary:not(#btnBarcode):hover,.orders-page .btn-brand:hover,.orders-page .search-slot .btn-search:hover{background:var(--ui-primary);color:var(--ui-primary-ink) !important;}

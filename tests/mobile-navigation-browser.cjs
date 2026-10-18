@@ -1,7 +1,7 @@
 const fs=require("node:fs");
 const assert=require("node:assert/strict");
 const {chromium,webkit}=require("playwright");
-const css=fs.readFileSync("style.css","utf8");
+const css=fs.readFileSync("style.css","utf8")+fs.readFileSync("theme.css","utf8");
 const script=fs.readFileSync("mobile-navigation.js","utf8");
 const index=fs.readFileSync("index.html","utf8");
 const report=fs.readFileSync("rapor.html","utf8");
