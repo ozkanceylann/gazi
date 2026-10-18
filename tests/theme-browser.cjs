@@ -50,7 +50,9 @@ function textColors(page){return page.locator("[data-label-fixture]").evaluateAl
       }));
     });
     assert(!contrast.some(x=>x.ratio<4.5),JSON.stringify(contrast.filter(x=>x.ratio<4.5)));
-    assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),"No horizontal overflow");
+    const layout=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,offenders:[...document.querySelectorAll("body *")].filter(el=>{const r=el.getBoundingClientRect();return r.width&&r.right>innerWidth+1;}).map(el=>({tag:el.tagName,cls:el.className,right:el.getBoundingClientRect().right})).slice(0,12)}));
+    if(name==="webkit")await page.screenshot({path:"tests/output/theme-webkit-"+width+".png",fullPage:true});
+    assert(layout.scroll<=layout.width,JSON.stringify(layout));
     if(name==="chromium")await page.screenshot({path:"tests/output/theme-"+width+".png",fullPage:true});
    }
    await page.locator("#orderModal").evaluate(el=>el.style.display="flex");
