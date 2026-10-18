@@ -322,7 +322,7 @@ async function loadOrders(reset=false){
 
   const { data, error, count } = currentTab === "kargolandi"
     ? await loadCargoLabelQueue(start, end)
-    : await q.order("siparis_no", { ascending:false }).range(start, end);
+    : await q.order("siparis_no", { ascending: currentTab === "bekleyen" }).range(start, end);
   if (request !== listRequest) return;
   if(error){
     if(!reset)currentPage=Math.max(1,currentPage-1);
@@ -2442,7 +2442,7 @@ async function searchOrders(scope = "all") {
       .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
     if (inTab) query = applyCargoFilter(applyTabFilter(query));
     const { data, error } = await query.or(buildOrderSearchFilter(raw))
-      .order("siparis_no", { ascending: false });
+      .order("siparis_no", { ascending: inTab && currentTab === "bekleyen" });
     if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();
