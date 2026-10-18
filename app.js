@@ -663,7 +663,7 @@ tr.innerHTML = isPendingTab
   </span>
 </td>
 
-    <td>${o.toplam_tutar} TL</td>
+    <td><span class="order-total-amount">${escapeHtml(o.toplam_tutar ?? "—")} <small>TL</small></span></td>
     <td class="order-status-cell">${orderStageBadge(o)}</td>
     <td>${noteChip}</td>
     <td>${orderTakerMarkup(o)}</td>
@@ -680,7 +680,7 @@ tr.innerHTML = isPendingTab
   </span>
 </td>
 
-    <td>${o.toplam_tutar} TL</td>
+    <td><span class="order-total-amount">${escapeHtml(o.toplam_tutar ?? "—")} <small>TL</small></span></td>
 <td class="order-status-cell">${orderStageBadge(o)}${isTrackingTab && ["Kargolandı","Tamamlandı","İade"].includes(orderStage) ? ` ${cargoStatusBadge(o)}` : ""}</td>
 
 <td>

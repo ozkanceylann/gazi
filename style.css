@@ -1794,3 +1794,67 @@ a.order-taker-phone:focus-visible { outline-color:hsl(var(--phone-hue) 42% 65%);
 .branch-selector-info{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.6;margin:6px 0;color:#435d50}#delivery_branch_field select{width:100%;min-width:0}
 
 #delivery_branch_field[hidden],#delivery_branch_retry[hidden]{display:none!important}
+
+/* Main list uses the detail sheet's forest and gold palette. */
+.orders-page .orders-table { background:#23392a; }
+.orders-page .orders-table th { background:#1c3022; color:#d4dfc9; border-color:#48604a; }
+.orders-page .orders-table #ordersBody tr,
+.orders-page .orders-table #ordersBody tr:nth-child(even) {
+  background:#293f30; border-color:#5c755b; color:#f4f1e5;
+}
+.orders-page .orders-table #ordersBody tr:nth-child(even) { background:#24392b; }
+.orders-page .orders-table #ordersBody td {
+  background:transparent !important; color:#e2e8d7; border-color:#48604a;
+}
+.orders-page .orders-table #ordersBody tr:hover td { background:#344f3b !important; }
+.orders-page .orders-table #ordersBody tr.order-zero-total { background:#513a36; border-color:#956b61; border-left-color:#c68e82; }
+.orders-page .orders-table #ordersBody tr.order-zero-total td { background:transparent !important; border-color:#956b61 !important; }
+.orders-page .orders-table #ordersBody tr.order-zero-total:hover td { background:#60443e !important; }
+.orders-page .orders-table #ordersBody td::before { color:#b7c9ae; }
+.orders-page #ordersBody .order-customer-name { color:#f4f1e5; font-weight:750; }
+.orders-page #ordersBody .order-product-limit { color:#e0e9d3; }
+.orders-page #ordersBody .order-date,
+.orders-page #ordersBody .order-cell--number,
+.orders-page #ordersBody .order-mobile-field>span,
+.orders-page #ordersBody .order-mobile-address,
+.orders-page #ordersBody .order-mobile-delivery,
+.orders-page #ordersBody .cargo-checked { color:#b8cbb0; }
+.orders-page #ordersBody .order-taker-name,
+.orders-page #ordersBody .order-mobile-field a { color:#e1c589; }
+.orders-page .orders-table .order-cell--total { width:120px; }
+.orders-page #ordersBody .order-cell--total { line-height:1.2 !important; }
+.orders-page #ordersBody .order-total-amount {
+  display:inline-flex; align-items:baseline; justify-content:inherit; gap:4px;
+  max-width:100%; flex-wrap:wrap; color:#efd39b;
+  font-size:29px; line-height:1.2; font-weight:650; letter-spacing:-.8px;
+  font-variant-numeric:tabular-nums;
+}
+.orders-page #ordersBody .order-total-amount small { font-size:13px; font-weight:500; letter-spacing:0; }
+.orders-page #ordersBody .order-mobile-extra { border-color:#536b50 !important; }
+.orders-page #ordersBody .card-original-message { background:#1e3224; border-color:#587052; }
+.orders-page #ordersBody .card-original-message summary { color:#e1c589; }
+.orders-page #ordersBody .card-original-message summary>span { color:#afc3a8; }
+.orders-page #ordersBody .card-original-message .original-message-text { background:#182b1e; color:#dce6d0; border-color:#48604a; }
+.orders-page .operation-card {
+  --counter:#b2cc94; background:#294530; color:#edf1df; border-color:#54734e;
+  border-top-color:var(--counter); box-shadow:0 3px 10px #193a2818;
+}
+.orders-page .operation-card--label { --counter:#e1bb69; background:#574525; border-color:#8b723f; border-top-color:var(--counter); }
+.orders-page .operation-card--handover { --counter:#98c0e0; background:#2b4559; border-color:#577a94; border-top-color:var(--counter); }
+.orders-page .operation-card--attention { --counter:#e7a197; background:#583935; border-color:#93655d; border-top-color:var(--counter); }
+.orders-page .operation-card strong { color:#f5e0b5; font-size:34px; font-weight:700; }
+.orders-page .operation-card small { color:#e0e6d8; opacity:1; }
+.orders-page .operation-card:hover { box-shadow:0 5px 16px #193a2830; }
+@media(max-width:1200px) {
+  .orders-page .orders-table,
+  .orders-page .orders-table tbody { background:transparent; }
+  .orders-page .orders-table #ordersBody tr { box-shadow:0 3px 9px #14221924; border-left-color:#8aa378; }
+  .orders-page .orders-table #ordersBody tr.order-zero-total { border-left-color:#c68e82; }
+  .orders-page .orders-table #ordersBody tr:hover td,
+  .orders-page .orders-table #ordersBody tr.order-zero-total:hover td { background:transparent !important; }
+  .orders-page .orders-table #ordersBody .order-cell--total { width:auto; }
+}
+@media(max-width:380px) {
+  .orders-page #ordersBody .order-total-amount { font-size:25px; }
+  .orders-page .operation-card strong { font-size:30px; }
+}
