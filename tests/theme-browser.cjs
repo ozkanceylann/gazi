@@ -29,6 +29,8 @@ function textColors(page){return page.locator("[data-label-fixture]").evaluateAl
    assert.deepEqual(await textColors(page),old,"Existing label palettes must stay unchanged");
    for(const width of [375,1440]){
     await page.setViewportSize({width,height:1000});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))));
     const overview=await page.locator(".operation-card").evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundImage));
     assert.equal(new Set(overview).size,1);
     const bodyColor=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
