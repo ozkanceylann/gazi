@@ -225,3 +225,9 @@ body.login-page { background:radial-gradient(ellipse at 100% 0,#3b5c4540,transpa
 }
 
 .orders-page .btn-prepare:hover,.orders-page .btn-ship-order:hover,.orders-page .btn-primary:not(#btnBarcode):hover,.orders-page .btn-brand:hover,.orders-page .search-slot .btn-search:hover{background:var(--ui-primary);color:var(--ui-primary-ink) !important;}
+
+/* Same count boxes and count-to-color mapping as Mobil Sipariş. */
+.orders-page #ordersBody .cargo-count,.orders-page #orderDetails .cargo-count {
+  min-width:30px; height:25px; padding:4px; border-radius:7px; font-size:12px; line-height:1;
+}
+.orders-page .cargo-count--gold { background:#d4af37; border-color:#f1d879; color:#3c2d08; }

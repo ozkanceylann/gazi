@@ -68,16 +68,16 @@ function shouldShowCargoCode(tab) {
 function cargoCountBadge(value) {
   const count = Number(value);
   if (!Number.isSafeInteger(count) || count < 1 || count > 100) {
-    return '<span class="cargo-count cargo-count--empty">—</span>';
+    return '<span class="cargo-count cargo-count--empty" aria-label="Paket adedi belirtilmemiş">—</span>';
   }
-  const hue = ((count - 1) * 137.508 + 145) % 360;
-  return `<span class="cargo-count" style="--count-hue:${hue.toFixed(3)}" aria-label="${count} paket">${count}</span>`;
+  const hue = count === 1 ? 42 : ((count - 1) * 137.508 + 145) % 360;
+  return `<span class="cargo-count${count === 1 ? ' cargo-count--gold' : ''}" style="--count-hue:${hue.toFixed(3)}" aria-label="${count} paket">${count}</span>`;
 }
 
 function orderColumnRoles(){
   if(currentTab==="bekleyen")return ["number","primary","count","customer","product","total","status","note","taker"];
   if(currentTab==="hazirlandi")return ["number","primary","count","customer","product","total","status","note","taker","actions"];
-  return ["number","customer","product","total","status","code","taker","actions"];
+  return ["number","count","customer","product","total","status","code","taker","actions"];
 }
 function labelOrderCells(row){
   const roles=orderColumnRoles();
@@ -106,7 +106,7 @@ function renderTableHeader(){
   : `
     <th>S.No</th>
     ${currentTab === "hazirlandi" ? '<th class="order-ship-column">Kargola</th>' : ""}
-    ${currentTab === "hazirlandi" ? '<th class="cargo-count-column" aria-label="Kargo Adet">Kargo<br>Adet</th>' : ""}
+    <th class="cargo-count-column" aria-label="Kargo Adet">Kargo<br>Adet</th>
     <th>İsim</th>
     <th>Ürün</th>
     <th>Tutar</th>
@@ -571,10 +571,8 @@ function mobileOrderInfo(order){
   const dial=phone.replace(/[^\d+]/g,"");
   const place=[order.sehir,order.ilce].filter(Boolean).join(" / ");
   const kg=CargoWeights.display(order.kargo_kg,order.kargo_adet);
-  const packs=["bekleyen","hazirlandi"].includes(currentTab)?"":`${Number(order.kargo_adet)||"—"} paket`;
-  const packInfo=[packs,kg?`${kg} kg`:""].filter(Boolean).join(" · ");
   const field=(label,value)=>value?`<div class="order-mobile-field"><span>${label}</span><strong>${value}</strong></div>`:"";
-  return `<div class="order-mobile-info">${field("Telefon",phone?`<a href="tel:${escapeHtml(dial)}">${escapeHtml(phone)}</a>`:"")}${field("İl / İlçe",escapeHtml(place))}${field("Paket / KG",escapeHtml(packInfo))}${field("Ödeme",escapeHtml(order.odeme_sekli||"Belirtilmemiş"))}</div>
+  return `<div class="order-mobile-info">${field("Telefon",phone?`<a href="tel:${escapeHtml(dial)}">${escapeHtml(phone)}</a>`:"")}${field("İl / İlçe",escapeHtml(place))}${field("KG",kg?`${escapeHtml(kg)} kg`:"")}${field("Ödeme",escapeHtml(order.odeme_sekli||"Belirtilmemiş"))}</div>
     ${order.adres?`<p class="order-mobile-address">${escapeHtml(order.adres)}</p>`:""}
     <span class="order-mobile-delivery${order.subeden_teslim===true?" order-mobile-delivery--branch":""}">${order.subeden_teslim===true?"Şubeden teslim"+(order.teslim_subesi?" · "+escapeHtml(order.teslim_subesi):""):"Adrese teslim"}</span>
     <details class="card-original-message"><summary>Ham mesaj <span class="disclosure-action"></span></summary><div class="original-message-text">${escapeHtml(order.whatsapp_message_text===undefined?"Mesajı görmek için açın.":order.whatsapp_message_text||"Bu siparişin orijinal mesajı kayıtlı değil.")}</div></details>`;
@@ -671,7 +669,7 @@ tr.innerHTML = isPendingTab
   : `
     <td>${o.siparis_no}</td>
     ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
-    ${isPreparedTab ? `<td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>` : ""}
+    <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
     <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${customerNoteCard(o)}</td>
     <td>
   <span class="order-product-limit"
