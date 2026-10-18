@@ -32,7 +32,7 @@ function textColors(page){return page.locator("[data-label-fixture]").evaluateAl
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     await page.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))));
     const overview=await page.locator(".operation-card").evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundImage));
-    assert.equal(new Set(overview).size,1);
+    assert.equal(new Set(overview).size,4);
     const bodyColor=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
     assert.equal(bodyColor,"rgb(12, 23, 16)");
     const contrast=await page.evaluate(()=>{
@@ -74,7 +74,7 @@ function textColors(page){return page.locator("[data-label-fixture]").evaluateAl
    assert.equal(await page.locator("body").evaluate(el=>getComputedStyle(el).color),"rgb(244, 241, 229)");
    if(name==="chromium")await page.screenshot({path:"tests/output/theme-login.png",fullPage:true});
    assert.deepEqual(errors,[]);
-   console.log("PASS "+name+": original labels unchanged, uniform overview, readable controls, report/login surfaces and mobile/desktop layout.");
+   console.log("PASS "+name+": original labels unchanged, distinct muted overview colors, readable controls, report/login surfaces and mobile/desktop layout.");
   }finally{await browser.close();}
  }
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -40,18 +40,32 @@ body.orders-page,body.login-page {
 .orders-page .page-header #listSummary,.orders-page #reportStatus,.orders-page .search-hint { color:var(--ui-muted); }
 .orders-page .page-eyebrow { color:var(--ui-accent); }
 
-/* Quiet surfaces; the process badges carry the status colors. */
+/* Distinct, muted overview colors; status/label palettes stay unchanged. */
 .orders-page .operation-card,
 .orders-page .operation-card--label,
 .orders-page .operation-card--handover,
 .orders-page .operation-card--attention {
-  --counter:var(--ui-accent); background:var(--ui-overview); color:var(--ui-ink);
-  border:1px solid var(--ui-accent-line); box-shadow:var(--ui-shadow);
+  --counter:#aacb9b; --counter-line:#66845d; --counter-ink:#d6e6c6;
+  --counter-bg:linear-gradient(125deg,#34533d,#223929);
+  background:var(--counter-bg); color:var(--ui-ink);
+  border:1px solid var(--counter-line); box-shadow:var(--ui-shadow);
 }
-.orders-page .operation-card strong { color:#f5e6bd; }
+.orders-page .operation-card--label {
+  --counter:#d7b16c; --counter-line:#927849; --counter-ink:#f2d392;
+  --counter-bg:linear-gradient(125deg,#59482b,#3c321f);
+}
+.orders-page .operation-card--handover {
+  --counter:#8fb6d2; --counter-line:#617f96; --counter-ink:#bdd5ef;
+  --counter-bg:linear-gradient(125deg,#304b5e,#213441);
+}
+.orders-page .operation-card--attention {
+  --counter:#d69a91; --counter-line:#966d65; --counter-ink:#f0b9b1;
+  --counter-bg:linear-gradient(125deg,#593e3b,#3d2b29);
+}
+.orders-page .operation-card strong { color:var(--counter-ink); }
 .orders-page .operation-card small { color:#c4d4c0; }
-.orders-page .operation-card:hover { background:var(--ui-overview); box-shadow:0 8px 22px #0003; }
-.orders-page .operation-card[aria-pressed="true"] { border-color:var(--ui-accent); outline-color:var(--ui-accent); }
+.orders-page .operation-card:hover { background:var(--counter-bg); box-shadow:0 8px 22px #0003; }
+.orders-page .operation-card[aria-pressed="true"] { border-color:var(--counter); outline-color:var(--counter); }
 .orders-page .top-bar.search-slot,.orders-page .cargo-tools,.orders-page .toolbar {
   background:var(--ui-paper); color:var(--ui-ink); border-color:var(--ui-line-soft); box-shadow:none;
 }
