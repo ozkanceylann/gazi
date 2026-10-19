@@ -1,6 +1,7 @@
 const fs=require("node:fs"),assert=require("node:assert/strict");
 const {chromium,webkit}=require("playwright");
 const base=fs.readFileSync("style.css","utf8"),theme=fs.readFileSync("theme.css","utf8");
+const receipts=fs.readFileSync("order-receipts.js","utf8"),receiptCss=fs.readFileSync("order-receipts.css","utf8");
 const index=fs.readFileSync("index.html","utf8"),report=fs.readFileSync("rapor.html","utf8"),login=fs.readFileSync("login.html","utf8");
 const tags=[
   ...["all","created","transit","delivery","delivered","problem","return"].map(x=>'<span data-label-fixture class="cargo-status cargo-status--'+x+'">Kargo '+x+'</span>'),
@@ -61,6 +62,12 @@ function textColors(page){return page.locator("[data-label-fixture]").evaluateAl
    assert.notEqual(await page.locator("#actionButtons .btn-prepare").evaluate(el=>getComputedStyle(el).backgroundImage),"none");
    assert.equal(await page.locator("#actionButtons .btn-danger").evaluate(el=>getComputedStyle(el).backgroundColor),"rgb(98, 56, 50)");
    assert.notEqual(await page.locator("#actionButtons .btn-warning").evaluate(el=>getComputedStyle(el).color),"rgb(0, 0, 0)");
+   await page.addStyleTag({content:receiptCss});
+   await page.addScriptTag({content:receipts});
+   await page.evaluate(()=>document.querySelector("#orderDetails").insertAdjacentHTML("beforeend",OrderReceipts.markup({siparis_no:1,odeme_sekli:"EFT",receipts:[]})));
+   assert.equal(await page.locator("#orderDetails").evaluate(el=>getComputedStyle(el).color),"rgb(244, 241, 229)");
+   assert.equal(await page.locator(".receipt-panel h3").evaluate(el=>getComputedStyle(el).color),"rgb(244, 241, 229)");
+   assert.equal(await page.locator(".receipt-panel [data-receipt-upload]").count(),0,"Operations reviews receipts; upload is in mobile");
    if(name==="chromium")await page.screenshot({path:"tests/output/theme-detail.png",fullPage:true});
    const reportBody=report.match(/<body[^>]*>([\s\S]*)<\/body>/)[1].replace(/<script[\s\S]*?<\/script>/g,"");
    const reportStyle=report.match(/<style>([\s\S]*?)<\/style>/)[1];
