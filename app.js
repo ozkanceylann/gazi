@@ -1190,14 +1190,14 @@ function cargoMovementIdentity(movement){
 }
 
 function renderCargoTracking(order){
-  if(!order.kargo_takip_kodu&&!order.orderinvoiceid)return "";
+  if(!order.kargo_takip_kodu&&!order.orderinvoiceid)return `<details class="detail-group detail-movement-history"><summary>Kargo hareketleri <span class="disclosure-action"></span></summary><p class="cargo-empty">Henüz kayıtlı kargo hareketi yok.</p></details>`;
   const tracking=cargoTrackingData(order);
   const movements=sortCargoMovements(tracking?.movements);
   const timeline=movements.map(m=>`<li><strong>${escapeHtml(m.eventStatus||"Kargo hareketi")}</strong><span>${escapeHtml(m.eventDateTime||m.eventDateTime2||"")} · ${cargoBranchContact(m)}</span>${m.description?`<span>${escapeHtml(m.description)}</span>`:""}${cargoMovementIdentity(m)}</li>`).join("");
   const url=order.kargo_takip_url;
   let link="";try{if(new URL(url).protocol==="https:")link=`<a class="btn-open" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">Kargo Takip Sayfası</a>`;}catch{}
   const detailButton=isLiveShipment(order)?`<button class="btn-open" type="button" data-cargo-detail-refresh onclick="refreshSelectedCargoMovements(${Number(order.siparis_no)})">Hareket geçmişini getir</button>`:"";
-  return `<div class="detail-group cargo-detail"><div class="detail-cargo-heading"><div class="detail-title">Kargo ve teslimat</div><span class="detail-tracking-number">${escapeHtml(order.kargo_takip_kodu||"Takip no bekleniyor")}</span></div>${cargoStatusBadge(order,{compact:true})}<div class="detail-cargo-actions">${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}</div><details class="detail-movement-history"><summary>Kargo hareketleri <span class="disclosure-count">${movements.length} kayıt</span><span class="disclosure-action"></span></summary>${renderCargoPieces(order)}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</details></div>`;
+  return `<details class="detail-group cargo-detail detail-movement-history"><summary>Kargo hareketleri <span class="disclosure-count">${movements.length} kayıt</span><span class="disclosure-action"></span></summary><div class="detail-cargo-heading"><div class="detail-title">Kargo ve teslimat</div><span class="detail-tracking-number">${escapeHtml(order.kargo_takip_kodu||"Takip no bekleniyor")}</span></div>${cargoStatusBadge(order,{compact:true})}<div class="detail-cargo-actions">${link}${detailButton}${isGaziAdmin&&canCancelShipment(order)?`<button type="button" class="btn-danger" data-cancel-shipment onclick="cancelShipmentToWaiting(${Number(order.siparis_no)},this)">Gönderiyi İptal Et</button>`:""}</div><div class="detail-cargo-events">${renderCargoPieces(order)}${timeline?`<ol class="cargo-timeline">${timeline}</ol>`:"<p class='cargo-empty'>Henüz kayıtlı kargo hareketi yok.</p>"}${tracking?.movementError?`<p class="cargo-warning">${escapeHtml(tracking.movementError)}</p>`:""}</div></details>`;
 }
 
 
@@ -1350,7 +1350,7 @@ async function openOrder(id){
     if(Number.isSafeInteger(Number(mergedInto))&&Number(mergedInto)>0&&Number(mergedInto)!==Number(id))return openOrder(Number(mergedInto));
     return toast("Bu sipariş arşivlendi.");
   }
-  await loadCustomerNotes([data]);
+  await Promise.all([loadCustomerNotes([data]),CustomerOrderHistory.load(db,[data])]);
   const modal = document.getElementById("orderModal");
   const resetScroll = selectedOrder?.siparis_no !== data.siparis_no || modal.style.display !== "flex";
   selectedOrder = data;
@@ -1366,7 +1366,7 @@ function closeModal(){
 function renderOriginalMessage(order) {
   const message = order.whatsapp_message_text;
   return `<details class="detail-group original-message">
-    <summary>Orijinal sipariş mesajı <span class="disclosure-action"></span></summary>
+    <summary>Orjinal mesaj <span class="disclosure-action"></span></summary>
     <p class="original-message-hint">Sipariş bilgileriyle karşılaştırmak için gelen mesajı açın.</p>
     <div class="original-message-text">${escapeHtml(message === undefined ? "Mesajı görmek için bölümü açın." : (message || "Bu siparişin orijinal mesajı kayıtlı değil."))}</div>
   </details>`;
@@ -1429,6 +1429,7 @@ document.getElementById("orderDetails").innerHTML = `
  ${d.notlar?`<div class="detail-group detail-note"><div class="detail-title">Sipariş notu</div><div class="note-text">${escapeHtml(d.notlar)}</div></div>`:""}
 </div>
 ${customerNoteDetail(d)}
+${CustomerOrderHistory.markup(d)}
 ${renderOriginalMessage(d)}
 `;
 
