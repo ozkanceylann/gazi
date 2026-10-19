@@ -15,7 +15,7 @@
   <script src="config.js?v=20261014-cargo-separate-34"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261019-return-button-87" />
+  <link rel="stylesheet" href="style.css?v=20261019-customer-history-88" />
 
   <style>
     .btn-mini{
@@ -208,10 +208,11 @@ document.getElementById("orderModal").addEventListener("click", function(e){
 </script>
 
 
+  <script src="customer-order-history.js?v=20261019-customer-history-88"></script>
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261019-return-button-87");
+      await import("./app.js?v=20261019-customer-history-88");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

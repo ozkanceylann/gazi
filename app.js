@@ -16,6 +16,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const sessionUser = await window.requireSession(db);
 const { installLabelScanner } = await import('./label-scanner.js?v=20261015-label-scanner-44');
 installLabelScanner({ db, table: CONFIG.table, openOrder, toast });
+CustomerOrderHistory.bind(openOrder);
 
 
 /* ============================================================
@@ -341,7 +342,7 @@ async function loadOrders(reset=false){
     return toast("Gösterilecek başka kayıt yok.");
   }
 
-  await loadCustomerNotes(data);
+  await Promise.all([loadCustomerNotes(data), CustomerOrderHistory.load(db, data)]);
   if(request!==listRequest)return;
   renderTable(data, { append: !reset, hasMore });
   updateListHeading(false, `${tbody.children.length} sipariş gösteriliyor · Toplam ${count ?? data.length} kayıt`);
@@ -652,7 +653,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     <td>${orderStage === "Bekliyor" ? `<div class="order-primary-actions"><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button><button type="button" class="btn-direct-cargo" onclick="event.stopPropagation(); directShipFromList(${Number(o.siparis_no)}, this)">Direkt Kargola</button></div> ${actionBtn}` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${customerNoteCard(o)}</td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${CustomerOrderHistory.markup(o)}${customerNoteCard(o)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -669,7 +670,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${customerNoteCard(o)}</td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${CustomerOrderHistory.markup(o)}${customerNoteCard(o)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -2448,7 +2449,8 @@ async function searchOrders(scope = "all") {
     renderTableHeader();
     const matches = data;
     if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(a))-Number(hasCargoLabel(b))||(Date.parse(b.etiket_olusturma_tarihi)||0)-(Date.parse(a.etiket_olusturma_tarihi)||0)||Number(b.siparis_no)-Number(a.siparis_no));
-    await loadCustomerNotes(matches);
+    await Promise.all([loadCustomerNotes(matches), CustomerOrderHistory.load(db, matches)]);
+    if (request !== listRequest) return;
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
   } catch (error) {

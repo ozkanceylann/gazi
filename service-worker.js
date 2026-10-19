@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261019-return-button-87";
+const VERSION = "20261019-customer-history-88";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -12,6 +12,7 @@ const ASSETS = [
   "/style.css",
   "/theme.css",
   "/app.js",
+  "/customer-order-history.js",
   "/mobile-navigation.js",
   "/config.js",
   "/cargo-weights.js",
