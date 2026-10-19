@@ -1,5 +1,6 @@
 /* Shared by Mobil Takip and Gazi Sipariş. Files remain private. */
 const OrderReceipts=(()=>{
+ const OPERATIONS=true;
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const required=o=>/\b(eft|iban|havale|fast)\b/i.test(String(o.odeme_sekli||'')+' '+String(o.notlar||''));
  const states={pending:'🟡 Kontrol bekliyor',approved:'✅ Onaylandı',rejected:'🔴 Kontrol gerekli'};
@@ -17,13 +18,13 @@ const OrderReceipts=(()=>{
  const state=!o.receipts.length?'⚠️ Dekont eksik':o.receipts.some(r=>r.status==='rejected')?states.rejected:o.receipts.some(r=>r.status==='pending')?states.pending:states.approved;
  return `<span class="receipt-badge" title="${esc(state)}">${esc(state)}</span>`;
  }
- function markup(o){return `<section class="receipt-panel" data-receipt-panel="${Number(o.siparis_no)}"><h3>Ödeme belgeleri</h3><p>${badge(o)}</p><div data-receipt-list role="status">Belgeler yükleniyor…</div>${required(o)?'<label class="receipt-upload">Belge yükle<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" data-receipt-upload></label><p class="receipt-hint">PDF, JPG, PNG veya WEBP · En fazla 10 MB. Belge eklemek ödemeyi otomatik onaylamaz.</p>':''}<p data-receipt-message role="status"></p></section>`;}
+ function markup(o){return `<section class="receipt-panel" data-receipt-panel="${Number(o.siparis_no)}"><h3>Ödeme belgeleri</h3><p>${badge(o)}</p><div data-receipt-list role="status">Belgeler yükleniyor…</div>${required(o)&&!OPERATIONS?'<label class="receipt-upload">Belge yükle<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" data-receipt-upload></label><p class="receipt-hint">PDF, JPG, PNG veya WEBP · En fazla 10 MB. Belge eklemek ödemeyi otomatik onaylamaz.</p>':''}<p data-receipt-message role="status"></p></section>`;}
  async function invoke(db,body){const {data,error}=await db.functions.invoke('order-receipts',{body});if(error){let message=error.message;try{message=(await error.context.json()).error||message;}catch{}throw Error(message);}if(data?.error)throw Error(data.error);return data;}
  async function open(db,r){const {data,error}=await db.storage.from('order-receipts').createSignedUrl(r.object_path,120);if(error)throw error;const u=new URL(data.signedUrl);if(u.protocol!=='https:')throw Error('Belge bağlantısı geçersiz');const a=document.createElement('a');a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';a.click();}
  async function mount(db,o,root,onChange=()=>{}){
  const panel=root.querySelector(`[data-receipt-panel="${Number(o.siparis_no)}"]`);if(!panel)return;
  const message=panel.querySelector('[data-receipt-message]');
- const {data:auth}=await db.auth.getUser();const isAdmin=auth?.user?.app_metadata?.firma==='gazi'&&auth.user.app_metadata?.role!=='seller';
+ const {data:auth}=await db.auth.getUser();const isAdmin=OPERATIONS&&auth?.user?.app_metadata?.firma==='gazi'&&auth.user.app_metadata?.role!=='seller';
  async function refresh(){
  const {data,error}=await db.from('order_receipts').select('*').eq('order_id',Number(o.siparis_no)).order('created_at',{ascending:false});
  if(!panel.isConnected)return;
