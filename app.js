@@ -229,8 +229,7 @@ function applyOperationFilter(query, key){
   query=query.or(cargoStateFilter("created"));
   return key==="handover"
     ? query.or("and(kargo_zpl.not.is.null,kargo_zpl.neq.),zpl_base64.like.JVBER%")
-    : query.or("kargo_zpl.is.null,kargo_zpl.eq.")
-      .or("zpl_base64.is.null,zpl_base64.not.like.JVBER%");
+    : query.or("and(or(kargo_zpl.is.null,kargo_zpl.eq.),or(zpl_base64.is.null,zpl_base64.not.like.JVBER%)),etiket_yazdirma_sayisi.is.null,etiket_yazdirma_sayisi.eq.0");
 }
 let operationCountsLoading = false;
 async function refreshOperationCounts(){
@@ -2169,6 +2168,7 @@ async function recordCargoLabelPrint(order){
     if(error)throw error;
     if(!Number.isSafeInteger(data)||data<1)throw Error("Yazdırma sayacı doğrulanamadı");
     order.etiket_yazdirma_sayisi=data;
+    void refreshOperationCounts();
     if(Number(selectedOrder?.siparis_no)===Number(order.siparis_no)){
       selectedOrder.etiket_yazdirma_sayisi=data;
       updateCargoLabelButton(document.getElementById("btnBarcode"),selectedOrder);
