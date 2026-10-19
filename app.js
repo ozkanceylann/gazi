@@ -604,7 +604,7 @@ function extraContent(o,kind){
  if(o['_loading_'+kind])return kind==='note'?'':`<small role="status">${kind==='history'?'Sipariş geçmişi':kind==='receipts'?'Dekont durumu':'Müşteri notu'} yükleniyor…</small>`;
  const renderers={history:()=>CustomerOrderHistory.markup(o),receipts:()=>OrderReceipts.badge(o),note:()=>customerNoteCard(o),noteDetail:()=>customerNoteDetail(o)};return renderers[kind]();
 }
-function extraSlot(o,kind){return `<span class="order-extra" style="display:contents" data-order-extra="${kind}:${Number(o.siparis_no)}:${o._extrasToken}">${extraContent(o,kind)}</span>`;}
+function extraSlot(o,kind){if(!o['_loading_'+kind])return extraContent(o,kind);return `<span class="order-extra" style="display:contents" data-order-extra="${kind}:${Number(o.siparis_no)}:${o._extrasToken}">${extraContent(o,kind)}</span>`;}
 async function hydrateExtras(rows,isCurrent,root,kinds=['history','receipts','note']){
  const loaders={history:()=>CustomerOrderHistory.load(db,rows),receipts:()=>OrderReceipts.load(db,rows),note:()=>loadCustomerNotes(rows),noteDetail:()=>loadCustomerNotes(rows)};
  await Promise.allSettled(kinds.map(async kind=>{
@@ -612,8 +612,7 @@ async function hydrateExtras(rows,isCurrent,root,kinds=['history','receipts','no
   for(const o of rows)o['_loading_'+kind]=false;
   if(!isCurrent())return;
   for(const o of rows)for(const slot of root.querySelectorAll(`[data-order-extra="${kind}:${Number(o.siparis_no)}:${o._extrasToken}"]`)){
-   const open=!!slot.querySelector('details[open]');slot.innerHTML=extraContent(o,kind);
-   if(open){const detail=slot.querySelector('details');if(detail)detail.open=true;}
+   slot.outerHTML=extraContent(o,kind);
   }
  }));
 }
