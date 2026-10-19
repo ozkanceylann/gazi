@@ -241,3 +241,14 @@ body.login-page { background:radial-gradient(ellipse at 100% 0,#3b5c4540,transpa
 .orders-page #ordersBody .order-primary-actions .btn-direct-cargo:hover {
   background:linear-gradient(110deg,#c5ddb9,#aac89e); color:#183521; border-color:#d6e8ce;
 }
+
+/* Order detail text must override the older light-theme #orderDetails color. */
+.orders-page #orderDetails { color:var(--ui-ink); }
+.orders-page #orderDetails .receipt-panel,
+.orders-page .receipt-inbox { background:var(--ui-inset); color:var(--ui-ink); border:1px solid var(--ui-line); }
+.orders-page #orderDetails .receipt-panel :is(h3,strong,p),
+.orders-page .receipt-inbox :is(h2,strong,p,label) { color:var(--ui-ink); }
+.orders-page #orderDetails .receipt-panel small,
+.orders-page #orderDetails .receipt-hint,
+.orders-page .receipt-inbox small { color:var(--ui-muted); opacity:1; }
+.orders-page .receipt-inbox input { background:var(--ui-paper); color:var(--ui-ink); border:1px solid var(--ui-line); border-radius:6px; }
