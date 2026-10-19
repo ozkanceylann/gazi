@@ -8,7 +8,15 @@ async function rpc(id:number,operation:string,user:string|null=null,messageId:st
  const data=await r.json();if(!r.ok)throw Error(data.message||'Kayıt işlemi başarısız');return data;
 }
 export function branchMessage(o:any){
- return ['📦 ŞUBE BARKOD TALEBİ','Sistemden etiket oluşturulamadı. Mevcut kaydı kontrol edip barkodları kesebilir misiniz? Mükerrer gönderi açmayınız.',`Sipariş: ${o.siparis_no}`,`Referans: ${o.kargo_siparis_no||'—'}`,`Gönderi no: ${o.kargo_takip_kodu||o.orderinvoiceid||'—'}`,`Müşteri: ${o.ad_soyad||'—'}`,`Telefon: ${o.musteri_tel||'—'}`,`Adres: ${o.adres||'—'}`,`İl / İlçe: ${o.sehir||''} / ${o.ilce||''}`,`Teslim: ${o.subeden_teslim?'Şubeden teslim'+(o.teslim_subesi?' · '+o.teslim_subesi:''):'Adrese teslim'}`,`Paket: ${o.kargo_adet||'—'} · KG: ${o.kargo_kg||'—'}`,`Ürünler: ${o.urun_bilgisi||'—'}`,`Tahsilat: ${o.toplam_tutar??'—'} TL · ${o.odeme_sekli||'Belirtilmemiş'}`,`Not: ${o.notlar||'—'}`].join('\n');
+ return [
+  '📦 ŞUBE BARKOD TALEBİ',
+  `Referans: ${o.kargo_siparis_no||o.siparis_no||'—'}`,
+  `Gönderi no: ${o.kargo_takip_kodu||o.orderinvoiceid||'—'}`,
+  `Müşteri: ${o.ad_soyad||'—'}`,
+  `Telefon: ${o.musteri_tel||'—'}`,
+  `Paket: ${o.kargo_adet||'—'} · KG: ${o.kargo_kg||'—'}`,
+  ...(o.subeden_teslim ? [`Şubeden teslim${o.teslim_subesi ? ': '+o.teslim_subesi : ''}`] : [])
+ ].join('\n');
 }
 Deno.serve(async(req:Request)=>{
  const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers});

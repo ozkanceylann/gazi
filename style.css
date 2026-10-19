@@ -928,6 +928,8 @@ body.login-page {
 .orders-page .btn-return-label{display:inline-block;width:auto;min-height:32px;box-sizing:border-box;padding:7px 10px;border:1px solid #d1b5e2;border-radius:7px;background:#f2e6fa;color:#653285;font-family:inherit;font-size:12px;font-weight:600;line-height:1.4;text-decoration:none;cursor:pointer;white-space:normal}
 .orders-page .btn-return-label:hover{background:#e8d4f3}
 .orders-page .btn-return-label:disabled{opacity:.6;cursor:wait}
+.orders-page .btn-return-label-create{background:#7c3aed;color:#fff;border-color:#8b5cf6}
+.orders-page .btn-return-label-create:hover{background:#6d28d9}
 .return-code{font-size:11px;color:#6b5678;overflow-wrap:anywhere}
 .return-result p,.return-detail p{font-size:13px;line-height:1.6;overflow-wrap:anywhere}
 .cargo-status--unknown{color:#615575;background:#f0ebf8;border-color:#d8cde8}

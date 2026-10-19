@@ -811,8 +811,8 @@ function returnLabelUrl(value){
 function returnOrderActions(order){
   const url=returnLabelUrl(order.iade_etiket_url);
   if(url)return `<div class="return-actions"><a class="btn-return-label" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">İade Fişini Aç</a><span class="return-code">${escapeHtml(order.iade_kodu)}</span></div>`;
-  if(order.isDelivered===true||Number(order.shipmentStatusCode)===5)
-    return `<button class="btn-return-label" type="button" onclick="event.stopPropagation(); createReturnLabel(${Number(order.siparis_no)}, this)">İADE Etiketi Oluştur</button>`;
+  if(currentTab==="tamamlandi" && (order.isDelivered===true||Number(order.shipmentStatusCode)===5))
+    return `<button class="btn-return-label btn-return-label-create" type="button" onclick="event.stopPropagation(); createReturnLabel(${Number(order.siparis_no)}, this)">İADE Etiketi Oluştur</button>`;
   return `<span class="cargo-checked">Geri dönüş kargosu</span>`;
 }
 function renderReturnDetail(order){
