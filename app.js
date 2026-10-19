@@ -1447,12 +1447,12 @@ ${renderOriginalMessage(d)}
 
   /* ============================================================
       2) DÜZENLE BUTONU
-         Hazırlandı → Gizle
-         Kargolandı → Gizle  ❗ (senin istediğin)
+         Hazırlandı → Göster
+         Kargolandı → Gizle
   ============================================================ */
   try {
     const duzenleBtn = document.querySelector("#actionButtons .btn-warning");
-    if (duzenleBtn && ["Hazırlandı", "Kargolandı"].includes(d.kargo_durumu)) {
+    if (duzenleBtn && d.kargo_durumu === "Kargolandı") {
       duzenleBtn.style.display = "none";
     }
   } catch {}
