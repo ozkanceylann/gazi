@@ -252,3 +252,18 @@ body.login-page { background:radial-gradient(ellipse at 100% 0,#3b5c4540,transpa
 .orders-page #orderDetails .receipt-hint,
 .orders-page .receipt-inbox small { color:var(--ui-muted); opacity:1; }
 .orders-page .receipt-inbox input { background:var(--ui-paper); color:var(--ui-ink); border:1px solid var(--ui-line); border-radius:6px; }
+
+/* Shared press feedback for navigation, cards and dynamically created actions. */
+:where(button,[role="button"],input[type="button"],input[type="submit"],input[type="reset"],a[href],summary,.menu li[onclick],[data-order]) {
+  -webkit-tap-highlight-color:transparent;
+  transition:scale 140ms ease,filter 140ms ease,background-color 140ms ease,box-shadow 140ms ease;
+}
+:where(button,[role="button"],input[type="button"],input[type="submit"],input[type="reset"],a[href],summary,.menu li[onclick],[data-order]):not(:disabled):not([aria-disabled="true"]):active {
+  scale:.97;
+  filter:brightness(1.16);
+  transition-duration:60ms;
+}
+@media (prefers-reduced-motion:reduce) {
+  :where(button,[role="button"],input[type="button"],input[type="submit"],input[type="reset"],a[href],summary,.menu li[onclick],[data-order]) {transition:none;}
+  :where(button,[role="button"],input[type="button"],input[type="submit"],input[type="reset"],a[href],summary,.menu li[onclick],[data-order]):active {scale:none;}
+}
