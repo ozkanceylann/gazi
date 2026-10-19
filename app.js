@@ -342,7 +342,7 @@ async function loadOrders(reset=false){
     return toast("Gösterilecek başka kayıt yok.");
   }
 
-  await Promise.all([loadCustomerNotes(data), CustomerOrderHistory.load(db, data)]);
+  await Promise.all([loadCustomerNotes(data), CustomerOrderHistory.load(db, data),OrderReceipts.load(db,data)]);
   if(request!==listRequest)return;
   renderTable(data, { append: !reset, hasMore });
   updateListHeading(false, `${tbody.children.length} sipariş gösteriliyor · Toplam ${count ?? data.length} kayıt`);
@@ -653,7 +653,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     <td>${orderStage === "Bekliyor" ? `<div class="order-primary-actions"><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button><button type="button" class="btn-direct-cargo" onclick="event.stopPropagation(); directShipFromList(${Number(o.siparis_no)}, this)">Direkt Kargola</button></div> ${actionBtn}` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${CustomerOrderHistory.markup(o)}${customerNoteCard(o)}</td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${CustomerOrderHistory.markup(o)}${OrderReceipts.badge(o)}${customerNoteCard(o)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -670,7 +670,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${CustomerOrderHistory.markup(o)}${customerNoteCard(o)}</td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${CustomerOrderHistory.markup(o)}${OrderReceipts.badge(o)}${customerNoteCard(o)}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -1350,7 +1350,7 @@ async function openOrder(id){
     if(Number.isSafeInteger(Number(mergedInto))&&Number(mergedInto)>0&&Number(mergedInto)!==Number(id))return openOrder(Number(mergedInto));
     return toast("Bu sipariş arşivlendi.");
   }
-  await Promise.all([loadCustomerNotes([data]),CustomerOrderHistory.load(db,[data])]);
+  await Promise.all([loadCustomerNotes([data]),CustomerOrderHistory.load(db,[data]),OrderReceipts.load(db,[data])]);
   const modal = document.getElementById("orderModal");
   const resetScroll = selectedOrder?.siparis_no !== data.siparis_no || modal.style.display !== "flex";
   selectedOrder = data;
@@ -1428,6 +1428,7 @@ document.getElementById("orderDetails").innerHTML = `
  </div></div>
  ${d.notlar?`<div class="detail-group detail-note"><div class="detail-title">Sipariş notu</div><div class="note-text">${escapeHtml(d.notlar)}</div></div>`:""}
 </div>
+${OrderReceipts.markup(d)}
 ${customerNoteDetail(d)}
 ${CustomerOrderHistory.markup(d)}
 ${renderOriginalMessage(d)}
@@ -1435,6 +1436,7 @@ ${renderOriginalMessage(d)}
 
   document.getElementById("orderDetails").insertAdjacentHTML("beforeend",renderCargoTracking(d) + renderReturnDetail(d));
   bindOriginalMessage(d);
+  OrderReceipts.mount(db,d,document.getElementById("orderDetails"),()=>loadOrders(true));
   /* ============================================================
       1) SOR BUTONU — SADECE Bekliyor & Hazırlandı
   ============================================================ */
@@ -1712,6 +1714,7 @@ async function enterEditMode(){
     </div>
     ${renderOriginalMessage(d)}`;
   bindOriginalMessage(d);
+
 
   document.getElementById("delivery_select").addEventListener("change", event => {
     document.getElementById("delivery_branch_field").hidden = event.target.value !== "true";
@@ -2450,7 +2453,7 @@ async function searchOrders(scope = "all") {
     renderTableHeader();
     const matches = data;
     if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(a))-Number(hasCargoLabel(b))||(Date.parse(b.etiket_olusturma_tarihi)||0)-(Date.parse(a.etiket_olusturma_tarihi)||0)||Number(b.siparis_no)-Number(a.siparis_no));
-    await Promise.all([loadCustomerNotes(matches), CustomerOrderHistory.load(db, matches)]);
+    await Promise.all([loadCustomerNotes(matches), CustomerOrderHistory.load(db, matches),OrderReceipts.load(db,matches)]);
     if (request !== listRequest) return;
     renderTable(matches, { append: false, hasMore: false });
     updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
@@ -2665,3 +2668,5 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
 
 // Refresh visible dashboards once a minute; no background polling.
 setInterval(()=>{if(!document.hidden)void refreshOperationCounts();},60000);
+
+(async()=>{const {data}=await db.auth.getUser();if(data?.user?.app_metadata?.firma!=="gazi"||data.user.app_metadata?.role==="seller")return;const b=document.createElement("button");b.type="button";b.className="btn-mini";b.textContent="Eşleşmeyen dekontlar";b.onclick=()=>OrderReceipts.unmatched(db);document.querySelector(".page-header-actions")?.append(b);})();
