@@ -1,0 +1,32 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('app.js','utf8');const mobile=source.includes('const S={user:');
+const start=source.indexOf('let extrasToken=');const end=source.indexOf(mobile?'function card(o)':'function renderTable(rows,',start);
+let doneHistory,doneNote,doneReceipts;
+const history=new Promise(r=>doneHistory=r),note=new Promise(r=>doneNote=r),receipts=new Promise(r=>doneReceipts=r);
+const rows=[{siparis_no:1}],slots=new Map();
+const context=vm.createContext({console,db:{},CustomerOrderHistory:{load:()=>history,markup:()=>'<details>history</details>'},OrderReceipts:{load:()=>receipts,badge:()=>'receipt'},loadCustomerNoteIcons:()=>note,loadCustomerNotes:()=>note,customerNoteIcon:()=>'note',customerNoteCard:()=>'note',customerNoteDetail:()=>'note detail'});
+vm.runInContext(source.slice(start,end),context);context.rows=rows;
+vm.runInContext('markExtras(rows)',context);
+assert.match(vm.runInContext("extraSlot(rows[0],'history')",context),/yükleniyor/);
+const token=rows[0]._extrasToken;
+for(const kind of ['history','receipts','note'])slots.set(`[data-order-extra="${kind}:1:${token}"]`,{innerHTML:'loading',querySelector:()=>null});
+context.root={querySelectorAll:selector=>slots.has(selector)?[slots.get(selector)]:[]};context.current=true;
+const hydration=vm.runInContext('hydrateExtras(rows,()=>current,root)',context);
+(async()=>{
+ doneReceipts();await new Promise(r=>setImmediate(r));
+ assert.equal(slots.get(`[data-order-extra="receipts:1:${token}"]`).innerHTML,'receipt','One finished extra must not wait for another');
+ assert.equal(slots.get(`[data-order-extra="history:1:${token}"]`).innerHTML,'loading');
+ context.current=false;doneHistory();doneNote();await hydration;
+ assert.equal(slots.get(`[data-order-extra="history:1:${token}"]`).innerHTML,'loading','Stale screen must not be patched');
+ context.current=true;vm.runInContext('markExtras(rows)',context);await vm.runInContext('hydrateExtras(rows,()=>current,root)',context);
+ assert.equal(slots.get(`[data-order-extra="history:1:${token}"]`).innerHTML,'loading','Old slot must not receive another render generation');
+ // Run the real list function while extras intentionally never resolve.
+ let rendered=false,background=false;
+ const data=[{siparis_no:7}],elements={orders:{innerHTML:''},ordersBody:{innerHTML:'',children:[]},loadMoreBtn:{},pagination:{},'result-count':{},'search-scope':{}};
+ const db={rpc:async()=>({data:{orders:data,counts:{},total:1}}),from(){const q={select:()=>q,or:()=>q,order:()=>q,range:async()=>({data,count:1})};return q;}};
+ const c=vm.createContext({console,db,S:{user:{},tab:'orders',filter:'pending',search:'',tabSearch:'',request:0,orders:[]},navigator:{onLine:true},document:{activeElement:null,getElementById:id=>elements[id]||{value:''}},app:{},markExtras:()=>{},hydrateExtras:()=>{background=true;return new Promise(()=>{});},renderShell:()=>{rendered=true;},renderTable:()=>{rendered=true;},syncCargoTools:()=>{},refreshOperationCounts:()=>{},renderTableHeader:()=>{},updateListHeading:()=>{},applyTabFilter:q=>q,applyCargoFilter:q=>q,LIST_TABLE:'gazi_order_list',TABLE:'gazi_siparisler',toggleLoadMore:()=>{},toast:()=>{},currentTab:'bekleyen',currentPage:1,PAGE_SIZE:10,listRequest:0,listLoading:false,searchOrders:()=>{throw Error('unexpected search');}});
+ const a=source.indexOf('async function loadOrders('),b=source.indexOf(mobile?'\nfunction accountMarkup':'\nfunction needsCargoLabelRetry',a);
+ vm.runInContext(source.slice(a,b),c);await vm.runInContext(mobile?'loadOrders()':'loadOrders(true)',c);
+ assert(rendered&&background,'List must render without awaiting supplemental queries');
+ console.log('PASS: immediate list, independent extras, stale-screen and render-generation protection');
+})().catch(e=>{console.error(e);process.exitCode=1});

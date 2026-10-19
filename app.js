@@ -29,6 +29,7 @@ const districtCache = new Map();
    MARKA AYARLARI
 ============================================================ */
 const TABLE         = CONFIG.table;
+const LIST_TABLE = "gazi_order_list";
 const WH_KARGOLA    = CONFIG.webhooks.kargola;
 const WH_BARKOD     = CONFIG.webhooks.barkod;
 const WH_IPTAL      = CONFIG.webhooks.iptal;
@@ -267,7 +268,7 @@ window.openOperationQueue=openOperationQueue;
 // receive an offset beyond its last row (PostgREST PGRST103 / HTTP 416).
 async function loadCargoLabelQueue(start, end){
   const query = (saved, head=false) => {
-    let q=applyCargoFilter(applyTabFilter(db.from(TABLE)
+    let q=applyCargoFilter(applyTabFilter(db.from(LIST_TABLE)
       .select("*", {count:"exact", head})
       .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi")));
     return saved
@@ -293,8 +294,8 @@ async function loadCargoLabelQueue(start, end){
 
 async function loadOrders(reset=false){
   if(reset)void refreshOperationCounts();
-  if(document.getElementById("tabSearchInput")?.value.trim()) return searchOrders("tab");
-  if(document.getElementById("searchInput")?.value.trim()) return searchOrders();
+  if(document.getElementById("tabSearchInput")?.value.trim()) return searchOrders("tab",!reset);
+  if(document.getElementById("searchInput")?.value.trim()) return searchOrders("all",!reset);
   syncCargoTools();
   const request = ++listRequest;
   const loadButton=document.getElementById("loadMoreBtn");
@@ -310,7 +311,7 @@ async function loadOrders(reset=false){
   renderTableHeader();
   updateListHeading(false, "Siparişler yükleniyor…");
 
-  let q = db.from(TABLE).select("*", { count: "exact" })
+  let q = db.from(LIST_TABLE).select("*", { count: "exact" })
     .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
 
   q = applyTabFilter(q);
@@ -342,9 +343,10 @@ async function loadOrders(reset=false){
     return toast("Gösterilecek başka kayıt yok.");
   }
 
-  await Promise.all([loadCustomerNotes(data), CustomerOrderHistory.load(db, data),OrderReceipts.load(db,data)]);
+  markExtras(data);
   if(request!==listRequest)return;
   renderTable(data, { append: !reset, hasMore });
+  void hydrateExtras(data,()=>tbody.isConnected!==false,tbody);
   updateListHeading(false, `${tbody.children.length} sipariş gösteriliyor · Toplam ${count ?? data.length} kayıt`);
   } catch(error) {
     if(request!==listRequest)return;
@@ -595,6 +597,27 @@ function bindOrderCardSwipe(row){
   },{passive:true});
 }
 
+
+let extrasToken=0;
+function markExtras(rows,kinds=['history','receipts','note']){for(const o of rows){o._extrasToken=++extrasToken;for(const kind of kinds)o['_loading_'+kind]=true;}}
+function extraContent(o,kind){
+ if(o['_loading_'+kind])return kind==='note'?'':`<small role="status">${kind==='history'?'Sipariş geçmişi':kind==='receipts'?'Dekont durumu':'Müşteri notu'} yükleniyor…</small>`;
+ const renderers={history:()=>CustomerOrderHistory.markup(o),receipts:()=>OrderReceipts.badge(o),note:()=>customerNoteCard(o),noteDetail:()=>customerNoteDetail(o)};return renderers[kind]();
+}
+function extraSlot(o,kind){return `<span class="order-extra" style="display:contents" data-order-extra="${kind}:${Number(o.siparis_no)}:${o._extrasToken}">${extraContent(o,kind)}</span>`;}
+async function hydrateExtras(rows,isCurrent,root,kinds=['history','receipts','note']){
+ const loaders={history:()=>CustomerOrderHistory.load(db,rows),receipts:()=>OrderReceipts.load(db,rows),note:()=>loadCustomerNotes(rows),noteDetail:()=>loadCustomerNotes(rows)};
+ await Promise.allSettled(kinds.map(async kind=>{
+  try{await loaders[kind]();}catch(error){console.warn('Ek sipariş bilgisi alınamadı',kind);}
+  for(const o of rows)o['_loading_'+kind]=false;
+  if(!isCurrent())return;
+  for(const o of rows)for(const slot of root.querySelectorAll(`[data-order-extra="${kind}:${Number(o.siparis_no)}:${o._extrasToken}"]`)){
+   const open=!!slot.querySelector('details[open]');slot.innerHTML=extraContent(o,kind);
+   if(open){const detail=slot.querySelector('details');if(detail)detail.open=true;}
+  }
+ }));
+}
+
 function renderTable(rows, { append=false, hasMore } = {}){
   const tbody = document.getElementById("ordersBody");
   if(!tbody) return;
@@ -653,7 +676,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     <td>${orderStage === "Bekliyor" ? `<div class="order-primary-actions"><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button><button type="button" class="btn-direct-cargo" onclick="event.stopPropagation(); directShipFromList(${Number(o.siparis_no)}, this)">Direkt Kargola</button></div> ${actionBtn}` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${CustomerOrderHistory.markup(o)}${OrderReceipts.badge(o)}${customerNoteCard(o)}</td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${extraSlot(o,'history')}${extraSlot(o,'receipts')}${extraSlot(o,'note')}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -670,7 +693,7 @@ tr.innerHTML = isPendingTab
     <td>${o.siparis_no}</td>
     ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
-    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${CustomerOrderHistory.markup(o)}${OrderReceipts.badge(o)}${customerNoteCard(o)}</td>
+    <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${extraSlot(o,'history')}${extraSlot(o,'receipts')}${extraSlot(o,'note')}</td>
     <td>
   <span class="order-product-limit"
         title="${escapeHtml(parseProduct(o.urun_bilgisi))}">
@@ -1342,24 +1365,29 @@ function showApiResult(content) {
 /* ============================================================
    DETAY
 ============================================================ */
+let detailLoadRequest=0;
 async function openOrder(id){
+  const request=++detailLoadRequest;
   const { data } = await db.from(TABLE).select("*").eq("siparis_no", id).single();
+  if(request!==detailLoadRequest)return;
   if(!data) return toast("Sipariş bulunamadı!");
   if(data.kargo_durumu==="Silindi"){
     let mergedInto;try{mergedInto=JSON.parse(data.kargo_api_yanit||"{}").one_time_reconciliation?.merged_into;}catch{}
     if(Number.isSafeInteger(Number(mergedInto))&&Number(mergedInto)>0&&Number(mergedInto)!==Number(id))return openOrder(Number(mergedInto));
     return toast("Bu sipariş arşivlendi.");
   }
-  await Promise.all([loadCustomerNotes([data]),CustomerOrderHistory.load(db,[data]),OrderReceipts.load(db,[data])]);
+  markExtras([data],['history','noteDetail']);
   const modal = document.getElementById("orderModal");
   const resetScroll = selectedOrder?.siparis_no !== data.siparis_no || modal.style.display !== "flex";
   selectedOrder = data;
   renderDetails();
   modal.style.display = "flex";
   if (resetScroll) modal.scrollTop = 0;
+  void hydrateExtras([data],()=>request===detailLoadRequest&&selectedOrder===data&&modal.style.display==="flex",document.getElementById("orderDetails"),["history","noteDetail"]);
 }
 
 function closeModal(){
+  ++detailLoadRequest;
   document.getElementById("orderModal").style.display = "none";
 }
 
@@ -1429,8 +1457,8 @@ document.getElementById("orderDetails").innerHTML = `
  ${d.notlar?`<div class="detail-group detail-note"><div class="detail-title">Sipariş notu</div><div class="note-text">${escapeHtml(d.notlar)}</div></div>`:""}
 </div>
 ${OrderReceipts.markup(d)}
-${customerNoteDetail(d)}
-${CustomerOrderHistory.markup(d)}
+${extraSlot(d,'noteDetail')}
+${extraSlot(d,'history')}
 ${renderOriginalMessage(d)}
 `;
 
@@ -2429,39 +2457,43 @@ document.addEventListener("input", (event) => {
   document.getElementById(id === "searchInput" ? "tabSearchInput" : "searchInput").value = "";
 });
 
-async function searchOrders(scope = "all") {
+async function searchOrders(scope = "all", append=false) {
   syncCargoTools();
   const inTab = scope === "tab";
   const inputId = inTab ? "tabSearchInput" : "searchInput";
   document.getElementById(inTab ? "searchInput" : "tabSearchInput").value = "";
   const raw = document.getElementById(inputId).value.trim();
   if (!raw) return loadOrders(true);
+  if(!append)currentPage=1;
   const request = ++listRequest;
-  listLoading=false;
+  listLoading=true;
   const loadButton=document.getElementById("loadMoreBtn");
-  if(loadButton){loadButton.disabled=false;loadButton.textContent="Daha Fazla";}
-  toggleLoadMore(false);
+  if(loadButton){loadButton.disabled=true;loadButton.textContent="Yükleniyor…";}
   updateListHeading(!inTab, "Aranıyor…");
   try {
-    let query = db.from(TABLE).select("*")
+    let query = db.from(LIST_TABLE).select("*",{count:"exact"})
       .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
     if (inTab) query = applyCargoFilter(applyTabFilter(query));
-    const { data, error } = await query.or(buildOrderSearchFilter(raw))
-      .order("siparis_no", { ascending: inTab && currentTab === "bekleyen" });
+    const start=(currentPage-1)*PAGE_SIZE;
+    const { data, error, count } = await query.or(buildOrderSearchFilter(raw))
+      .order("siparis_no", { ascending: inTab && currentTab === "bekleyen" }).range(start,start+PAGE_SIZE-1);
     if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();
-    const matches = data;
-    if(currentTab==="kargolandi")matches.sort((a,b)=>Number(hasCargoLabel(a))-Number(hasCargoLabel(b))||(Date.parse(b.etiket_olusturma_tarihi)||0)-(Date.parse(a.etiket_olusturma_tarihi)||0)||Number(b.siparis_no)-Number(a.siparis_no));
-    await Promise.all([loadCustomerNotes(matches), CustomerOrderHistory.load(db, matches),OrderReceipts.load(db,matches)]);
-    if (request !== listRequest) return;
-    renderTable(matches, { append: false, hasMore: false });
-    updateListHeading(!inTab, `${matches?.length ?? 0} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
+    const matches = data || [];
+    markExtras(matches);
+    const hasMore=typeof count==="number"?count>currentPage*PAGE_SIZE:matches.length===PAGE_SIZE;
+    renderTable(matches, { append, hasMore });
+    void hydrateExtras(matches,()=>document.getElementById("ordersBody")?.isConnected!==false,document.getElementById("ordersBody"));
+    const shown=document.getElementById("ordersBody").querySelectorAll('tr[data-order-id]').length;
+    updateListHeading(!inTab, `${shown} kayıt gösteriliyor · ${count ?? shown} sonuç · ${inTab ? "Bu sekmede arama" : "Tüm siparişlerde arama"}`);
   } catch (error) {
     if (request !== listRequest) return;
+    if(append)currentPage=Math.max(1,currentPage-1);
     updateListHeading(!inTab, "Arama tamamlanamadı. Yeniden deneyin.");
-    console.error("Arama Hatası:", error);
     toast("Arama yapılırken bir hata oluştu!");
+  } finally {
+    if(request===listRequest){listLoading=false;if(loadButton){loadButton.disabled=false;loadButton.textContent="Daha Fazla";}}
   }
 }
 
