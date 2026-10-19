@@ -1,0 +1,8 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const ctx={console,URL,Number,String,Set,FormData};vm.createContext(ctx);vm.runInContext(fs.readFileSync('order-receipts.js','utf8')+';globalThis.receipts=OrderReceipts',ctx);const r=ctx.receipts;
+for(const payment of ['EFT','IBAN','Havale','FAST'])assert(r.required({odeme_sekli:payment}));
+assert(!r.required({odeme_sekli:'Kapıda Nakit'}));assert(!r.required({odeme_sekli:'Bedelsiz'}));assert(r.required({odeme_sekli:'Kapıda Kart',notlar:'1000 EFT, kalan 500 kapıda'}));
+assert(r.badge({odeme_sekli:'EFT',receipts:[]}).includes('Dekont eksik'));assert(!r.badge({odeme_sekli:'Kapıda Kart',receipts:[]}));assert(r.badge({odeme_sekli:'EFT'}).includes('alınamadı'));
+for(const [state,text] of [['pending','Kontrol bekliyor'],['approved','Onaylandı'],['rejected','Kontrol gerekli']])assert(r.badge({receipts:[{status:state}]}).includes(text));
+assert(r.markup({siparis_no:1,odeme_sekli:'EFT'}).includes('type="file"'));assert(!r.markup({siparis_no:1,odeme_sekli:'Bedelsiz'}).includes('type="file"'));
+(async()=>{const orders=[{siparis_no:1},{siparis_no:2}];let calls=0;await r.load({from(){return{select(){return this},in(){calls++;return{data:[{id:'a',order_id:2,status:'pending'}],error:null}}}}},orders);assert.equal(calls,1);assert.equal(orders[0].receipts.length,0);assert.equal(orders[1].receipts.length,1);await r.load({from(){throw Error('offline')}},orders);assert.equal(orders[0].receipts,undefined);assert(orders[0].receiptError);console.log('PASS: payment types, partial EFT, missing/error distinction, review states, upload visibility and batched shared summaries.');})().catch(e=>{console.error(e);process.exitCode=1});
