@@ -1526,6 +1526,12 @@ ${renderOriginalMessage(d)}
   document.getElementById("btnCargo").style.display =
     d.kargo_durumu === "Hazırlandı" ? "inline-block" : "none";
 
+  // Kargolandı, fakat henüz fiş/etiket oluşturulmadı: DHL gönderisini iptal edip Bekleyen'e al.
+  const cancelShipmentButton=document.getElementById("btnCancelShipment");
+  if(cancelShipmentButton)cancelShipmentButton.style.display=canCancelShipment(d) ? "inline-block" : "none";
+  const cancelOrderButton=document.getElementById("btnCancelOrder");
+  if(cancelOrderButton)cancelOrderButton.style.display=hasExistingShipment(d) ? "none" : "inline-block";
+
   // Mevcut etiketi tekrar aç; yeni kargo / barkod oluşturma.
   document.getElementById("btnBarcode").style.display =
     canPrintCargoLabel(d) ? "inline-block" : "none";
@@ -2333,7 +2339,11 @@ function hasExistingShipment(order){
 ============================================================ */
 
 function canCancelShipment(order){
-  if(!isCargoAwaitingHandover(order)
+  // Fiş/etiket oluşturulmuş gönderiler bu geri alma işlemine uygun değildir.
+  if(!isGaziAdmin || hasCargoLabel(order)
+    || Number(order?.etiket_yazdirma_sayisi)>0
+    || ["sending","sent","uncertain","historical"].includes(order?.sube_etiket_durumu)
+    || !isCargoAwaitingHandover(order)
     || ![0,1].includes(Number(order?.shipmentStatusCode))
     || !(order?.orderinvoiceid||order?.kargo_takip_kodu)
     || cargoEnvironment(order)==="test")return false;
@@ -2345,7 +2355,7 @@ function canCancelShipment(order){
 async function cancelShipmentToWaiting(orderId,button){
   const id=Number(orderId??selectedOrder?.siparis_no);
   if(!isGaziAdmin||!Number.isSafeInteger(id)||id<1||cancelBusy||busy.kargola.has(id)||busy.barkod.has(id))return;
-  const ok=await confirmModal({title:"Kargo Gönderisini İptal Et",text:"DHL gönderisi ve sipariş kaydı iptal edilecek. DHL iptali onaylarsa sipariş Bekleyen aşamasına dönecek. Mevcut etiketler geçersiz olacak. Devam edilsin mi?",confirmText:"Evet, Gönderiyi İptal Et",cancelText:"Vazgeç"});
+  const ok=await confirmModal({title:"Gönderi İptal",text:"Fişi henüz oluşturulmamış bu gönderi DHL üzerinden iptal edilecek. DHL onayladığında sipariş Bekleyen aşamasına alınacak ve yeniden düzenlenebilecek. Devam edilsin mi?",confirmText:"Evet, Gönderi İptal",cancelText:"Vazgeç"});
   if(!ok||cancelBusy||busy.kargola.has(id)||busy.barkod.has(id))return;
   cancelBusy=true;busy.kargola.add(id);busy.barkod.add(id);
   const label=button?.textContent;
@@ -2353,7 +2363,7 @@ async function cancelShipmentToWaiting(orderId,button){
   try{
     const {data:order,error}=await db.from(TABLE).select("*").eq("siparis_no",id).single();
     if(error)throw error;
-    if(!canCancelShipment(order))throw new Error("Yalnızca DHL teslim alımı bekleyen gönderiler iptal edilebilir. Transfer aşamasına geçmiş gönderiler iptal edilemez.");
+    if(!canCancelShipment(order))throw new Error("Yalnızca fiş/etiket oluşturulmamış ve DHL teslim alımı bekleyen gönderiler iptal edilebilir.");
     const result=await cargoRequest(CONFIG.webhooks.iptal,{operation:"gonderi_iptal",siparis_no:String(id),reason:"Kargo gönderisi iptal edilerek sipariş yeniden hazırlamak üzere Bekleyen aşamasına alınıyor."});
     if(result.cancelled!==true||result.recordVerified!==true||result.kargo_durumu!=="Bekliyor")throw new Error("İptal ve Bekleyen kaydı doğrulanamadı. Siparişin durumunu kontrol edin.");
     toast(result.message||"Gönderi iptal edildi; sipariş Bekleyen aşamasına alındı.",7000);
