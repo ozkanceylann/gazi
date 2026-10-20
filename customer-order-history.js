@@ -32,7 +32,7 @@
       return '<span class="customer-history-unavailable">Sipariş geçmişi alınamadı</span>';
     }
     var current = Number(order.siparis_no);
-    return '<details class="customer-order-history"><summary><span><strong>' + history.ordinal + '. siparişi</strong><small>Toplam ' + Number(history.total) + ' sipariş</small></span><span class="customer-history-arrow" aria-hidden="true"></span></summary><div class="customer-history-list" aria-label="Müşterinin siparişleri">' + history.orders.map(function (item) {
+    return '<details class="customer-order-history"><summary><strong>' + history.ordinal + '. siparişi</strong><span class="customer-history-arrow" aria-hidden="true"></span></summary><div class="customer-history-list" aria-label="Müşterinin siparişleri">' + history.orders.map(function (item) {
       var id = Number(item.siparis_no);
       if (!Number.isSafeInteger(id) || id <= 0) return '';
       return '<button type="button" data-customer-order="' + id + '"' + (id === current ? ' aria-current="true"' : '') + ' aria-label="' + id + ' numaralı siparişi aç, ' + escape(date(item.tarih)) + '"><span>#' + id + (id === current ? '<small>Bu sipariş</small>' : '') + '</span><time>' + escape(date(item.tarih)) + '</time></button>';
