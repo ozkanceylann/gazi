@@ -159,8 +159,10 @@
 
     <button class="btn-warning" onclick="enterEditMode()">Düzenle</button>
 
-    <!-- İPTAL ET (ÜST SATIR) -->
-    <button class="btn-danger" onclick="openCancelForm()">İptal Et</button>
+    <!-- Fişi oluşturulmamış kargolar DHL'den geri çekilip Bekleyen'e alınabilir. -->
+    <button id="btnCancelShipment" type="button" class="btn-danger" style="display:none;" onclick="cancelShipmentToWaiting(selectedOrder?.siparis_no,this)">Gönderi İptal</button>
+    <!-- Kargoya verilmemiş normal sipariş iptali. -->
+    <button id="btnCancelOrder" type="button" class="btn-danger" onclick="openCancelForm()">İptal Et</button>
 
     <!-- KAPAT (ALT SATIR) -->
     <button class="btn-close" onclick="closeModal()">Kapat</button>
