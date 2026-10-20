@@ -55,7 +55,7 @@ const busy = { kargola: new Set(), barkod: new Set(), iade: new Set(), sube: new
    UI HELPERS
 ============================================================ */
 function getColumnCount(){
-  return currentTab === "hazirlandi" ? 10 : currentTab === "bekleyen" ? 9 : 8;
+  return orderColumnRoles().length;
 }
 
 function shouldShowNoteColumn(tab) {
@@ -78,7 +78,7 @@ function cargoCountBadge(value) {
 
 function orderColumnRoles(){
   if(currentTab==="bekleyen")return ["number","primary","count","customer","product","total","status","note","taker"];
-  if(currentTab==="hazirlandi")return ["number","primary","count","customer","product","total","status","note","taker","actions"];
+  if(currentTab==="hazirlandi")return ["number","count","customer","product","total","status","note","taker","actions"];
   return ["number","count","customer","product","total","status","code","taker","actions"];
 }
 function labelOrderCells(row){
