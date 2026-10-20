@@ -107,7 +107,6 @@ function renderTableHeader(){
   `
   : `
     <th>S.No</th>
-    ${currentTab === "hazirlandi" ? '<th class="order-ship-column">Kargola</th>' : ""}
     <th class="cargo-count-column" aria-label="Kargo Adet">Kargo<br>Adet</th>
     <th>İsim</th>
     <th>Ürün</th>
@@ -690,7 +689,6 @@ tr.innerHTML = isPendingTab
   `
   : `
     <td>${o.siparis_no}</td>
-    ${isPreparedTab ? `<td class="order-ship-column">${canShip ? `<button type="button" class="btn-ship-order" onclick="event.stopPropagation(); shipPreparedFromList(${Number(o.siparis_no)}, this)">Kargola</button>` : `${orderStageBadge(o)}`}</td>` : ""}
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
     <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${extraSlot(o,'history')}${extraSlot(o,'receipts')}${extraSlot(o,'note')}</td>
     <td>
