@@ -2106,15 +2106,16 @@ async function openCargoPdf(w, base64, order, {trackPrint=true}={}){
   w.document.title=filename.replace(/\.pdf$/i,"");
   w.document.body.replaceChildren();
   w.document.body.style.cssText="margin:0";
-  if(!named){
-    const download=w.document.createElement("a");
-    download.href=url;download.download=filename;download.textContent="PDF İndir · "+filename;
-    download.style.cssText="display:block;box-sizing:border-box;height:42px;padding:10px;background:#e6f1ea;color:#20543b;font:14px system-ui;text-decoration:none";
-    w.document.body.appendChild(download);
-  }
+  // Always expose the complete original multi-page PDF; the embedded viewer can initially show only page one.
+  const download=w.document.createElement("a");
+  download.href=url;download.download=filename;
+  const parcelCount=Number(order?.kargo_adet);
+  download.textContent=(Number.isSafeInteger(parcelCount)&&parcelCount>1?parcelCount+" koli · ":"")+"Tüm etiketleri PDF indir";
+  download.style.cssText="display:block;box-sizing:border-box;min-height:42px;padding:10px;background:#e6f1ea;color:#20543b;font:14px system-ui;text-decoration:none";
+  w.document.body.appendChild(download);
   const frame=w.document.createElement("iframe");
   frame.title=filename;frame.src=url+"#view=FitH";
-  frame.style.cssText=`display:block;border:0;width:100%;height:${named?"100vh":"calc(100vh - 42px)"}`;
+  frame.style.cssText=`display:block;border:0;width:100%;height:calc(100vh - 42px)`;
   w.document.body.appendChild(frame);
   w.document.addEventListener("keydown",event=>{if(event.key==="Escape"){event.preventDefault();w.close();}});
   w.addEventListener("unload",cleanup,{once:true});
