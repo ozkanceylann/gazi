@@ -40,6 +40,7 @@ const WH_SEHIR_ILCE = CONFIG.webhooks.sehir_ilce;
 ============================================================ */
 let currentTab = "bekleyen";
 let cargoFilter = "all";
+let cargoFilterGlobal = false;
 let operationFilter = "";
 let currentPage = 1;
 const PAGE_SIZE = 10;
@@ -200,7 +201,8 @@ function formatDateTimeTR(iso) {
 ============================================================ */
 let listRequest = 0;
 let listLoading = false;
-function applyTabFilter(q, tab=currentTab, operation=operationFilter) {
+function applyTabFilter(q, tab=currentTab, operation=operationFilter, allCargo=false) {
+  if(allCargo)return q.or("kargo_durumu.eq.Kargolandı,kargo_durumu.eq.Tamamlandı,isDelivered.eq.true,shipmentStatusCode.gt.0,kargo_takip_kodu.not.is.null,iade_kodu.not.is.null,and(shipmentStatus.not.is.null,shipmentStatus.neq.)");
   if(tab==="bekleyen")   q = q.eq("kargo_durumu","Bekliyor");
   if(tab==="hazirlandi") q = q.eq("kargo_durumu","Hazırlandı");
   const deliveredFilter = "shipmentStatusCode.eq.5,isDelivered.eq.true,shipmentStatus.eq.Teslim_Edildi,shipmentStatus.eq.Teslim Edildi";
@@ -269,7 +271,7 @@ async function loadCargoLabelQueue(start, end){
   const query = (saved, head=false) => {
     let q=applyCargoFilter(applyTabFilter(db.from(LIST_TABLE)
       .select("*", {count:"exact", head})
-      .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi")));
+      .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi"),currentTab,operationFilter,cargoFilterGlobal));
     return saved
       ? q.or("and(kargo_zpl.not.is.null,kargo_zpl.neq.),zpl_base64.like.JVBER%")
       : q.or("kargo_zpl.is.null,kargo_zpl.eq.")
@@ -313,14 +315,15 @@ async function loadOrders(reset=false){
   let q = db.from(LIST_TABLE).select("*", { count: "exact" })
     .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
 
-  q = applyTabFilter(q);
+  q = applyTabFilter(q,currentTab,operationFilter,cargoFilterGlobal);
 
   q = applyCargoFilter(q);
 
   const start = (currentPage - 1) * PAGE_SIZE;
   const end   = currentPage * PAGE_SIZE - 1;
 
-  const { data, error, count } = currentTab === "kargolandi"
+  const labelQueue = cargoFilterGlobal ? cargoFilter === "created" : currentTab === "kargolandi";
+  const { data, error, count } = labelQueue
     ? await loadCargoLabelQueue(start, end)
     : await q.order("siparis_no", { ascending: currentTab === "bekleyen" }).range(start, end);
   if (request !== listRequest) return;
@@ -1054,7 +1057,7 @@ function matchesCargoFilter(order){
   return cargoFilter==="all"||(CARGO_FILTER_GROUPS[cargoFilter]||[]).includes(cargoStatusInfo(order).key);
 }
 function applyCargoFilter(query){
-  if(!["kargolandi","tamamlandi","sorunlu","iade"].includes(currentTab)||cargoFilter==="all")return query;
+  if((!cargoFilterGlobal&&!["kargolandi","tamamlandi","sorunlu","iade"].includes(currentTab))||cargoFilter==="all")return query;
   const expression=(CARGO_FILTER_GROUPS[cargoFilter]||[]).map(cargoStateFilter).filter(Boolean).join(',');
   return expression ? query.or(expression) : query;
 }
@@ -1063,7 +1066,9 @@ function filterCargo(key){
   document.querySelectorAll("[data-operation]").forEach(button=>button.setAttribute("aria-pressed","false"));
   if(key!=="all"&&!CARGO_FILTER_GROUPS[key])return;
   cargoFilter=key;
+  cargoFilterGlobal=true;
   document.getElementById("searchInput").value="";
+  document.getElementById("tabSearchInput").value="";
   loadOrders(true);
 }
 window.filterCargo=filterCargo;
@@ -2481,7 +2486,7 @@ async function searchOrders(scope = "all", append=false) {
   try {
     let query = db.from(LIST_TABLE).select("*",{count:"exact"})
       .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
-    if (inTab) query = applyCargoFilter(applyTabFilter(query));
+    if (inTab) query = applyCargoFilter(applyTabFilter(query,currentTab,operationFilter,cargoFilterGlobal));
     const start=(currentPage-1)*PAGE_SIZE;
     const { data, error, count } = await query.or(buildOrderSearchFilter(raw))
       .order("siparis_no", { ascending: inTab && currentTab === "bekleyen" }).range(start,start+PAGE_SIZE-1);
@@ -2518,7 +2523,8 @@ function updateListHeading(search, summary) {
   const titles = {bekleyen:"Bekleyen Siparişler", hazirlandi:"Hazırlanan Siparişler", kargolandi:"Kargolanan Siparişler", tamamlandi:"Tamamlanan Siparişler", iade:"İade Siparişleri", sorunlu:"Sorunlu Siparişler", iptal:"İptal Edilen Siparişler"};
   const title = document.getElementById("pageTitle");
   const info = document.getElementById("listSummary");
-  if (title) title.textContent = search ? "Arama Sonuçları" : (OPERATION_CARDS[operationFilter]?.title || titles[currentTab]);
+  const cargoTitles={all:"Tüm Kargolar",created:"Hazırlandı · Tüm Kargolar",transit:"Yolda · Tüm Kargolar",delivery:"Dağıtımda · Tüm Kargolar",delivered:"Teslim Edildi · Tüm Kargolar",problem:"Sorun · Tüm Kargolar",return:"Geri Geliyor · Tüm Kargolar"};
+  if (title) title.textContent = search ? "Arama Sonuçları" : (cargoFilterGlobal ? cargoTitles[cargoFilter] : OPERATION_CARDS[operationFilter]?.title || titles[currentTab]);
   if (info) info.textContent = summary;
 }
 
@@ -2528,6 +2534,7 @@ function setTab(tab, operation=""){
   document.getElementById("searchInput").value = "";
   document.getElementById("tabSearchInput").value = "";
   currentTab = tab;
+  cargoFilterGlobal = false;
   cargoFilter = tab === "kargolandi" ? "created" : "all";
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(li=>li.classList.remove("active"));
   const el = document.getElementById(`tab_${tab}`);

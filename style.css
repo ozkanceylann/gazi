@@ -1960,3 +1960,15 @@ body.orders-page { --bg:#101d15; --text:#edf0e3; background:#101d15; color:#edf0
 .customer-history-list time{font-size:11px;color:#b8cbb0;white-space:nowrap}
 .customer-order-history summary:focus-visible,.customer-history-list button:focus-visible{outline:2px solid #d4ba81;outline-offset:2px}
 .customer-history-unavailable{display:block;font-size:10px;color:#aab7a4;margin-top:7px}
+
+/* Keep cargo filters on one touch-scrollable row on mobile. */
+@media(max-width:900px) {
+  .orders-page .cargo-tools .cargo-legend {
+    flex:1 1 100%; flex-wrap:nowrap; overflow-x:auto; gap:4px;
+    padding:4px 3px; -webkit-overflow-scrolling:touch;
+  }
+  .orders-page .cargo-tools .cargo-legend .cargo-status {
+    flex:0 0 auto; width:auto; min-height:34px; margin:0;
+    padding:7px 8px; white-space:nowrap;
+  }
+}

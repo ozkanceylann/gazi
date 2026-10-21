@@ -12,7 +12,7 @@ class Query {
  if(this.span&&this.span[0]>=rows.length)throw Error('Invalid range requested');
  return Promise.resolve({count:rows.length,data:this.head?null:rows.slice(this.span?.[0]||0,(this.span?.[1]??rows.length-1)+1)}).then(resolve,reject);}
 }
-const context={db:{from:()=>new Query()},TABLE:'orders',LIST_TABLE:'gazi_order_list',applyCargoFilter:q=>q,applyTabFilter:q=>q};vm.createContext(context);vm.runInContext(queue+'\nthis.run=loadCargoLabelQueue;',context);
+const context={db:{from:()=>new Query()},TABLE:'orders',LIST_TABLE:'gazi_order_list',cargoFilterGlobal:false,operationFilter:'',currentTab:'kargolandi',applyCargoFilter:q=>q,applyTabFilter:q=>q};vm.createContext(context);vm.runInContext(queue+'\nthis.run=loadCargoLabelQueue;',context);
 (async()=>{
  for(let p=0;p<=25;p++)for(let s=0;s<=25;s++){
  pending=Array.from({length:p},(_,i)=>'pending'+i);saved=Array.from({length:s},(_,i)=>'saved'+i);
