@@ -1,9 +1,9 @@
 name: Mobile navigation checks
 on:
   push:
-    paths: ["mobile-navigation.js", "style.css", "theme.css", "login.html", "tests/theme-browser.cjs", "index.html", "rapor.html", "tests/mobile-navigation-browser.cjs", ".github/workflows/mobile-navigation.yml"]
+    paths: ["app.js", "tests/cargo-filters.test.cjs", "tests/cargo-filters-browser.cjs", "mobile-navigation.js", "style.css", "theme.css", "login.html", "tests/theme-browser.cjs", "index.html", "rapor.html", "tests/mobile-navigation-browser.cjs", ".github/workflows/mobile-navigation.yml"]
   pull_request:
-    paths: ["mobile-navigation.js", "style.css", "theme.css", "login.html", "tests/theme-browser.cjs", "index.html", "rapor.html", "tests/mobile-navigation-browser.cjs", ".github/workflows/mobile-navigation.yml"]
+    paths: ["app.js", "tests/cargo-filters.test.cjs", "tests/cargo-filters-browser.cjs", "mobile-navigation.js", "style.css", "theme.css", "login.html", "tests/theme-browser.cjs", "index.html", "rapor.html", "tests/mobile-navigation-browser.cjs", ".github/workflows/mobile-navigation.yml"]
 permissions:
   contents: read
 jobs:
@@ -17,6 +17,11 @@ jobs:
           node-version: 22
       - run: npm install --no-save --package-lock=false playwright@1.62.1
       - run: npx playwright install --with-deps chromium webkit
+      - run: node tests/cargo-filters.test.cjs
+      - run: node tests/cargo-queue.test.cjs
+      - run: node tests/search-pagination.cjs
+      - run: node tests/progressive-loading.cjs
+      - run: node tests/cargo-filters-browser.cjs
       - run: node tests/mobile-navigation-browser.cjs
       - run: node tests/theme-browser.cjs
       - uses: actions/upload-artifact@v4
