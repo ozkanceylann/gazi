@@ -1,0 +1,16 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const c=vm.createContext({});vm.runInContext(fs.readFileSync('cargo-weights.js','utf8'),c);vm.runInContext(fs.readFileSync('order-split.js','utf8'),c);const S=c.OrderSplit;
+for(const [s,n] of [['16.500',16500],['16.500,50 TL',16500.5],['16500.50',16500.5],['15.000,01',15000.01]])assert.equal(S.amount(s),n);
+for(const s of ['',null,'-10','10e3','16.500,500'])assert(Number.isNaN(S.amount(s)));
+assert(!S.over({toplam_tutar:'15.000'}));assert(S.over({toplam_tutar:'15.000,01'}));
+const order={siparis_no:10040,urun_bilgisi:'10 kg zeytin\n10 kg yağ',toplam_tutar:'16.500',kargo_durumu:'Bekliyor',kargo_adet:'2',kargo_kg:'10+10'};
+const parts=[{products:[0],amount:'8.250',count:1,kg:'10'},{products:[1],amount:'8.250',count:1,kg:'10'}];assert.equal(S.validate(order,parts),parts);
+assert.throws(()=>S.validate(order,[parts[0],{...parts[1],amount:'8000'}]),/toplamı/);
+assert.throws(()=>S.validate(order,[parts[0],{...parts[1],products:[0]}]),/yalnızca/);
+assert.throws(()=>S.validate(order,[parts[0],{...parts[1],kg:'9'}]),/kilogram/);
+assert.throws(()=>S.validate(order,[parts[0],{...parts[1],count:2}]),/kilogram/);
+assert.throws(()=>S.validate(order,[parts[0],{...parts[1],amount:'15000.01'}]),/15.000/);
+assert(S.blocked({...order,orderinvoiceid:'123'}));assert(S.blocked({...order,sube_etiket_durumu:'historical'}));assert(S.blocked({...order,bolunme_grubu:'uuid'}));
+S.bind({isAdmin:false});assert.equal(S.button(order),'');S.bind({isAdmin:true});assert(S.button(order).includes('Siparişi böl'));assert.equal(S.button({...order,toplam_tutar:'15.000'}),'');
+assert.deepEqual(JSON.parse(JSON.stringify(S.products('["10 kg zeytin","10 kg yağ"]'))),['10 kg zeytin','10 kg yağ']);
+console.log('PASS: Turkish amounts, exact 15000 boundary, product assignment, conserved totals/kg, parcel validation, active-shipment guards and admin-only button');

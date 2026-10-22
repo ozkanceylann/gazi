@@ -47,6 +47,7 @@ const PAGE_SIZE = 10;
 let selectedOrder = null;
 const orderTakerNames = new Map();
 const isGaziAdmin = sessionUser.app_metadata?.role !== "seller";
+OrderSplit.bind({db,table:TABLE,isAdmin:isGaziAdmin,toast,onDone:async()=>{closeModal();setTab("bekleyen");}});
 
 const busy = { kargola: new Set(), barkod: new Set(), iade: new Set(), sube: new Set() };
 
@@ -635,6 +636,7 @@ function renderTable(rows, { append=false, hasMore } = {}){
     const tr = document.createElement("tr");
     tr.dataset.orderId=String(o.siparis_no);
     if (hasZeroOrderTotal(o.toplam_tutar)) tr.classList.add("order-zero-total");
+    if (OrderSplit.over(o)) tr.classList.add("order-over-cod");
 
     const orderStage = orderLifecycleStage(o);
     const canShip = orderStage === "Hazırlandı";
@@ -674,7 +676,7 @@ const noteChip = o.notlar ? `
 
 tr.innerHTML = isPendingTab
   ? `
-    <td>${o.siparis_no}</td>
+    <td>${o.siparis_no}${OrderSplit.related(o)}</td>
     <td>${orderStage === "Bekliyor" ? `<div class="order-primary-actions"><button class="btn-prepare" onclick="event.stopPropagation(); prepareFromList(${Number(o.siparis_no)}, this)">Hazırla</button><button type="button" class="btn-direct-cargo" onclick="event.stopPropagation(); directShipFromList(${Number(o.siparis_no)}, this)">Direkt Kargola</button></div> ${actionBtn}` : actionBtn}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
     <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${extraSlot(o,'history')}${extraSlot(o,'receipts')}${extraSlot(o,'note')}</td>
@@ -685,13 +687,13 @@ tr.innerHTML = isPendingTab
   </span>
 </td>
 
-    <td><span class="order-total-amount">${escapeHtml(o.toplam_tutar ?? "—")} <small>TL</small></span></td>
+    <td><span class="order-total-amount">${escapeHtml(o.toplam_tutar ?? "—")} <small>TL</small></span>${OrderSplit.button(o)}</td>
     <td class="order-status-cell">${orderStageBadge(o)}</td>
     <td>${noteChip}</td>
     <td>${orderTakerMarkup(o)}</td>
   `
   : `
-    <td>${o.siparis_no}</td>
+    <td>${o.siparis_no}${OrderSplit.related(o)}</td>
     <td class="cargo-count-column">${cargoCountBadge(o.kargo_adet)}</td>
     <td><div class="order-customer-meta"><span class="order-customer-name" title="${escapeHtml(o.ad_soyad)}">${escapeHtml(o.ad_soyad)}</span>${orderDateMarkup(o.tarih)}</div>${extraSlot(o,'history')}${extraSlot(o,'receipts')}${extraSlot(o,'note')}</td>
     <td>
@@ -701,7 +703,7 @@ tr.innerHTML = isPendingTab
   </span>
 </td>
 
-    <td><span class="order-total-amount">${escapeHtml(o.toplam_tutar ?? "—")} <small>TL</small></span></td>
+    <td><span class="order-total-amount">${escapeHtml(o.toplam_tutar ?? "—")} <small>TL</small></span>${OrderSplit.button(o)}</td>
 <td class="order-status-cell">${orderStageBadge(o)}${isTrackingTab && ["Kargolandı","Tamamlandı","İade"].includes(orderStage) ? ` ${cargoStatusBadge(o)}` : ""}</td>
 
 <td>
@@ -1436,8 +1438,8 @@ function renderDetails() {
   /* — DETAY HTML — */
 document.getElementById("orderDetails").innerHTML = `
 <section class="detail-overview" aria-label="Sipariş özeti">
- <div class="detail-overview-main"><span class="detail-eyebrow">SİPARİŞ #${Number(d.siparis_no)}</span><h3>${escapeHtml(d.ad_soyad || "Müşteri")}</h3><div class="detail-overview-status">${orderStageBadge(d)}</div></div>
- <div class="detail-overview-total"><strong>${escapeHtml(d.toplam_tutar ?? "—")} <small>TL</small></strong><span>${escapeHtml(d.odeme_sekli || "Belirtilmemiş")}</span></div>
+ <div class="detail-overview-main"><span class="detail-eyebrow">SİPARİŞ #${Number(d.siparis_no)}</span>${OrderSplit.related(d)}<h3>${escapeHtml(d.ad_soyad || "Müşteri")}</h3><div class="detail-overview-status">${orderStageBadge(d)}</div></div>
+ <div class="detail-overview-total"><strong>${escapeHtml(d.toplam_tutar ?? "—")} <small>TL</small></strong><span>${escapeHtml(d.odeme_sekli || "Belirtilmemiş")}</span>${OrderSplit.button(d)}</div>
 </section>
 <div class="detail-compact-meta">
  ${d.musteri_tel?`<a class="detail-contact-phone" href="tel:${escapeHtml(String(d.musteri_tel).replace(/[^0-9+]/g,""))}">${escapeHtml(d.musteri_tel)}</a>`:""}
