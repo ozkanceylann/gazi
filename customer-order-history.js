@@ -26,13 +26,20 @@
       }
     }
   }
+  function badgeStyle(ordinal) {
+    // Keep the original first-order badge; later orders get distinct, readable tones.
+    if (ordinal <= 1) return '';
+    var hues = [210, 155, 270, 330, 25];
+    var hue = ordinal <= 6 ? hues[ordinal - 2] : (ordinal * 137.508) % 360;
+    return ' style="background:hsl(' + hue + ', 38%, 22%);border-color:hsl(' + hue + ', 48%, 48%);color:hsl(' + hue + ', 85%, 85%)"';
+  }
   function markup(order) {
     var history = order.customer_order_history;
     if (!history || !Number.isInteger(history.ordinal) || !Array.isArray(history.orders)) {
       return '<span class="customer-history-unavailable">Sipariş geçmişi alınamadı</span>';
     }
     var current = Number(order.siparis_no);
-    return '<details class="customer-order-history"><summary><strong>' + history.ordinal + '. siparişi</strong><span class="customer-history-arrow" aria-hidden="true"></span></summary><div class="customer-history-list" aria-label="Müşterinin siparişleri">' + history.orders.map(function (item) {
+    return '<details class="customer-order-history"><summary><strong' + badgeStyle(history.ordinal) + '>' + history.ordinal + '. siparişi</strong><span class="customer-history-arrow" aria-hidden="true"></span></summary><div class="customer-history-list" aria-label="Müşterinin siparişleri">' + history.orders.map(function (item) {
       var id = Number(item.siparis_no);
       if (!Number.isSafeInteger(id) || id <= 0) return '';
       return '<button type="button" data-customer-order="' + id + '"' + (id === current ? ' aria-current="true"' : '') + ' aria-label="' + id + ' numaralı siparişi aç, ' + escape(date(item.tarih)) + '"><span>#' + id + (id === current ? '<small>Bu sipariş</small>' : '') + '</span><time>' + escape(date(item.tarih)) + '</time></button>';
