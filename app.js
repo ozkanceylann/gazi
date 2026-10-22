@@ -687,7 +687,7 @@ tr.innerHTML = isPendingTab
   </span>
 </td>
 
-    <td><span class="order-total-amount">${escapeHtml(o.toplam_tutar ?? "—")} <small>TL</small></span>${OrderSplit.button(o)}</td>
+    <td><span class="order-total-amount">${escapeHtml(OrderSplit.formatAmount(o.toplam_tutar))} <small>TL</small></span>${OrderSplit.button(o)}</td>
     <td class="order-status-cell">${orderStageBadge(o)}</td>
     <td>${noteChip}</td>
     <td>${orderTakerMarkup(o)}</td>
@@ -703,7 +703,7 @@ tr.innerHTML = isPendingTab
   </span>
 </td>
 
-    <td><span class="order-total-amount">${escapeHtml(o.toplam_tutar ?? "—")} <small>TL</small></span>${OrderSplit.button(o)}</td>
+    <td><span class="order-total-amount">${escapeHtml(OrderSplit.formatAmount(o.toplam_tutar))} <small>TL</small></span>${OrderSplit.button(o)}</td>
 <td class="order-status-cell">${orderStageBadge(o)}${isTrackingTab && ["Kargolandı","Tamamlandı","İade"].includes(orderStage) ? ` ${cargoStatusBadge(o)}` : ""}</td>
 
 <td>
@@ -1439,7 +1439,7 @@ function renderDetails() {
 document.getElementById("orderDetails").innerHTML = `
 <section class="detail-overview" aria-label="Sipariş özeti">
  <div class="detail-overview-main"><span class="detail-eyebrow">SİPARİŞ #${Number(d.siparis_no)}</span>${OrderSplit.related(d)}<h3>${escapeHtml(d.ad_soyad || "Müşteri")}</h3><div class="detail-overview-status">${orderStageBadge(d)}</div></div>
- <div class="detail-overview-total"><strong>${escapeHtml(d.toplam_tutar ?? "—")} <small>TL</small></strong><span>${escapeHtml(d.odeme_sekli || "Belirtilmemiş")}</span>${OrderSplit.button(d)}</div>
+ <div class="detail-overview-total"><strong>${escapeHtml(OrderSplit.formatAmount(d.toplam_tutar))} <small>TL</small></strong><span>${escapeHtml(d.odeme_sekli || "Belirtilmemiş")}</span>${OrderSplit.button(d)}</div>
 </section>
 <div class="detail-compact-meta">
  ${d.musteri_tel?`<a class="detail-contact-phone" href="tel:${escapeHtml(String(d.musteri_tel).replace(/[^0-9+]/g,""))}">${escapeHtml(d.musteri_tel)}</a>`:""}
@@ -1745,7 +1745,7 @@ async function enterEditMode(){
         <div class="form-field"><label>Kargo KG</label><input id="kargo_kg" value="${escapeHtml(CargoWeights.display(d.kargo_kg,d.kargo_adet))}" placeholder="5+10+5+6"></div>
 
         <div class="form-field full-row"><label>Ürün</label><textarea id="urun_bilgisi">${d.urun_bilgisi??""}</textarea></div>
-        <div class="form-field"><label>Tutar</label><input id="toplam_tutar" value="${d.toplam_tutar??""}"></div>
+        <div class="form-field"><label>Tutar</label><input id="toplam_tutar" value="${escapeHtml(OrderSplit.formatAmount(d.toplam_tutar??"",false))}"></div>
         <div class="form-field"><label>Ödeme</label><input id="odeme_sekli" value="${d.odeme_sekli??""}"></div>
         <div class="form-field full-row"><label>Not</label><textarea id="notlar">${d.notlar??""}</textarea></div>
       </div>
@@ -2580,7 +2580,7 @@ function printSiparis(order){
       <div><b>Ürünler:</b> ${parseProduct(order.urun_bilgisi)}</div>
       <div><b>Adet:</b> ${order.kargo_adet ?? "-"}</div>
       <div><b>KG:</b> ${escapeHtml(CargoWeights.display(order.kargo_kg,order.kargo_adet) || "—")}</div>
-      <div><b>Tutar:</b> ${order.toplam_tutar} TL</div>
+      <div><b>Tutar:</b> ${escapeHtml(OrderSplit.formatAmount(order.toplam_tutar))} TL</div>
       <div><b>Ödeme:</b> ${order.odeme_sekli ?? "-"}</div>
       <div><b>Not:</b> ${order.notlar ?? "-"}</div>
     </div>`;

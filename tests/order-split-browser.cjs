@@ -13,7 +13,7 @@ await page.evaluate(()=>OrderSplit.open(10040));await page.locator('dialog[open]
 assert.equal(await page.locator('dialog script').count(),0);
 const overflow=await page.locator('dialog').evaluate(el=>({dialog:el.scrollWidth>el.clientWidth+1,page:document.documentElement.scrollWidth>innerWidth}));assert(!overflow.dialog&&!overflow.page,JSON.stringify({width,overflow}));
 await page.locator('.split-actions [type=submit]').click();assert.match(await page.locator('.split-error').textContent(),/tutarı/);assert.equal(await page.evaluate(()=>calls.length),0);
-await page.locator('#split-price-0').fill('8.000');await page.locator('.split-fill').click();assert.equal(await page.locator('#split-price-1').inputValue(),'8500,00');
+await page.locator('#split-price-0').fill('8.000');await page.locator('.split-fill').click();assert.equal(await page.locator('#split-price-1').inputValue(),'8500');
 await page.locator('[name=product-1][value="1"]').check();
 await page.locator('.split-actions [type=submit]').click();await page.waitForFunction(()=>window.done===1);
 const call=await page.evaluate(()=>calls[0]);assert.equal(call.name,'gazi_split_order');assert.deepEqual(call.params.p_parts[0].products,[0]);assert.deepEqual(call.params.p_parts[1].products,[1,2,3]);assert.equal(call.params.p_parts[0].count,4);assert.equal(call.params.p_parts[1].count,4);assert.equal(await page.locator('dialog[open]').count(),0);

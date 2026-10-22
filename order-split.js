@@ -8,6 +8,10 @@
     else if(!/^\d+(?:\.\d{1,2})?$/.test(s))return NaN;
     const n=Number(s);return Number.isFinite(n)?n:NaN;
   }
+  function formatAmount(value,grouping=true){
+    const n=amount(value);
+    return Number.isFinite(n)?n.toLocaleString('tr-TR',{useGrouping:grouping,minimumFractionDigits:Number.isInteger(n)?0:2,maximumFractionDigits:2}):String(value??'—');
+  }
   const cents=value=>Math.round(amount(value)*100);
   function products(value){
     let s=String(value??'');
@@ -88,7 +92,7 @@
         const price=field(card,'Tahsilat tutarı (TL)','split-price-'+g,''),count=field(card,'Paket adedi','split-count-'+g,String(groups[g].length),'numeric'),kg=field(card,'Paket kilogramları (ör. 5+10)','split-kg-'+g,groups[g].join('+'));
         inputs.push({price,count,kg});cards.append(card);
       }form.append(cards);
-      const fill=el('button','2. tutarı kalan tutarla doldur','split-fill');fill.type='button';fill.onclick=()=>{const first=cents(inputs[0].price.value);if(Number.isFinite(first))inputs[1].price.value=((cents(o.toplam_tutar)-first)/100).toFixed(2).replace('.',',');update();};form.append(fill);
+      const fill=el('button','2. tutarı kalan tutarla doldur','split-fill');fill.type='button';fill.onclick=()=>{const first=cents(inputs[0].price.value);if(Number.isFinite(first))inputs[1].price.value=formatAmount(String((cents(o.toplam_tutar)-first)/100),false);update();};form.append(fill);
       const summary=el('p',undefined,'split-summary');summary.setAttribute('aria-live','polite');form.append(summary);
       function update(){const values=inputs.map(x=>cents(x.price.value));const total=values.every(Number.isFinite)?values.reduce((a,b)=>a+b,0)/100:0;summary.textContent=`Girilen toplam: ${total.toLocaleString('tr-TR')} / ${amount(o.toplam_tutar).toLocaleString('tr-TR')} TL. İki kayıt da Bekleyen durumunda açılır.`;}
       form.addEventListener('input',update);update();
@@ -112,5 +116,5 @@
     }catch(error){config.toast(error.message||'Sipariş bölme ekranı açılamadı.',7000);}
     finally{opening=false;}
   }
-  root.OrderSplit={bind:options=>{config=options;},open,button,related,over,amount,products,weights,expected,validate,blocked};
+  root.OrderSplit={bind:options=>{config=options;},open,button,related,over,amount,formatAmount,products,weights,expected,validate,blocked};
 })(globalThis);
