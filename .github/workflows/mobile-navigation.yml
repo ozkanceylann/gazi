@@ -1,9 +1,9 @@
 name: Mobile navigation checks
 on:
   push:
-    paths: ["app.js", "tests/cargo-filters.test.cjs", "tests/cargo-filters-browser.cjs", "mobile-navigation.js", "style.css", "theme.css", "login.html", "tests/theme-browser.cjs", "index.html", "rapor.html", "tests/mobile-navigation-browser.cjs", ".github/workflows/mobile-navigation.yml"]
+    paths: ["order-split.js", "order-split.css", "supabase/gazi-order-split.sql", "supabase/migrations/20261022194329_gazi_order_split.sql", "tests/order-split.test.cjs", "tests/order-split-db.cjs", "tests/order-split-browser.cjs", "app.js", "tests/cargo-filters.test.cjs", "tests/cargo-filters-browser.cjs", "mobile-navigation.js", "style.css", "theme.css", "login.html", "tests/theme-browser.cjs", "index.html", "rapor.html", "tests/mobile-navigation-browser.cjs", ".github/workflows/mobile-navigation.yml"]
   pull_request:
-    paths: ["app.js", "tests/cargo-filters.test.cjs", "tests/cargo-filters-browser.cjs", "mobile-navigation.js", "style.css", "theme.css", "login.html", "tests/theme-browser.cjs", "index.html", "rapor.html", "tests/mobile-navigation-browser.cjs", ".github/workflows/mobile-navigation.yml"]
+    paths: ["order-split.js", "order-split.css", "supabase/gazi-order-split.sql", "supabase/migrations/20261022194329_gazi_order_split.sql", "tests/order-split.test.cjs", "tests/order-split-db.cjs", "tests/order-split-browser.cjs", "app.js", "tests/cargo-filters.test.cjs", "tests/cargo-filters-browser.cjs", "mobile-navigation.js", "style.css", "theme.css", "login.html", "tests/theme-browser.cjs", "index.html", "rapor.html", "tests/mobile-navigation-browser.cjs", ".github/workflows/mobile-navigation.yml"]
 permissions:
   contents: read
 jobs:
@@ -15,8 +15,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-save --package-lock=false playwright@1.62.1
+      - run: npm install --no-save --package-lock=false playwright@1.62.1 @electric-sql/pglite@0.5.11
       - run: npx playwright install --with-deps chromium webkit
+      - run: node tests/order-split.test.cjs
+      - run: node tests/order-split-db.cjs
+      - run: node tests/order-split-browser.cjs
       - run: node tests/cargo-filters.test.cjs
       - run: node tests/cargo-queue.test.cjs
       - run: node tests/search-pagination.cjs

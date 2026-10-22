@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261022-order-colors-98";
+const VERSION = "20261022-order-split-100";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -12,6 +12,8 @@ const ASSETS = [
   "/style.css",
   "/theme.css",
   "/app.js",
+  "/order-split.js",
+  "/order-split.css",
   "/customer-order-history.js",
   "/order-receipts.js",
   "/order-receipts.css",
