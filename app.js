@@ -568,7 +568,8 @@ function orderStageBadge(order) {
   };
   const [label, tone] = states[stage] || [stage, "unknown"];
   const delivery = order?.teslim_sekli_kontrol === true ? '<span class="order-stage-badge order-stage-badge--problem">Teslim şekli kontrol</span>' : order?.subeden_teslim === true ? '<span class="order-stage-badge order-stage-badge--prepared">Şubeden teslim</span>' : '';
-  return `<span class="order-stage-badge order-stage-badge--${tone}" aria-label="Sipariş durumu: ${escapeHtml(label)}">${escapeHtml(label)}</span>${delivery}${branchLabelBadge(order)}`;
+  const split = order?.bolunme_ana_siparis_no ? '<span class="order-stage-badge order-stage-badge--split">Bölünmüş sipariş</span>' : '';
+  return `<span class="order-stage-badge order-stage-badge--${tone}" aria-label="Sipariş durumu: ${escapeHtml(label)}">${escapeHtml(label)}</span>${split}${delivery}${branchLabelBadge(order)}`;
 }
 
 function mobileOrderInfo(order){

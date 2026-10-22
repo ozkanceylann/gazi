@@ -54,7 +54,7 @@
     return parts;
   }
   function button(o){return config?.isAdmin&&over(o)?`<button type="button" class="order-split-button" onclick="event.stopPropagation();OrderSplit.open(${Number(o.siparis_no)})">Siparişi böl</button>`:'';}
-  function related(o){return o.bolunme_ana_siparis_no?`<small class="order-split-related"><span class="order-split-badge">Bölünmüş sipariş</span><span class="order-split-reference">#${Number(o.bolunme_ana_siparis_no)} · ${Number(o.bolunme_sira)}/2</span></small>`:'';}
+  function related(o){return o.bolunme_ana_siparis_no?`<small class="order-split-related"><span class="order-split-reference">#${Number(o.bolunme_ana_siparis_no)} · ${Number(o.bolunme_sira)}/2</span></small>`:'';}
   const el=(tag,text,className)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(className)n.className=className;return n;};
   function field(parent,label,id,value,mode='decimal'){
     const wrap=el('label',undefined,'split-field');wrap.append(el('span',label));
