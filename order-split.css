@@ -1,10 +1,10 @@
 .orders-page .orders-table #ordersBody tr.order-over-cod,
-.orders-page .orders-table #ordersBody tr.order-over-cod:nth-child(even){background:linear-gradient(115deg,#54362f,#38251f);border-color:#d38c55;}
-.orders-page .orders-table #ordersBody tr.order-over-cod td:first-child{border-left-color:#e8a56d;}
-.orders-page .orders-table #ordersBody tr.order-over-cod:hover td{background:#59382b!important;}
-.order-over-cod .order-total-amount{color:#ffd49e!important;}
-.order-split-button{display:inline-block;width:auto;margin:5px 0 0;padding:7px 10px;min-height:34px;border:1px solid #e5b17d;border-radius:7px;background:#e3b37e;color:#302015;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
-.order-split-related{display:block;margin-top:4px;color:#edc58d;font-size:11px;white-space:nowrap;}
+.orders-page .orders-table #ordersBody tr.order-over-cod:nth-child(even){background:linear-gradient(115deg,#164e50,#103b40);border-color:#36cfc9;}
+.orders-page .orders-table #ordersBody tr.order-over-cod td:first-child{border-left-color:#5eead4;}
+.orders-page .orders-table #ordersBody tr.order-over-cod:hover td{background:#175c60!important;}
+.order-over-cod .order-total-amount{color:#99f6e4!important;}
+.order-split-button{display:inline-block;width:auto;margin:5px 0 0;padding:7px 10px;min-height:34px;border:1px solid #5eead4;border-radius:7px;background:#40d5cb;color:#083b3d;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.order-split-related{display:block;margin-top:4px;color:#81e8dd;font-size:11px;white-space:nowrap;}
 .order-split-dialog{box-sizing:border-box;width:min(780px,calc(100% - 24px));max-height:calc(100dvh - 32px);padding:22px;border:1px solid #95734b;border-radius:14px;background:#142219;color:#f4f1e5;overflow:auto;font:14px/1.5 system-ui,sans-serif;}
 .order-split-dialog::backdrop{background:#050e09bd;}
 .order-split-dialog h2{margin:0 0 8px;font-size:20px;}
@@ -14,7 +14,7 @@
 .split-product{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #3a5140;}
 .split-product>span{overflow-wrap:anywhere;white-space:pre-wrap;}
 .split-product label{display:flex;align-items:center;gap:5px;white-space:nowrap;min-height:38px;}
-.split-product input{accent-color:#e3b37e;width:18px;height:18px;}
+.split-product input{accent-color:#40d5cb;width:18px;height:18px;}
 .split-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .split-field{display:flex;flex-direction:column;gap:4px;margin:8px 0;}
 .split-field input{box-sizing:border-box;width:100%;padding:9px;border:1px solid #60705a;border-radius:6px;background:#0c1710;color:#f4f1e5;font:inherit;}
