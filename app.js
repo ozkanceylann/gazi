@@ -287,8 +287,8 @@ async function loadCargoLabelQueue(start, end){
   const savedStart=Math.max(0,start-pendingCount);
   const savedTake=Math.max(0,Math.min(end-start+1-pendingTake,savedCount-savedStart));
   const requests=[];
-  if(pendingTake)requests.push(pendingRows.order("siparis_no",{ascending:false}).range(start,start+pendingTake-1));
-  if(savedTake)requests.push(savedRows.order("etiket_olusturma_tarihi",{ascending:false,nullsFirst:false}).order("siparis_no",{ascending:false}).range(savedStart,savedStart+savedTake-1));
+  if(pendingTake)requests.push(pendingRows.order("liste_sira_no",{ascending:false}).order("siparis_no",{ascending:true}).range(start,start+pendingTake-1));
+  if(savedTake)requests.push(savedRows.order("liste_etiket_tarihi",{ascending:false,nullsFirst:false}).order("liste_sira_no",{ascending:false}).order("siparis_no",{ascending:true}).range(savedStart,savedStart+savedTake-1));
   const pages=await Promise.all(requests);
   const error=pages.find(page=>page.error)?.error;
   return {data:pages.flatMap(page=>page.data||[]),error:error||null,count:pendingCount+savedCount};
@@ -326,7 +326,7 @@ async function loadOrders(reset=false){
   const labelQueue = cargoFilterGlobal ? cargoFilter === "created" : currentTab === "kargolandi";
   const { data, error, count } = labelQueue
     ? await loadCargoLabelQueue(start, end)
-    : await q.order("siparis_no", { ascending: currentTab === "bekleyen" }).range(start, end);
+    : await q.order("liste_sira_no", { ascending: currentTab === "bekleyen" }).order("siparis_no", { ascending: true }).range(start, end);
   if (request !== listRequest) return;
   if(error){
     if(!reset)currentPage=Math.max(1,currentPage-1);
@@ -2492,7 +2492,7 @@ async function searchOrders(scope = "all", append=false) {
     if (inTab) query = applyCargoFilter(applyTabFilter(query,currentTab,operationFilter,cargoFilterGlobal));
     const start=(currentPage-1)*PAGE_SIZE;
     const { data, error, count } = await query.or(buildOrderSearchFilter(raw))
-      .order("siparis_no", { ascending: inTab && currentTab === "bekleyen" }).range(start,start+PAGE_SIZE-1);
+      .order("liste_sira_no", { ascending: inTab && currentTab === "bekleyen" }).order("siparis_no", { ascending: true }).range(start,start+PAGE_SIZE-1);
     if (request !== listRequest) return;
     if (error) throw error;
     renderTableHeader();

@@ -57,6 +57,15 @@ await assert.rejects(call(3),/audit failure/);
 assert.equal((await db.query('select toplam_tutar from public.gazi_siparisler where siparis_no=3')).rows[0].toplam_tutar,'16.500,00');
 assert.equal((await db.query('select count(*) n from public.gazi_siparisler where bolunme_ana_siparis_no=3')).rows[0].n,0);
 const e12={...expected,urun_bilgisi:'["10 kg zeytin","10 kg yağ"]'};assert.equal((await call(12,parts,e12)).rows[0].result.first_order_id,12);
+// Ordering must group both parts before a server-side page is sliced.
+for (const direction of ['asc','desc']) {
+ const rows=(await db.query(`select siparis_no,bolunme_ana_siparis_no from public.gazi_order_list order by liste_sira_no ${direction},siparis_no asc`)).rows;
+ for(const parent of [1,12]) {
+  const indexes=rows.map((r,i)=>r.bolunme_ana_siparis_no===parent?i:-1).filter(i=>i>=0);
+  assert.equal(indexes.length,2);assert.equal(indexes[1],indexes[0]+1);
+  assert.equal(rows[indexes[0]].siparis_no,parent);
+ }
+}
 await db.exec('reset role;set role anon;');await assert.rejects(call(2),/permission denied/);
 console.log('PASS: real Postgres split transaction, shared identity, master totals, products/weights/amount validation, JSON products, stale data, shipment guards, admin/anon permissions, idempotency, duplicate split and rollback after failure');
 }finally{await db.close();}
