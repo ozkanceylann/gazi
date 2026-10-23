@@ -247,32 +247,26 @@ async function refreshOperationCounts(force=true){
   panel.setAttribute("aria-busy","true");
   let complete=true;
   try{
-    await Promise.all(Object.entries(OPERATION_CARDS).map(async ([key,card])=>{
+    const {data,error}=await db.rpc("gazi_operation_counts");
+    for(const [key,card] of Object.entries(OPERATION_CARDS)){
       const value=panel.querySelector(`[data-operation-count="${key}"]`);
-      try{
-        let count, parcels;
-        if(key==="handover"){
-          const {data,error}=await db.rpc("gazi_handover_counts");
-          if(error || typeof data?.handover!=="number" || typeof data?.handover_parcels!=="number")throw error || Error("Sayı alınamadı");
-          count=data.handover;parcels=data.handover_parcels;
-          panel.querySelector("[data-handover-parcels]").textContent=parcels.toLocaleString("tr-TR")+" parça";
-        }else{
-          const query=db.from(TABLE).select("siparis_no",{count:"exact",head:true})
-            .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
-          const result=await applyOperationFilter(applyTabFilter(query,card.tab,""),key);
-          if(result.error || typeof result.count!=="number")throw result.error || Error("Sayı alınamadı");
-          count=result.count;
-        }
-        value.textContent=count.toLocaleString("tr-TR");
-        value.closest("button").title=card.title+": "+count+" sipariş"+(parcels==null?"":" · "+parcels+" parça");
-      }catch{
-        complete=false;
-        if(key==="handover")panel.querySelector("[data-handover-parcels]").textContent="— parça";
-        value.textContent="—";
+      const parcelValue=panel.querySelector(`[data-operation-parcels="${key}"]`);
+      if(error || typeof data?.[key]!=="number" || typeof data?.[key+"_parcels"]!=="number"){
+        complete=false;value.textContent="—";parcelValue.textContent="— parça";
         value.closest("button").title="Sayı alınamadı. Yenile düğmesiyle tekrar deneyin.";
+      }else{
+        value.textContent=data[key].toLocaleString("tr-TR");
+        parcelValue.textContent=data[key+"_parcels"].toLocaleString("tr-TR")+" parça";
+        value.closest("button").title=card.title+": "+data[key]+" sipariş · "+data[key+"_parcels"]+" parça";
       }
-    }));
+    }
     operationCountsUpdatedAt=complete?Date.now():0;
+  }catch{
+    operationCountsUpdatedAt=0;
+    for(const key of Object.keys(OPERATION_CARDS)){
+      panel.querySelector(`[data-operation-count="${key}"]`).textContent="—";
+      panel.querySelector(`[data-operation-parcels="${key}"]`).textContent="— parça";
+    }
   }finally{
     operationCountsLoading=false;panel.setAttribute("aria-busy","false");
     if(operationCountsForceQueued){operationCountsForceQueued=false;void refreshOperationCounts(true);}
