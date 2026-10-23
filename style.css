@@ -1972,3 +1972,6 @@ body.orders-page { --bg:#101d15; --text:#edf0e3; background:#101d15; color:#edf0
     padding:7px 8px; white-space:nowrap;
   }
 }
+
+.handover-count{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.operation-card .handover-count small{font-size:12px;font-weight:500;white-space:nowrap}

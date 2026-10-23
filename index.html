@@ -15,7 +15,7 @@
   <script src="config.js?v=20261014-cargo-separate-34"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261022-global-cargo-filters-97" />
+  <link rel="stylesheet" href="style.css?v=20261023-handover-parcels-107" />
 
   <style>
     .btn-mini{
@@ -94,7 +94,7 @@
     <section id="operationCounters" class="operation-counters" aria-label="Operasyon özeti" aria-busy="true">
       <button type="button" class="operation-card operation-card--prepare" data-operation="prepare" aria-pressed="false" onclick="openOperationQueue('prepare')"><span>Hazırlanacak</span><strong data-operation-count="prepare">…</strong><small>Bekleyen siparişler</small></button>
       <button type="button" class="operation-card operation-card--label" data-operation="label" aria-pressed="false" onclick="openOperationQueue('label')"><span>Etiket bekleyen</span><strong data-operation-count="label">…</strong><small>Etiketi oluşmayan / hiç yazdırılmayan</small></button>
-      <button type="button" class="operation-card operation-card--handover" data-operation="handover" aria-pressed="false" onclick="openOperationQueue('handover')"><span>DHL teslim alımı bekleyen</span><strong data-operation-count="handover">…</strong><small>Etiketi hazır, çıkış bekliyor</small></button>
+      <button type="button" class="operation-card operation-card--handover" data-operation="handover" aria-pressed="false" onclick="openOperationQueue('handover')"><span>DHL teslim alımı bekleyen</span><div class="handover-count"><strong data-operation-count="handover">…</strong><small data-handover-parcels>… parça</small></div><small>Etiketi hazır, çıkış bekliyor</small></button>
       <button type="button" class="operation-card operation-card--attention" data-operation="attention" aria-pressed="false" onclick="openOperationQueue('attention')"><span>Müdahale gereken</span><strong data-operation-count="attention">…</strong><small>Teslim edilemedi / destek gerekiyor</small></button>
     </section>
 
@@ -217,7 +217,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261023-cancel-action-106");
+      await import("./app.js?v=20261023-handover-parcels-107");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

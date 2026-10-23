@@ -250,14 +250,24 @@ async function refreshOperationCounts(force=true){
     await Promise.all(Object.entries(OPERATION_CARDS).map(async ([key,card])=>{
       const value=panel.querySelector(`[data-operation-count="${key}"]`);
       try{
-        const query=db.from(TABLE).select("siparis_no",{count:"exact",head:true})
-          .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
-        const {count,error}=await applyOperationFilter(applyTabFilter(query,card.tab,""),key);
-        if(error || typeof count!=="number")throw error || Error("Sayı alınamadı");
+        let count, parcels;
+        if(key==="handover"){
+          const {data,error}=await db.rpc("gazi_handover_counts");
+          if(error || typeof data?.handover!=="number" || typeof data?.handover_parcels!=="number")throw error || Error("Sayı alınamadı");
+          count=data.handover;parcels=data.handover_parcels;
+          panel.querySelector("[data-handover-parcels]").textContent=parcels.toLocaleString("tr-TR")+" parça";
+        }else{
+          const query=db.from(TABLE).select("siparis_no",{count:"exact",head:true})
+            .or("kargo_durumu.is.null,kargo_durumu.neq.Silindi");
+          const result=await applyOperationFilter(applyTabFilter(query,card.tab,""),key);
+          if(result.error || typeof result.count!=="number")throw result.error || Error("Sayı alınamadı");
+          count=result.count;
+        }
         value.textContent=count.toLocaleString("tr-TR");
-        value.closest("button").title=card.title+": "+count+" sipariş";
+        value.closest("button").title=card.title+": "+count+" sipariş"+(parcels==null?"":" · "+parcels+" parça");
       }catch{
         complete=false;
+        if(key==="handover")panel.querySelector("[data-handover-parcels]").textContent="— parça";
         value.textContent="—";
         value.closest("button").title="Sayı alınamadı. Yenile düğmesiyle tekrar deneyin.";
       }
