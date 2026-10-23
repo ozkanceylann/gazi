@@ -161,7 +161,6 @@
     <button class="btn-warning" onclick="enterEditMode()">Düzenle</button>
 
     <!-- Fişi oluşturulmamış kargolar DHL'den geri çekilip Bekleyen'e alınabilir. -->
-    <button id="btnCancelShipment" type="button" class="btn-danger" style="display:none;" onclick="cancelShipmentToWaiting(selectedOrder?.siparis_no,this)">Gönderi İptal</button>
     <!-- Kargoya verilmemiş normal sipariş iptali. -->
     <button id="btnCancelOrder" type="button" class="btn-danger" onclick="openCancelForm()">İptal Et</button>
 
@@ -218,7 +217,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261023-list-performance-105");
+      await import("./app.js?v=20261023-cancel-action-106");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

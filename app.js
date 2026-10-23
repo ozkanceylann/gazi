@@ -1542,9 +1542,7 @@ ${renderOriginalMessage(d)}
   document.getElementById("btnCargo").style.display =
     d.kargo_durumu === "Hazırlandı" ? "inline-block" : "none";
 
-  // Kargolandı, fakat henüz fiş/etiket oluşturulmadı: DHL gönderisini iptal edip Bekleyen'e al.
-  const cancelShipmentButton=document.getElementById("btnCancelShipment");
-  if(cancelShipmentButton)cancelShipmentButton.style.display=canCancelShipment(d) ? "inline-block" : "none";
+  // Gönderi iptali Kargo hareketleri bölümünden yapılır.
   const cancelOrderButton=document.getElementById("btnCancelOrder");
   if(cancelOrderButton)cancelOrderButton.style.display=hasExistingShipment(d) ? "none" : "inline-block";
 
