@@ -1,5 +1,13 @@
 # gazi
 
+## Liste performansı
+
+`supabase/migrations/20261023092932_optimize_order_lists.sql`, masaüstü liste görünümünde ağır kargo alanlarının tüm kayıtlara uygulanmasını önler. Bölünmüş siparişlerin ortak etiket tarihi ayrı, hafif bir toplama ile hesaplanır. Aynı migration mobilin `admin_orders` ve `seller_orders` sorgularında bütün satırı etiket kontrolüne taşımayı kaldırır. Görünüm `security_invoker` olarak kalır; RLS, izinler, yanıt alanları, filtreler ve sıralama değişmez.
+
+Sekme ve filtre geçişleri başarılı operasyon sayaçlarını 60 saniyeye kadar yeniden kullanır. Yazma işlemleri ve açık yenileme zorunlu sayım yapar; devam eden sayım sırasında yazma olursa ardından bir kez daha sayılır. Hatalı sonuçlar önbelleğe alınmaz.
+
+23 Ekim 2026 canlı veritabanı doğrulaması: yönetici ve satıcıyla 16 tam RPC yanıtı, arama, ikinci sayfa, sayaçlar ve tüm görünüm satırları aynı işlem anında eski/yeni karşılaştırıldı. Üç tekrar ortalaması (ağ ve ekran çizimi hariç): masaüstü Bekleyen 653,42 → 314,30 ms; mobil yönetici Bekleyen 557,71 → 458,15 ms. Test: `tests/order-list-performance.sql` (işlem sonunda ROLLBACK). Geri alma: `supabase/rollback-order-list-performance.sql`.
+
 Ana sipariş hazırlama ve kargo paneli: https://gazi.ozkanceylan.uk
 
 ## Etiket okutma

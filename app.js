@@ -47,7 +47,7 @@ const PAGE_SIZE = 10;
 let selectedOrder = null;
 const orderTakerNames = new Map();
 const isGaziAdmin = sessionUser.app_metadata?.role !== "seller";
-OrderSplit.bind({db,table:TABLE,isAdmin:isGaziAdmin,toast,onDone:async()=>{closeModal();setTab("bekleyen");}});
+OrderSplit.bind({db,table:TABLE,isAdmin:isGaziAdmin,toast,onDone:async()=>{closeModal();setTab("bekleyen","",true);}});
 
 const busy = { kargola: new Set(), barkod: new Set(), iade: new Set(), sube: new Set() };
 
@@ -236,11 +236,16 @@ function applyOperationFilter(query, key){
     : query.or("and(or(kargo_zpl.is.null,kargo_zpl.eq.),or(zpl_base64.is.null,zpl_base64.not.like.JVBER%)),etiket_yazdirma_sayisi.is.null,etiket_yazdirma_sayisi.eq.0");
 }
 let operationCountsLoading = false;
-async function refreshOperationCounts(){
+let operationCountsUpdatedAt = 0;
+let operationCountsForceQueued = false;
+async function refreshOperationCounts(force=true){
   const panel=document.getElementById("operationCounters");
-  if(!panel || operationCountsLoading)return;
+  if(!panel)return;
+  if(operationCountsLoading){if(force)operationCountsForceQueued=true;return;}
+  if(!force && operationCountsUpdatedAt && Date.now()-operationCountsUpdatedAt<60000)return;
   operationCountsLoading=true;
   panel.setAttribute("aria-busy","true");
+  let complete=true;
   try{
     await Promise.all(Object.entries(OPERATION_CARDS).map(async ([key,card])=>{
       const value=panel.querySelector(`[data-operation-count="${key}"]`);
@@ -252,11 +257,16 @@ async function refreshOperationCounts(){
         value.textContent=count.toLocaleString("tr-TR");
         value.closest("button").title=card.title+": "+count+" sipariş";
       }catch{
+        complete=false;
         value.textContent="—";
         value.closest("button").title="Sayı alınamadı. Yenile düğmesiyle tekrar deneyin.";
       }
     }));
-  }finally{operationCountsLoading=false;panel.setAttribute("aria-busy","false");}
+    operationCountsUpdatedAt=complete?Date.now():0;
+  }finally{
+    operationCountsLoading=false;panel.setAttribute("aria-busy","false");
+    if(operationCountsForceQueued){operationCountsForceQueued=false;void refreshOperationCounts(true);}
+  }
 }
 function openOperationQueue(key){
   const card=OPERATION_CARDS[key];
@@ -294,8 +304,8 @@ async function loadCargoLabelQueue(start, end){
   return {data:pages.flatMap(page=>page.data||[]),error:error||null,count:pendingCount+savedCount};
 }
 
-async function loadOrders(reset=false){
-  if(reset)void refreshOperationCounts();
+async function loadOrders(reset=false, forceCounts=true){
+  if(reset)void refreshOperationCounts(forceCounts);
   if(document.getElementById("tabSearchInput")?.value.trim()) return searchOrders("tab",!reset);
   if(document.getElementById("searchInput")?.value.trim()) return searchOrders("all",!reset);
   syncCargoTools();
@@ -1072,7 +1082,7 @@ function filterCargo(key){
   cargoFilterGlobal=true;
   document.getElementById("searchInput").value="";
   document.getElementById("tabSearchInput").value="";
-  loadOrders(true);
+  loadOrders(true,false);
 }
 window.filterCargo=filterCargo;
 async function cargoRequest(url,body={}){
@@ -2192,7 +2202,7 @@ async function sendToCargo(orderId,{prepareFirst=false}={}){
     const result=await cargoRequest(WH_KARGOLA,{operation:"kargola",siparis_no:String(siparisNo)});
     if(!result.already_created)db.functions.invoke("whatsapp-reaction",{body:{siparis_no:siparisNo,emoji:"🚚"}}).then(({error})=>{if(error)toast("Kargolandı; WhatsApp emojisi gönderilemedi.",6000);}).catch(()=>toast("WhatsApp emojisi gönderilemedi.",6000));
     toast(result.message||"Sipariş kargolandı. Etiketi ayrıca oluşturabilirsiniz.",6000);
-    closeModal();setTab("kargolandi");
+    closeModal();setTab("kargolandi","",true);
   }catch(error){toast((preparedHere?"Sipariş hazırlandı; kargolama tamamlanamadı: ":"")+error.message,10000);await loadOrders(true);}
   finally{busy.kargola.delete(siparisNo);if(prepareFirst)preparingOrders.delete(siparisNo);}
 }
@@ -2374,7 +2384,7 @@ async function cancelShipmentToWaiting(orderId,button){
     const result=await cargoRequest(CONFIG.webhooks.iptal,{operation:"gonderi_iptal",siparis_no:String(id),reason:"Kargo gönderisi iptal edilerek sipariş yeniden hazırlamak üzere Bekleyen aşamasına alınıyor."});
     if(result.cancelled!==true||result.recordVerified!==true||result.kargo_durumu!=="Bekliyor")throw new Error("İptal ve Bekleyen kaydı doğrulanamadı. Siparişin durumunu kontrol edin.");
     toast(result.message||"Gönderi iptal edildi; sipariş Bekleyen aşamasına alındı.",7000);
-    closeModal();setTab("bekleyen");
+    closeModal();setTab("bekleyen","",true);
   }catch(error){toast(error.message||"Gönderi iptali tamamlanamadı.",10000);await loadOrders(true);}
   finally{cancelBusy=false;busy.kargola.delete(id);busy.barkod.delete(id);if(button){button.disabled=false;button.textContent=label;}}
 }
@@ -2516,7 +2526,7 @@ async function searchOrders(scope = "all", append=false) {
 function clearSearch(){
   document.getElementById("searchInput").value="";
   document.getElementById("tabSearchInput").value="";
-  loadOrders(true);
+  loadOrders(true,false);
 }
 
 /* ============================================================
@@ -2531,7 +2541,7 @@ function updateListHeading(search, summary) {
   if (info) info.textContent = summary;
 }
 
-function setTab(tab, operation=""){
+function setTab(tab, operation="", forceCounts=false){
   operationFilter=OPERATION_CARDS[operation]?.tab===tab ? operation : "";
   document.querySelectorAll("[data-operation]").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.operation===operationFilter)));
   document.getElementById("searchInput").value = "";
@@ -2542,7 +2552,7 @@ function setTab(tab, operation=""){
   document.querySelectorAll(".menu li:not(.menu-more)").forEach(li=>li.classList.remove("active"));
   const el = document.getElementById(`tab_${tab}`);
   if(el) el.classList.add("active");
-  loadOrders(true);
+  loadOrders(true,forceCounts);
 }
 
 function loadMore(){
@@ -2717,6 +2727,6 @@ if (["bekleyen","hazirlandi","kargolandi","tamamlandi","iade","sorunlu","iptal"]
 
 
 // Refresh visible dashboards once a minute; no background polling.
-setInterval(()=>{if(!document.hidden)void refreshOperationCounts();},60000);
+setInterval(()=>{if(!document.hidden)void refreshOperationCounts(false);},60000);
 
 (async()=>{const {data}=await db.auth.getUser();if(data?.user?.app_metadata?.firma!=="gazi"||data.user.app_metadata?.role==="seller")return;const b=document.createElement("button");b.type="button";b.className="btn-mini";b.textContent="Eşleşmeyen dekontlar";b.onclick=()=>OrderReceipts.unmatched(db);document.querySelector(".page-header-actions")?.append(b);})();

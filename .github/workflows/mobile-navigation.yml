@@ -24,6 +24,7 @@ jobs:
       - run: node tests/cargo-queue.test.cjs
       - run: node tests/search-pagination.cjs
       - run: node tests/progressive-loading.cjs
+      - run: node tests/operation-counters.test.cjs
       - run: node tests/cargo-filters-browser.cjs
       - run: node tests/mobile-navigation-browser.cjs
       - run: node tests/theme-browser.cjs

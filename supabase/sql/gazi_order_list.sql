@@ -1,5 +1,7 @@
 -- Read-only list projection. Full labels and carrier responses are fetched from
 -- gazi_siparisler only when opening details or executing an explicit action.
+CREATE INDEX IF NOT EXISTS gazi_split_list_group_idx ON public.gazi_siparisler ((coalesce(bolunme_ana_siparis_no,siparis_no)),siparis_no) INCLUDE (etiket_olusturma_tarihi);
+
 do $view$
 declare columns_sql text;
 begin
@@ -9,7 +11,7 @@ begin
   when 'kargo_api_yanit' then $$case when o.kargo_api_yanit is json object then jsonb_build_object('environment',o.kargo_api_yanit::jsonb->'environment','tracking',o.kargo_api_yanit::jsonb->'tracking')::text else o.kargo_api_yanit end as kargo_api_yanit$$
   else format('o.%I',a.attname) end, ', ' order by a.attnum)
  into columns_sql from pg_attribute a where a.attrelid='public.gazi_siparisler'::regclass and a.attnum>0 and not a.attisdropped;
- execute 'create or replace view public.gazi_order_list with (security_invoker=true) as select '||columns_sql||', coalesce(o.bolunme_ana_siparis_no,o.siparis_no) as liste_sira_no, max(o.etiket_olusturma_tarihi) over (partition by coalesce(o.bolunme_ana_siparis_no,o.siparis_no)) as liste_etiket_tarihi from public.gazi_siparisler o';
+ execute 'create or replace view public.gazi_order_list with (security_invoker=true) as select '||columns_sql||', coalesce(o.bolunme_ana_siparis_no,o.siparis_no) as liste_sira_no, groups.group_label_created as liste_etiket_tarihi from public.gazi_siparisler o left join (select coalesce(bolunme_ana_siparis_no,siparis_no) as group_order_id,max(etiket_olusturma_tarihi) as group_label_created from public.gazi_siparisler group by coalesce(bolunme_ana_siparis_no,siparis_no)) groups on groups.group_order_id=coalesce(o.bolunme_ana_siparis_no,o.siparis_no)';
 end;
 $view$;
 revoke all on public.gazi_order_list from public,anon,authenticated;
