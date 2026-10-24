@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Gönderi Sorgulama · Gazi Operasyon</title>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="style.css?v=20261024-shipment-query-112">
+  <link rel="stylesheet" href="gonderi-sorgulama.css?v=20261024-shipment-query-112">
+</head>
+<body class="shipment-query-page">
+<main class="shipment-shell">
+  <header><a class="back-link" href="index.html">← Siparişlere dön</a><p class="eyebrow">GAZİ OPERASYON</p><h1>Gönderi Sorgulama</h1><p>Referans veya gönderi numarasıyla DHL’deki güncel kaydı sorgulayın.</p></header>
+  <section class="query-card">
+    <form id="shipmentQueryForm">
+      <label>Sorgu türü<select id="queryKind"><option value="auto">Otomatik algıla</option value="reference">Referans numarası</option><option value="shipment">Gönderi numarası</option></select></label>
+      <label class="identifier-label">Referans / Gönderi numarası<input id="shipmentIdentifier" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="100" required placeholder="Örn. AKH452009979-R2"></label>
+      <button id="queryButton" type="submit" disabled>Gönderiyi Sorgula</button>
+    </form>
+    <p id="queryStatus" role="status" aria-live="polite">Oturum kontrol ediliyor…</p>
+  </section>
+  <section id="shipmentResult" class="query-card" hidden aria-labelledby="resultTitle">
+    <div class="result-heading"><h2 id="resultTitle">DHL sorgu sonucu</h2><span id="shipmentState" class="shipment-state"></span></div>
+    <dl id="shipmentFields"></dl>
+    <div id="matchedOrder" class="matched-order"></div>
+    <p id="cancellationInfo"></p>
+    <button id="cancelShipmentButton" type="button" class="cancel-shipment" hidden>Gönderiyi İptal Et</button>
+    <details class="carrier-details"><summary>DHL yanıtını görüntüle</summary><pre id="carrierResponse"></pre></details>
+  </section>
+</main>
+<script type="module" src="gonderi-sorgulama.js?v=20261024-shipment-query-112"></script>
+</body>
+</html>

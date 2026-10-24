@@ -2710,6 +2710,7 @@ document.querySelectorAll(".menu li:not(.menu-more)").forEach(item => {
 });
 
 document.getElementById("takerSettingsMenu").hidden = !isGaziAdmin;
+document.getElementById("shipmentQueryMenu").hidden = !isGaziAdmin;
 try { await loadOrderTakerNames(); } catch { toast("Kişi isimleri yüklenemedi. Sayfayı yenileyin."); }
 
 const requestedTab = new URLSearchParams(location.search).get("tab");

@@ -1,7 +1,7 @@
 // ================================
 // 🔥 VERSION = DEPLOY TARİHİ
 // ================================
-const VERSION = "20261024-cargo-reference-exact-111";
+const VERSION = "20261024-shipment-query-112";
 const CACHE_NAME = `siparis-app-${VERSION}`;
 
 // Cache edilecek dosyalar
@@ -12,6 +12,9 @@ const ASSETS = [
   "/style.css",
   "/theme.css",
   "/app.js",
+  "/gonderi-sorgulama.html",
+  "/gonderi-sorgulama.js",
+  "/gonderi-sorgulama.css",
   "/order-split.js",
   "/order-split.css",
   "/customer-order-history.js",

@@ -1,0 +1,26 @@
+name: Shipment query checks
+on:
+  push:
+    paths: ['gonderi-sorgulama.*', 'n8n/manual-cargo-*', 'tests/manual-cargo.test.cjs', 'tests/shipment-query-browser.cjs', '.github/workflows/shipment-query.yml']
+  pull_request:
+    paths: ['gonderi-sorgulama.*', 'n8n/manual-cargo-*', 'tests/manual-cargo.test.cjs', 'tests/shipment-query-browser.cjs', '.github/workflows/shipment-query.yml']
+permissions:
+  contents: read
+jobs:
+  shipment-query:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-save --package-lock=false playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/manual-cargo.test.cjs
+      - run: node tests/shipment-query-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shipment-query-preview
+          path: /tmp/shipment-query-*.png

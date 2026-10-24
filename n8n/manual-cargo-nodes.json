@@ -1,0 +1,1023 @@
+{
+  "nodes": [
+    {
+      "id": "6339c7fb-16fc-4360-9982-4cd26fc6ff71",
+      "name": "Manuel Kargo · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gazi_gonderi_sorgula",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://gazi.ozkanceylan.uk"
+        }
+      },
+      "position": [
+        0,
+        3000
+      ]
+    },
+    {
+      "id": "a09f3b3b-dae6-4171-bf57-e4e416bbab70",
+      "name": "Manuel Kargo · Panel İsteği",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const b=$input.first().json.body||{};if(!b.accessToken||!b.publicKey)throw new Error('Oturum gerekli');return [{json:{accessToken:b.accessToken,publicKey:b.publicKey}}];"
+      },
+      "position": [
+        240,
+        3000
+      ]
+    },
+    {
+      "id": "e4bbdfc4-d682-4558-92ee-a020bd24e39a",
+      "name": "Manuel Kargo · Oturumu Doğrula",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "parameters": {
+        "url": "https://jarsxtpqzqzhlshpmgot.supabase.co/auth/v1/user",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.publicKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "position": [
+        480,
+        3000
+      ]
+    },
+    {
+      "id": "89bb2f2d-37cb-4e41-9af7-09a6b32ea0af",
+      "name": "Manuel Kargo · Yetki ve Girdi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "function authorize(response, body) {\n  const user = response.body;\n  if (response.statusCode !== 200 || !user?.id || String(user.app_metadata?.firma || '').toLowerCase() !== 'gazi' || user.app_metadata?.role === 'seller')\n    throw Error('Gazi yönetici oturumu gerekli.');\n  const identifier = String(body.identifier || '').trim().toUpperCase();\n  const kind = String(body.kind || 'auto');\n  if (!['auto', 'reference', 'shipment'].includes(kind)) throw Error('Geçersiz sorgu türü.');\n  const isShipment = kind === 'shipment' || (kind === 'auto' && /^\\d{12}$/.test(identifier));\n  if (isShipment ? !/^\\d{12}$/.test(identifier) : !/^[A-Z0-9][A-Z0-9._-]{1,99}$/.test(identifier))\n    throw Error('Geçerli referans veya 12 haneli gönderi numarası girin.');\n  const operation = String(body.operation || 'query');\n  if (!['query', 'cancel'].includes(operation)) throw Error('Geçersiz işlem.');\n  if (operation === 'cancel' && body.confirmed !== 'true') throw Error('Önce gönderiyi sorgulayın ve iptali onaylayın.');\n  return {identifier, isShipment, operation, userId:user.id,\n    expectedReference:String(body.expectedReference || ''), expectedShipment:String(body.expectedShipment || ''),\n    expectedOrder:String(body.expectedOrder || '')};\n}\nreturn [{json:authorize($input.first().json,$('Manuel Kargo · Webhook').first().json.body||{})}];"
+      },
+      "position": [
+        720,
+        3000
+      ]
+    },
+    {
+      "id": "233df61c-802e-441a-981a-56842d006402",
+      "name": "Manuel Kargo · Canlı Hesabı Oku",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "CGLpnpOKHd2w6ym5",
+          "cachedResultName": "CANLI_TOKEN"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "18"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "position": [
+        960,
+        3000
+      ]
+    },
+    {
+      "id": "c1edb827-e306-4e7e-8555-2f74a006f5a5",
+      "name": "Manuel Kargo · DHL Güncel Durum",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "parameters": {
+        "url": "={{ 'https://api.mngkargo.com.tr/mngapi/api/standardqueryapi/'+($('Manuel Kargo · Yetki ve Girdi').first().json.isShipment?'getshipmentstatusByShipmentId/':'getshipmentstatus/')+encodeURIComponent($('Manuel Kargo · Yetki ve Girdi').first().json.identifier) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-version",
+              "value": "v1"
+            },
+            {
+              "name": "X-IBM-Client-Id",
+              "value": "={{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.X_IBM_Client_Id }}"
+            },
+            {
+              "name": "X-IBM-Client-Secret",
+              "value": "={{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.X_IBM_Client_Secret }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.jwt }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "position": [
+        1200,
+        3000
+      ]
+    },
+    {
+      "id": "b939e42b-a608-4a42-8ef7-7f60a40a236b",
+      "name": "Manuel Kargo · Detay Hedefi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "function unwrap(response) {\n  if (!response || response.error || response.statusCode < 200 || response.statusCode >= 300) return null;\n  const body = response.body;\n  if (Array.isArray(body) && body.length !== 1) return null;\n  const value = Array.isArray(body) ? body[0] : body;\n  return value && typeof value === 'object' && !value.error && value.success !== false ? value : null;\n}\nfunction detailTarget(response, request) {\n  const status = unwrap(response);\n  if (status?.shipmentId && /^\\d{12}$/.test(String(status.shipmentId))) {\n    if (request.isShipment && String(status.shipmentId) !== request.identifier) throw Error('DHL gönderi numarası eşleşmedi.');\n    if (!request.isShipment && String(status.referenceId || '').toUpperCase() !== request.identifier) throw Error('DHL referansı eşleşmedi.');\n    return 'getshipmentByShipmentId/' + encodeURIComponent(status.shipmentId);\n  }\n  // A reference may exist as a DHL order before a shipment barcode is created.\n  if (!request.isShipment && [200,400,404].includes(Number(response.statusCode)))\n    return 'getorder/' + encodeURIComponent(request.identifier);\n  throw Error('DHL gönderisi sorgulanamadı veya bulunamadı. İptal yapılmadı.');\n}\nreturn [{json:{path:detailTarget($input.first().json,$('Manuel Kargo · Yetki ve Girdi').first().json)}}];"
+      },
+      "position": [
+        1440,
+        3000
+      ]
+    },
+    {
+      "id": "39179d3d-55e1-4d68-bbbf-804cd9c91fe8",
+      "name": "Manuel Kargo · DHL Kayıt Detayı",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "parameters": {
+        "url": "={{ 'https://api.mngkargo.com.tr/mngapi/api/standardqueryapi/'+$json.path }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-version",
+              "value": "v1"
+            },
+            {
+              "name": "X-IBM-Client-Id",
+              "value": "={{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.X_IBM_Client_Id }}"
+            },
+            {
+              "name": "X-IBM-Client-Secret",
+              "value": "={{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.X_IBM_Client_Secret }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.jwt }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "position": [
+        1680,
+        3000
+      ]
+    },
+    {
+      "id": "1ee02286-6247-4fa9-9ab3-07d7fe6fc523",
+      "name": "Manuel Kargo · Gönderiyi Doğrula",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "function unwrap(response) {\n  if (!response || response.error || response.statusCode < 200 || response.statusCode >= 300) return null;\n  const body = response.body;\n  if (Array.isArray(body) && body.length !== 1) return null;\n  const value = Array.isArray(body) ? body[0] : body;\n  return value && typeof value === 'object' && !value.error && value.success !== false ? value : null;\n}\nfunction resolveShipment(statusResponse, detailResponse, request) {\n  const status = unwrap(statusResponse);\n  const detail = unwrap(detailResponse);\n  if (!detail) throw Error('DHL kayıt bilgisi alınamadı. İptal yapılmadı.');\n  const data = detail.shipment || detail.order || detail;\n  const referenceId = String(data.referenceId || detail.referenceId || status?.referenceId || '').trim();\n  const shipmentId = String(data.shipmentId || detail.shipmentId || status?.shipmentId || '').trim();\n  if (!/^[A-Z0-9][A-Z0-9._-]{1,99}$/i.test(referenceId)) throw Error('DHL geçerli referans döndürmedi.');\n  if (request.isShipment ? shipmentId !== request.identifier : referenceId.toUpperCase() !== request.identifier)\n    throw Error('DHL sonucu girilen numarayla eşleşmedi.');\n  if (status?.shipmentId && shipmentId !== String(status.shipmentId)) throw Error('DHL yanıtları farklı gönderilere ait.');\n  if (status?.referenceId && referenceId !== String(status.referenceId)) throw Error('DHL yanıtlarında referans uyuşmazlığı var.');\n  if (shipmentId && !/^\\d{12}$/.test(shipmentId)) throw Error('DHL gönderi numarası doğrulanamadı.');\n  if (shipmentId && (!status?.shipmentId || String(status.shipmentId) !== shipmentId)) throw Error('Gönderinin güncel durumu doğrulanamadı.');\n  const statusCode = shipmentId ? Number(status.shipmentStatusCode) : 0;\n  const delivered = status?.isDelivered === true || status?.isDelivered === 1 || statusCode === 5;\n  const canCancel = !delivered && (shipmentId ? statusCode === 1 && (data.shipmentStatusCode == null || Number(data.shipmentStatusCode) === 1) && ![true,1,'1'].includes(data.isDelivered) : Number(data.isTransformedToShipment) === 0);\n  const recipient = data.recipient || detail.recipient || {};\n  return {referenceId, shipmentId, statusCode, canCancel,\n    status: String(status?.shipmentStatus || status?.shipmentStatusExplanation || 'DHL sipariş kaydı; gönderi barkodu yok'),\n    recipient: String(recipient.fullName || recipient.name || data.recipientName || status?.recipientName || ''),\n    destination: String(data.receivingBranch || status?.deliveryUnitName || status?.destinationBranchName || [recipient.city,recipient.district].filter(Boolean).join(' / ')),\n    pieceCount: data.pieceCount ?? data.pieceTotal ?? status?.pieceTotal ?? (Array.isArray(detail.orderPieceList) ? detail.orderPieceList.reduce((sum,p)=>sum+Number(p.numberOfPieces||0),0) : null),\n    reason: canCancel ? 'İptal sonucu DHL tarafından onaylandıktan sonra uygulanır.' : 'DHL güncel durumuna göre gönderi teslim alımını beklemiyor; bu ekrandan iptal edilemez.',\n    checkedAt:new Date().toISOString(), carrierStatus:status || {}, carrierDetail:detail};\n}\nreturn [{json:resolveShipment($('Manuel Kargo · DHL Güncel Durum').first().json,$input.first().json,$('Manuel Kargo · Yetki ve Girdi').first().json)}];"
+      },
+      "position": [
+        1920,
+        3000
+      ]
+    },
+    {
+      "id": "bc1e2309-81cb-4f25-bc30-c998e40006c1",
+      "name": "Manuel Kargo · Panel Siparişini Bul",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "parameters": {
+        "url": "={{ 'https://jarsxtpqzqzhlshpmgot.supabase.co/rest/v1/gazi_siparisler?select=*&limit=2&or='+encodeURIComponent('(kargo_siparis_no.eq.'+JSON.stringify($json.referenceId)+($json.shipmentId?',kargo_takip_kodu.eq.'+JSON.stringify($json.shipmentId):'')+')') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "position": [
+        2160,
+        3000
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "BBA8YSbXFzA6xcvt",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "001c1080-f3bc-4485-ab32-0342beb85674",
+      "name": "Manuel Kargo · Sonucu Hazırla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "function matchOrder(response, shipment) {\n  if (response.statusCode !== 200 || !Array.isArray(response.body)) throw Error('Panel siparişi sorgulanamadı.');\n  const rows=response.body;\n  if (rows.length > 1) throw Error('Referans/gönderi birden fazla siparişle eşleşti. İptal yapılmadı.');\n  const order=rows[0] || null;\n  if (!order) return null;\n  let meta={};try{meta=JSON.parse(order.kargo_api_yanit || '{}');}catch{}\n  if (meta.environment === 'test' || order.kargo_durumu === 'Silindi') throw Error('Bu panel kaydı canlı iptal için uygun değil.');\n  const byShipment=!!shipment.shipmentId && order.kargo_takip_kodu === shipment.shipmentId;\n  const byReference=order.kargo_siparis_no === shipment.referenceId;\n  if (!byShipment && !byReference) throw Error('Sipariş eşleşmesi doğrulanamadı.');\n  if (!byShipment && order.kargo_takip_kodu) throw Error('Sipariş başka bir gönderiye bağlı. İptal yapılmadı.');\n  return order;\n}\nfunction preview(shipment, order, request) {\n  if (request.operation === 'cancel') {\n    if (!shipment.canCancel) throw Error(shipment.reason);\n    if (request.expectedReference !== shipment.referenceId || request.expectedShipment !== shipment.shipmentId || request.expectedOrder !== String(order?.siparis_no || ''))\n      throw Error('Gönderi/sipariş bilgisi değişti. Yeniden sorgulayıp kontrol edin.');\n  }\n  return {success:true,environment:'production',operation:'query',shipment,\n    order:order ? {siparis_no:order.siparis_no,ad_soyad:order.ad_soyad,kargo_durumu:order.kargo_durumu} : null};\n}\nconst shipment=$('Manuel Kargo · Gönderiyi Doğrula').first().json;const order=matchOrder($input.first().json,shipment);return [{json:{order,shipment,response:preview(shipment,order,$('Manuel Kargo · Yetki ve Girdi').first().json)}}];"
+      },
+      "position": [
+        2400,
+        3000
+      ]
+    },
+    {
+      "id": "25abf724-ba13-4831-9a64-da397bca3722",
+      "name": "Manuel Kargo · İptal İsteği mi",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Manuel Kargo · Yetki ve Girdi').first().json.operation==='cancel' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        2640,
+        3000
+      ]
+    },
+    {
+      "id": "ac2584f9-7d21-47eb-b162-558295b125d6",
+      "name": "Manuel Kargo · Gönderi Barkodu Var mı",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$('Manuel Kargo · Gönderiyi Doğrula').first().json.shipmentId }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        2880,
+        3000
+      ]
+    },
+    {
+      "id": "ca8da614-5cf7-4459-b467-fd3493b43559",
+      "name": "Manuel Kargo · DHL Gönderiyi İptal Et",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "parameters": {
+        "method": "PUT",
+        "url": "https://api.mngkargo.com.tr/mngapi/api/barcodecmdapi/cancelshipment",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-version",
+              "value": "v1"
+            },
+            {
+              "name": "X-IBM-Client-Id",
+              "value": "={{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.X_IBM_Client_Id }}"
+            },
+            {
+              "name": "X-IBM-Client-Secret",
+              "value": "={{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.X_IBM_Client_Secret }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.jwt }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {referenceId:$('Manuel Kargo · Gönderiyi Doğrula').first().json.referenceId,shipmentId:$('Manuel Kargo · Gönderiyi Doğrula').first().json.shipmentId} }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "position": [
+        3120,
+        3000
+      ]
+    },
+    {
+      "id": "07fe1eb1-881a-4a99-a513-74ce34a7bc2f",
+      "name": "Manuel Kargo · Gönderi İptalini Doğrula",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "function verifyCancellation(response, label) {\n  const body=Array.isArray(response.body)?response.body[0]:response.body;\n  if (!Number.isInteger(Number(response.statusCode)) || response.statusCode<200 || response.statusCode>=300 || response.error || body?.error || body?.success===false)\n    throw Error('DHL '+label+' iptalini onaylamadı. '+String(body?.error?.message || body?.error?.Message || body?.message || '').slice(0,300));\n  return true;\n}\nverifyCancellation($input.first().json,'gönderi');return [{json:{shipmentCancelled:true}}];"
+      },
+      "position": [
+        3360,
+        3000
+      ]
+    },
+    {
+      "id": "4f490ab8-c703-49ba-a751-a05999d9257f",
+      "name": "Manuel Kargo · DHL Siparişi İptal Et",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://api.mngkargo.com.tr/mngapi/api/standardcmdapi/cancelorder/'+encodeURIComponent($('Manuel Kargo · Gönderiyi Doğrula').first().json.referenceId) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-version",
+              "value": "v1"
+            },
+            {
+              "name": "X-IBM-Client-Id",
+              "value": "={{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.X_IBM_Client_Id }}"
+            },
+            {
+              "name": "X-IBM-Client-Secret",
+              "value": "={{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.X_IBM_Client_Secret }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Manuel Kargo · Canlı Hesabı Oku').first().json.jwt }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "position": [
+        3600,
+        3000
+      ]
+    },
+    {
+      "id": "1ebff753-49f7-479a-b2af-a977a16b68d9",
+      "name": "Manuel Kargo · Bekleyen Kaydını Hazırla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "function verifyCancellation(response, label) {\n  const body=Array.isArray(response.body)?response.body[0]:response.body;\n  if (!Number.isInteger(Number(response.statusCode)) || response.statusCode<200 || response.statusCode>=300 || response.error || body?.error || body?.success===false)\n    throw Error('DHL '+label+' iptalini onaylamadı. '+String(body?.error?.message || body?.error?.Message || body?.message || '').slice(0,300));\n  return true;\n}\nfunction prepareRecord(order, shipment, request, response) {\n  verifyCancellation(response,'sipariş');\n  const result={success:true,environment:'production',cancelled:true,referenceId:shipment.referenceId,shipmentId:shipment.shipmentId,\n    siparis_no:order?.siparis_no || null,message:order ? 'DHL iptali tamamlandı; sipariş Bekleyen aşamasına alındı.' : 'DHL iptali tamamlandı. Eşleşen panel siparişi bulunmadı.'};\n  if (!order) return {order:null,patch:null,response:result};\n  const previous=String(order.kargo_siparis_no || shipment.referenceId),revision=previous.match(/-R(\\d+)$/i);\n  let meta={};try{meta=JSON.parse(order.kargo_api_yanit || '{}');}catch{}\n  // Do not retain active tracking/labels from the cancelled shipment.\n  const patch={kargo_durumu:'Bekliyor',kargo_siparis_no:previous.replace(/-R\\d+$/i,'')+'-R'+(revision?Number(revision[1])+1:1),\n    orderinvoiceid:null,orderinvoicedetailid:null,shipperbranchcode:null,kargo_takip_kodu:null,kargo_qr_kod:null,invoiceid:null,\n    kargo_zpl:null,zpl_base64:null,shipmentStatus:null,shipmentStatusCode:null,isDelivered:false,kargo_takip_url:null,kargo_gunc_saat:null,\n    teslimat_aciklama:null,print:false,etiket_olusturma_tarihi:null,etiket_son_yazdirma:null,etiket_yazdirma_sayisi:0,\n    sube_etiket_durumu:null,sube_etiket_tarihi:null,iptal_nedeni:null,iptal_tarihi:null,gonder_hata_bilgisi:null,\n    kargo_api_yanit:JSON.stringify({environment:'production',activeShipmentCancelled:true,cancellation:{operation:'manuel_iptal',\n      referenceId:shipment.referenceId,shipmentId:shipment.shipmentId,cancelledAt:new Date().toISOString(),actor:request.userId,\n      previousReference:previous,previousShipment:meta,response:response.body}})};\n  return {order,patch,response:result};\n}\nreturn [{json:prepareRecord($('Manuel Kargo · Sonucu Hazırla').first().json.order,$('Manuel Kargo · Gönderiyi Doğrula').first().json,$('Manuel Kargo · Yetki ve Girdi').first().json,$input.first().json)}];"
+      },
+      "position": [
+        3840,
+        3000
+      ]
+    },
+    {
+      "id": "d71412e9-0ead-48e8-82d2-dc7c7447bfba",
+      "name": "Manuel Kargo · Panel Siparişi Var mı",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.order }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        4080,
+        3000
+      ]
+    },
+    {
+      "id": "ef507401-6819-4c42-a700-2be8fbd69b37",
+      "name": "Manuel Kargo · Siparişi Bekleyene Al",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ (()=>{const o=$('Manuel Kargo · Bekleyen Kaydını Hazırla').first().json.order;const fields=['siparis_no','kargo_siparis_no','kargo_takip_kodu','kargo_durumu','orderinvoiceid','kargo_api_yanit'];return 'https://jarsxtpqzqzhlshpmgot.supabase.co/rest/v1/gazi_siparisler?'+fields.map(k=>encodeURIComponent(k)+'='+encodeURIComponent(o[k]==null?'is.null':'eq.'+JSON.stringify(o[k]))).join('&');})() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Manuel Kargo · Bekleyen Kaydını Hazırla').first().json.patch }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "position": [
+        4320,
+        3000
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "BBA8YSbXFzA6xcvt",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "d20ed213-ab5a-42de-8bb9-cff6325d91db",
+      "name": "Manuel Kargo · Panel Kaydını Doğrula",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "function verifyRecord(response, expected) {\n  const rows=response.body;\n  if (response.statusCode!==200 || !Array.isArray(rows) || rows.length!==1 || Number(rows[0].siparis_no)!==Number(expected.order.siparis_no) ||\n      rows[0].kargo_durumu!=='Bekliyor' || rows[0].kargo_siparis_no!==expected.patch.kargo_siparis_no || rows[0].kargo_takip_kodu!==null || rows[0].orderinvoiceid!==null)\n    throw Error('DHL iptali tamamlandı ancak panel kaydı güncellenemedi veya işlem sırasında değişti. Yeniden kargolamadan önce kontrol edin.');\n  return {...expected.response,recordVerified:true};\n}\nreturn [{json:{response:verifyRecord($input.first().json,$('Manuel Kargo · Bekleyen Kaydını Hazırla').first().json)}}];"
+      },
+      "position": [
+        4560,
+        3000
+      ]
+    },
+    {
+      "id": "ad6f5dd2-6e13-43db-8186-984903f9db5f",
+      "name": "Manuel Kargo · Yanıt",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://gazi.ozkanceylan.uk"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "position": [
+        4800,
+        3000
+      ]
+    },
+    {
+      "id": "a2ee8771-b8b1-4b97-892e-e7ca903ddfc2",
+      "name": "Manuel Kargo · Hata Hazırla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "\nlet shipmentCancelled=false,dhlCancelled=false;try{shipmentCancelled=$('Manuel Kargo · Gönderi İptalini Doğrula').first().json.shipmentCancelled===true;}catch{}try{dhlCancelled=$('Manuel Kargo · Bekleyen Kaydını Hazırla').first().json.response.cancelled===true;}catch{}\nconst input=$input.first().json;const message=String(input.error?.message||(typeof input.error==='string'?input.error:'')||input.message||'İşlem tamamlanamadı.').slice(0,700);return [{json:{response:{success:false,environment:'production',partialCancellation:shipmentCancelled||dhlCancelled,dhlCancelled,message:(dhlCancelled?'DHL iptali tamamlandı; panel kaydı doğrulanamadı. ':shipmentCancelled?'Gönderi barkodu iptal edildi; kalan işlem tamamlanamadı. ':'')+message}}}];"
+      },
+      "position": [
+        5040,
+        3000
+      ]
+    },
+    {
+      "id": "784092ca-9282-4447-93ae-3fef9b968471",
+      "name": "Manuel Kargo · Hata Yanıtı",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://gazi.ozkanceylan.uk"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "position": [
+        5280,
+        3000
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Panel İsteği",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Oturumu Doğrula",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Yetki ve Girdi",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Canlı Hesabı Oku",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · DHL Güncel Durum",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Detay Hedefi",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · DHL Kayıt Detayı",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Gönderiyi Doğrula",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Panel Siparişini Bul",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Sonucu Hazırla",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · DHL Gönderiyi İptal Et",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Gönderi İptalini Doğrula",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · DHL Siparişi İptal Et",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Bekleyen Kaydını Hazırla",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Siparişi Bekleyene Al",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Panel Kaydını Doğrula",
+      "target": "Manuel Kargo · Hata Hazırla",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Webhook",
+      "target": "Manuel Kargo · Panel İsteği",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Panel İsteği",
+      "target": "Manuel Kargo · Oturumu Doğrula",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Oturumu Doğrula",
+      "target": "Manuel Kargo · Yetki ve Girdi",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Yetki ve Girdi",
+      "target": "Manuel Kargo · Canlı Hesabı Oku",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Canlı Hesabı Oku",
+      "target": "Manuel Kargo · DHL Güncel Durum",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · DHL Güncel Durum",
+      "target": "Manuel Kargo · Detay Hedefi",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Detay Hedefi",
+      "target": "Manuel Kargo · DHL Kayıt Detayı",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · DHL Kayıt Detayı",
+      "target": "Manuel Kargo · Gönderiyi Doğrula",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Gönderiyi Doğrula",
+      "target": "Manuel Kargo · Panel Siparişini Bul",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Panel Siparişini Bul",
+      "target": "Manuel Kargo · Sonucu Hazırla",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Sonucu Hazırla",
+      "target": "Manuel Kargo · İptal İsteği mi",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · İptal İsteği mi",
+      "target": "Manuel Kargo · Gönderi Barkodu Var mı",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · İptal İsteği mi",
+      "target": "Manuel Kargo · Yanıt",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Gönderi Barkodu Var mı",
+      "target": "Manuel Kargo · DHL Gönderiyi İptal Et",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Gönderi Barkodu Var mı",
+      "target": "Manuel Kargo · DHL Siparişi İptal Et",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · DHL Gönderiyi İptal Et",
+      "target": "Manuel Kargo · Gönderi İptalini Doğrula",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Gönderi İptalini Doğrula",
+      "target": "Manuel Kargo · DHL Siparişi İptal Et",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · DHL Siparişi İptal Et",
+      "target": "Manuel Kargo · Bekleyen Kaydını Hazırla",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Bekleyen Kaydını Hazırla",
+      "target": "Manuel Kargo · Panel Siparişi Var mı",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Panel Siparişi Var mı",
+      "target": "Manuel Kargo · Siparişi Bekleyene Al",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Panel Siparişi Var mı",
+      "target": "Manuel Kargo · Yanıt",
+      "sourceIndex": 1,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Siparişi Bekleyene Al",
+      "target": "Manuel Kargo · Panel Kaydını Doğrula",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Panel Kaydını Doğrula",
+      "target": "Manuel Kargo · Yanıt",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    },
+    {
+      "type": "addConnection",
+      "source": "Manuel Kargo · Hata Hazırla",
+      "target": "Manuel Kargo · Hata Yanıtı",
+      "sourceIndex": 0,
+      "targetIndex": 0
+    }
+  ],
+  "settings": [
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Panel İsteği",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Oturumu Doğrula",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Yetki ve Girdi",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Canlı Hesabı Oku",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · DHL Güncel Durum",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Detay Hedefi",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · DHL Kayıt Detayı",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Gönderiyi Doğrula",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Panel Siparişini Bul",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Sonucu Hazırla",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · DHL Gönderiyi İptal Et",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Gönderi İptalini Doğrula",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · DHL Siparişi İptal Et",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Bekleyen Kaydını Hazırla",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Siparişi Bekleyene Al",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    },
+    {
+      "type": "setNodeSettings",
+      "nodeName": "Manuel Kargo · Panel Kaydını Doğrula",
+      "settings": {
+        "onError": "continueErrorOutput"
+      }
+    }
+  ]
+}

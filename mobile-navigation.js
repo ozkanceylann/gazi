@@ -22,6 +22,7 @@
     '<details class="mobile-bottom-more"><summary aria-label="Raporlar ve diğer işlemler">' + svg("m6 15 6-6 6 6") + '<span>Diğer</span></summary><div class="mobile-bottom-popup" aria-label="Diğer işlemler">' +
     '<button type="button" data-nav-tab="iptal">İptal edilenler</button>' +
     '<a href="rapor.html" data-nav-report>Raporlar</a>' +
+    '<button type="button" data-nav-existing="shipmentQueryMenu" hidden>Gönderi Sorgulama</button>' +
     '<button type="button" data-nav-existing="takerSettingsMenu" hidden>Telefon / Kişi Tanımları</button>' +
     '<button type="button" data-nav-existing="installAppBtn" hidden>Ana Ekrana Ekle</button>' +
     '<button type="button" data-nav-logout>Çıkış Yap</button></div></details>';
