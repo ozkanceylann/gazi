@@ -15,7 +15,7 @@
   <script src="config.js?v=20261014-cargo-separate-34"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261024-cargo-reference-suffix-110" />
+  <link rel="stylesheet" href="style.css?v=20261024-cargo-reference-exact-111" />
 
   <style>
     .btn-mini{
@@ -217,7 +217,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261024-cargo-reference-suffix-110");
+      await import("./app.js?v=20261024-cargo-reference-exact-111");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");
