@@ -19,3 +19,9 @@ assert.equal(context.buildOrderSearchFilter('AKH4520010157'), 'siparis_no.eq.101
 for (const input of ['AKH45200', 'AKH452000', 'AKH452002147483648', 'AKH452009630oops'])
   assert(!context.buildOrderSearchFilter(input).includes('siparis_no.eq.'));
 console.log('PASS: exact cargo reference lookup, case/whitespace, invalid references');
+
+for (const input of ['AKH452009979-R2', 'akh452009979-r2', ' AKH452009979-R2 ', 'AKH452009979-R1', 'AKH452009979-2', 'AKH452009979-R2-1'])
+  assert.equal(context.buildOrderSearchFilter(input), 'siparis_no.eq.9979');
+for (const input of ['AKH452009979-R', 'AKH452009979-R2junk', 'AKH452009979-', 'AKH452002147483648-R2'])
+  assert(!context.buildOrderSearchFilter(input).includes('siparis_no.eq.'));
+console.log('PASS: revision/parcel references map to the exact order; malformed suffixes rejected');

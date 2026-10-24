@@ -2451,8 +2451,8 @@ function customerNameSearchPattern(input){
 
 function buildOrderSearchFilter(input) {
   const raw = input.trim();
-  // DHL references use the fixed account prefix followed by the order number.
-  const reference = /^AKH45200([0-9]+)$/i.exec(raw);
+  // DHL references may include a revision (-R2) and/or parcel suffix (-2).
+  const reference = /^AKH45200([0-9]+)(?:-R[0-9]+)?(?:-[0-9]+)?$/i.exec(raw);
   if (reference) {
     const orderNo = Number(reference[1]);
     if (Number.isSafeInteger(orderNo) && orderNo > 0 && orderNo <= 2147483647)
