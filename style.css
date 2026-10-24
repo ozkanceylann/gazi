@@ -1975,3 +1975,7 @@ body.orders-page { --bg:#101d15; --text:#edf0e3; background:#101d15; color:#edf0
 
 .handover-count{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .operation-card .handover-count small{font-size:12px;font-weight:500;white-space:nowrap}
+
+.detail-order-identifiers{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 16px;}
+.detail-reference-number{font-size:12px;color:inherit;overflow-wrap:anywhere;user-select:text;}
+.detail-reference-number strong{font-weight:600;}

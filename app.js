@@ -1453,7 +1453,7 @@ function renderDetails() {
   /* — DETAY HTML — */
 document.getElementById("orderDetails").innerHTML = `
 <section class="detail-overview" aria-label="Sipariş özeti">
- <div class="detail-overview-main"><span class="detail-eyebrow">SİPARİŞ #${Number(d.siparis_no)}</span>${OrderSplit.related(d)}<h3>${escapeHtml(d.ad_soyad || "Müşteri")}</h3><div class="detail-overview-status">${orderStageBadge(d)}</div></div>
+ <div class="detail-overview-main"><div class="detail-order-identifiers"><span class="detail-eyebrow">SİPARİŞ #${Number(d.siparis_no)}</span><span class="detail-reference-number">Referans No: <strong>${escapeHtml(d.kargo_siparis_no || "—")}</strong></span></div>${OrderSplit.related(d)}<h3>${escapeHtml(d.ad_soyad || "Müşteri")}</h3><div class="detail-overview-status">${orderStageBadge(d)}</div></div>
  <div class="detail-overview-total"><strong>${escapeHtml(OrderSplit.formatAmount(d.toplam_tutar))} <small>TL</small></strong><span>${escapeHtml(d.odeme_sekli || "Belirtilmemiş")}</span>${OrderSplit.button(d)}</div>
 </section>
 <div class="detail-compact-meta">
