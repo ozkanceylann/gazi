@@ -15,7 +15,7 @@
   <script src="config.js?v=20261014-cargo-separate-34"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css?v=20261024-all-parcels-108" />
+  <link rel="stylesheet" href="style.css?v=20261024-cargo-reference-109" />
 
   <style>
     .btn-mini{
@@ -106,7 +106,7 @@
     </div>
 
     <div class="top-bar search-slot">
-      <input id="searchInput" type="search" aria-label="Tüm siparişlerde ara" placeholder="Müşteri adı / Müşteri No / Sipariş No / Telefon / Adres" />
+      <input id="searchInput" type="search" aria-label="Tüm siparişlerde ara" placeholder="Müşteri adı / Müşteri No / Sipariş No / Kargo Referans No / Telefon / Adres" />
       <input id="tabSearchInput" type="search" aria-label="Sekmede ara" placeholder="Bulunduğunuz sekmede ara" />
       <button type="button" class="btn-search" onclick="searchActiveOrders()">Ara</button>
     </div>
@@ -217,7 +217,7 @@ document.getElementById("orderModal").addEventListener("click", function(e){
   <script type="module">
     try {
       await window.waitConfig();
-      await import("./app.js?v=20261024-all-parcels-108");
+      await import("./app.js?v=20261024-cargo-reference-109");
       document.getElementById("brandLogo").src = CONFIG.logo;
       const brandTitle = document.getElementById("brandTitle");
       const brandName = document.createElement("span");

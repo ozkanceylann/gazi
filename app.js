@@ -2451,6 +2451,13 @@ function customerNameSearchPattern(input){
 
 function buildOrderSearchFilter(input) {
   const raw = input.trim();
+  // DHL references use the fixed account prefix followed by the order number.
+  const reference = /^AKH45200([0-9]+)$/i.exec(raw);
+  if (reference) {
+    const orderNo = Number(reference[1]);
+    if (Number.isSafeInteger(orderNo) && orderNo > 0 && orderNo <= 2147483647)
+      return "siparis_no.eq." + orderNo;
+  }
   const pattern = value => JSON.stringify("%" + value.replace(/[\\%_]/g, character => "\\" + character) + "%");
   const text = pattern(raw);
   const filters = ["ad_soyad", "adres", "kargo_takip_kodu", "iade_kodu"]

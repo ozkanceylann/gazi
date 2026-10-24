@@ -12,3 +12,10 @@ assert(context.buildOrderSearchFilter('9180').includes('siparis_no.eq.9180'));
 assert(context.buildOrderSearchFilter('0506 090 64 24').includes('5%0%6%0%9%0%6%4%2%4'));
 console.log('PASS: Turkish letters/case, one vowel typo, literal escaping, numeric IDs and formatted phone search');
 console.log(context.customerNameSearchPattern('şükriye'));
+
+for (const input of ['AKH452009630', 'akh452009630', '  AKH452009630  '])
+  assert.equal(context.buildOrderSearchFilter(input), 'siparis_no.eq.9630');
+assert.equal(context.buildOrderSearchFilter('AKH4520010157'), 'siparis_no.eq.10157');
+for (const input of ['AKH45200', 'AKH452000', 'AKH452002147483648', 'AKH452009630oops'])
+  assert(!context.buildOrderSearchFilter(input).includes('siparis_no.eq.'));
+console.log('PASS: exact cargo reference lookup, case/whitespace, invalid references');
